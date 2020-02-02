@@ -62,50 +62,51 @@ class KinectSource
 		};
 
 	private:
-		struct ColorFrameData
+		struct FrameData
 		{
-			video_format format;
 			uint32_t width;
 			uint32_t height;
 			uint32_t pitch;
-			ObserverPtr<uint8_t[]> ptr;
+			ObserverPtr<std::uint8_t[]> ptr;
+			std::vector<std::uint8_t> fallbackMemory; //< Used only when memory consumption increases
+		};
+
+		struct ColorFrameData : FrameData
+		{
+			video_format format;
 
 			ReleasePtr<IColorFrame> colorFrame;
 		};
 
-		struct DepthInfraredFrameData
-		{
-			uint32_t width;
-			uint32_t height;
-			uint32_t pitch;
-			ObserverPtr<uint16_t[]> ptr;
-		};
-
-		struct DepthFrameData : DepthInfraredFrameData 
+		struct DepthFrameData : FrameData
 		{
 			ReleasePtr<IDepthFrame> depthFrame;
 		};
 
-		struct InfraredFrameData : DepthInfraredFrameData 
+		struct InfraredFrameData : FrameData
 		{
 			ReleasePtr<IInfraredFrame> infraredFrame;
 		};
 
-		ColorFrameData ConvertDepthToColor(const DepthFrameData& infraredFrame, std::vector<uint8_t>& memory);
-		ColorFrameData ConvertInfraredToColor(const InfraredFrameData& infraredFrame, std::vector<uint8_t>& memory);
+		std::uint8_t* AllocateMemory(std::vector<std::uint8_t>& fallback, std::size_t size);
 
-		std::optional<ColorFrameData> RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, std::vector<uint8_t>& memory, bool forceRGBA = false);
+		ColorFrameData ConvertDepthToColor(const DepthFrameData& infraredFrame);
+		ColorFrameData ConvertInfraredToColor(const InfraredFrameData& infraredFrame);
+
+		std::optional<ColorFrameData> RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, bool forceRGBA = false);
 		std::optional<DepthFrameData> RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame);
 		std::optional<InfraredFrameData> RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame);
-		
+
 		void Start();
 		void Stop();
 		void ThreadFunc(std::condition_variable& cv, std::mutex& m);
 
 		std::atomic_bool m_running;
-		std::thread m_thread;
-		obs_source_t* m_source;
 		std::atomic<SourceType> m_sourceType;
+		std::size_t m_requiredMemory;
+		std::thread m_thread;
+		std::vector<std::uint8_t> m_memory;
+		obs_source_t* m_source;
 		bool m_stopOnHide;
 };
 

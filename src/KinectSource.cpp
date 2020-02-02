@@ -22,8 +22,9 @@
 
 KinectSource::KinectSource(obs_source_t* source) :
 m_running(false),
-m_source(source),
 m_sourceType(SourceType::Color),
+m_requiredMemory(0),
+m_source(source),
 m_stopOnHide(false)
 {
 }
@@ -51,7 +52,29 @@ void KinectSource::ShouldStopOnHide(bool shouldStop)
 	m_stopOnHide = shouldStop;
 }
 
-auto KinectSource::ConvertDepthToColor(const DepthFrameData& infraredFrame, std::vector<uint8_t>& memory) -> ColorFrameData
+uint8_t* KinectSource::AllocateMemory(std::vector<uint8_t>& fallback, std::size_t size)
+{
+	std::size_t previousSize = m_memory.size();
+
+	if (m_memory.capacity() >= previousSize + size)
+	{
+		// Resizing is safe, do it
+		m_memory.resize(previousSize + size);
+		return &m_memory[previousSize];
+	}
+	else
+	{
+		// Resizing would invalidate pointers, allocate to a fallback memory
+		fallback.resize(size);
+
+		// Ask for more memory next frame
+		m_requiredMemory += size;
+
+		return fallback.data();
+	}
+}
+
+auto KinectSource::ConvertDepthToColor(const DepthFrameData& depthFrame) -> ColorFrameData
 {
 	constexpr float DepthInputMaxValue = 0xFFFF;
 	constexpr float DepthInputMinValue = 0.f;
@@ -60,15 +83,17 @@ auto KinectSource::ConvertDepthToColor(const DepthFrameData& infraredFrame, std:
 	constexpr float DepthOutputMax = 1.f;
 	constexpr float DepthOutputMin = 0.01f;
 
-	memory.resize(infraredFrame.width * infraredFrame.height * 4);
-	std::uint8_t* output = memory.data();
-	const std::uint16_t* input = infraredFrame.ptr.get();
+	ColorFrameData colorFrame;
 
-	for (std::size_t y = 0; y < infraredFrame.height; ++y)
+	std::uint8_t* memPtr = AllocateMemory(colorFrame.fallbackMemory, depthFrame.width * depthFrame.height * 4);
+	std::uint8_t* output = memPtr;
+	const std::uint16_t* input = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
+
+	for (std::size_t y = 0; y < depthFrame.height; ++y)
 	{
-		for (std::size_t x = 0; x < infraredFrame.width; ++x)
+		for (std::size_t x = 0; x < depthFrame.width; ++x)
 		{
-			std::uint16_t value = infraredFrame.ptr[y * infraredFrame.width + x];
+			std::uint16_t value = input[y * depthFrame.width + x];
 
 			float intensityFactor = float(value) / DepthInputMaxValue;
 			intensityFactor /= DepthValueAverage * DepthValueStandardDeviation;
@@ -83,17 +108,16 @@ auto KinectSource::ConvertDepthToColor(const DepthFrameData& infraredFrame, std:
 		}
 	}
 
-	ColorFrameData colorFrame;
 	colorFrame.format = VIDEO_FORMAT_RGBA;
-	colorFrame.height = infraredFrame.height;
-	colorFrame.pitch = infraredFrame.width * 4;
-	colorFrame.ptr.reset(memory.data());
-	colorFrame.width = infraredFrame.width;
+	colorFrame.height = depthFrame.height;
+	colorFrame.pitch = depthFrame.width * 4;
+	colorFrame.ptr.reset(memPtr);
+	colorFrame.width = depthFrame.width;
 
 	return colorFrame;
 }
 
-auto KinectSource::ConvertInfraredToColor(const InfraredFrameData& infraredFrame, std::vector<uint8_t>& memory) -> ColorFrameData
+auto KinectSource::ConvertInfraredToColor(const InfraredFrameData& infraredFrame) -> ColorFrameData
 {
 	// Values from InfraredBasics example from Kinect SDK
 	constexpr float InfraredInputMaxValue = 0xFFFF;
@@ -102,15 +126,17 @@ auto KinectSource::ConvertInfraredToColor(const InfraredFrameData& infraredFrame
 	constexpr float InfraredOutputMax = 1.f;
 	constexpr float InfraredOutputMin = 0.01f;
 
-	memory.resize(infraredFrame.width * infraredFrame.height * 4);
-	std::uint8_t* output = memory.data();
-	const std::uint16_t* input = infraredFrame.ptr.get();
+	ColorFrameData colorFrame;
+
+	std::uint8_t* memPtr = AllocateMemory(colorFrame.fallbackMemory, infraredFrame.width * infraredFrame.height * 4);
+	std::uint8_t* output = memPtr;
+	const std::uint16_t* input = reinterpret_cast<const std::uint16_t*>(infraredFrame.ptr.get());
 
 	for (std::size_t y = 0; y < infraredFrame.height; ++y)
 	{
 		for (std::size_t x = 0; x < infraredFrame.width; ++x)
 		{
-			std::uint16_t value = infraredFrame.ptr[y * infraredFrame.width + x];
+			std::uint16_t value = input[y * infraredFrame.width + x];
 
 			float intensityFactor = float(value) / InfraredInputMaxValue;
 			intensityFactor /= InfraredValueAverage * InfraredValueStandardDeviation;
@@ -125,17 +151,16 @@ auto KinectSource::ConvertInfraredToColor(const InfraredFrameData& infraredFrame
 		}
 	}
 
-	ColorFrameData colorFrame;
 	colorFrame.format = VIDEO_FORMAT_RGBA;
 	colorFrame.height = infraredFrame.height;
 	colorFrame.pitch = infraredFrame.width * 4;
-	colorFrame.ptr.reset(memory.data());
+	colorFrame.ptr.reset(memPtr);
 	colorFrame.width = infraredFrame.width;
 
 	return colorFrame;
 }
 
-auto KinectSource::RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, std::vector<uint8_t>& memory, bool forceRGBA) -> std::optional<ColorFrameData>
+auto KinectSource::RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, bool forceRGBA) -> std::optional<ColorFrameData>
 {
 	ColorFrameData frameData;
 
@@ -230,14 +255,16 @@ auto KinectSource::RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, std::
 	}
 
 	// Convert to RGBA
-	memory.resize(width * height * 4);
-	if (FAILED(pColorFrame->CopyConvertedFrameDataToArray(UINT(memory.size()), reinterpret_cast<BYTE*>(memory.data()), ColorImageFormat_Rgba)))
+	std::size_t memSize = width * height * 4;
+	std::uint8_t* memPtr = AllocateMemory(frameData.fallbackMemory, memSize);
+
+	if (FAILED(pColorFrame->CopyConvertedFrameDataToArray(UINT(memSize), reinterpret_cast<BYTE*>(memPtr), ColorImageFormat_Rgba)))
 	{
 		blog(LOG_ERROR, "[obs-kinect] Failed to copy color buffer");
 		return std::nullopt;
 	}
 
-	frameData.ptr.reset(memory.data());
+	frameData.ptr.reset(memPtr);
 	frameData.pitch = width * 4;
 	frameData.format = VIDEO_FORMAT_RGBA;
 
@@ -296,7 +323,7 @@ auto KinectSource::RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame) -> st
 	frameData.width = width;
 	frameData.height = height;
 	frameData.pitch = width * bytePerPixel;
-	frameData.ptr.reset(ptr);
+	frameData.ptr.reset(reinterpret_cast<std::uint8_t*>(ptr));
 
 	return frameData;
 }
@@ -353,7 +380,7 @@ auto KinectSource::RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame) ->
 	frameData.width = width;
 	frameData.height = height;
 	frameData.pitch = width * bytePerPixel;
-	frameData.ptr.reset(ptr);
+	frameData.ptr.reset(reinterpret_cast<uint8_t*>(ptr));
 
 	return frameData;
 }
@@ -436,10 +463,8 @@ void KinectSource::ThreadFunc(std::condition_variable& cv, std::mutex& m)
 		cv.notify_all();
 	} // m & cv no longer exists from here
 
-	std::vector<std::uint8_t> colorMemory;
-
 	uint64_t now = os_gettime_ns();
-	uint64_t delay = 1'000'000'000ULL / 30;
+	uint64_t delay = 1'000'000'000ULL / 30; // Target 30 FPS (Kinect doesn't run higher afaik)
 
 	while (m_running)
 	{
@@ -449,66 +474,92 @@ void KinectSource::ThreadFunc(std::condition_variable& cv, std::mutex& m)
 
 		ReleasePtr<IMultiSourceFrame> multiSourceFrame(pMultiSourceFrame);
 
-		ColorFrameData colorFrameData;
-
-		switch (m_sourceType.load(std::memory_order_relaxed))
+		try
 		{
-			case SourceType::Color:
+			m_memory.clear(); //< Does not affect capacity
+			m_memory.reserve(m_requiredMemory);
+
+			std::optional<ColorFrameData> colorFrameDataOpt;
+			std::optional<DepthFrameData> depthFrameDataOpt;
+			std::optional<InfraredFrameData> infraredFrameDataOpt;
+
+			auto GetColorFrame = [&]() -> ColorFrameData&
 			{
-				std::optional<ColorFrameData> colorFrameDataOpt = RetrieveColorFrame(pMultiSourceFrame, colorMemory);
-				if (!colorFrameDataOpt)
+				if (!colorFrameDataOpt.has_value())
 				{
-					// Force sleep to prevent log spamming
-					os_sleep_ms(100);
-					continue;
+					colorFrameDataOpt = RetrieveColorFrame(pMultiSourceFrame);
+					if (!colorFrameDataOpt)
+						throw std::runtime_error("failed to retrieve color frame");
 				}
 
-				colorFrameData = std::move(colorFrameDataOpt.value());
-				break;
-			}
+				return colorFrameDataOpt.value();
+			};
 
-			case SourceType::Depth:
+			auto GetDepthFrame = [&]() -> DepthFrameData&
 			{
-				std::optional<DepthFrameData> depthFrameDataOpt = RetrieveDepthFrame(pMultiSourceFrame);
-				if (!depthFrameDataOpt)
+				if (!depthFrameDataOpt.has_value())
 				{
-					// Force sleep to prevent log spamming
-					os_sleep_ms(100);
-					continue;
+					depthFrameDataOpt = RetrieveDepthFrame(pMultiSourceFrame);
+					if (!depthFrameDataOpt)
+						throw std::runtime_error("failed to retrieve depth frame");
 				}
 
-				colorFrameData = ConvertDepthToColor(depthFrameDataOpt.value(), colorMemory);
-				break;
-			}
+				return depthFrameDataOpt.value();
+			};
 
-			case SourceType::Infrared:
+			auto GetInfraredFrame = [&]() -> InfraredFrameData&
 			{
-				std::optional<InfraredFrameData> infraredFrameDataOpt = RetrieveInfraredFrame(pMultiSourceFrame);
-				if (!infraredFrameDataOpt)
+				if (!infraredFrameDataOpt.has_value())
 				{
-					// Force sleep to prevent log spamming
-					os_sleep_ms(100);
-					continue;
+					infraredFrameDataOpt = RetrieveInfraredFrame(pMultiSourceFrame);
+					if (!infraredFrameDataOpt)
+						throw std::runtime_error("failed to retrieve infrared frame");
 				}
 
-				colorFrameData = ConvertInfraredToColor(infraredFrameDataOpt.value(), colorMemory);
-				break;
+				return infraredFrameDataOpt.value();
+			};
+
+			ColorFrameData outputFrameData;
+
+			switch (m_sourceType.load(std::memory_order_relaxed))
+			{
+				case SourceType::Color:
+					outputFrameData = std::move(GetColorFrame());
+					break;
+
+				case SourceType::Depth:
+					outputFrameData = ConvertDepthToColor(GetDepthFrame());
+					break;
+
+				case SourceType::Infrared:
+					outputFrameData = ConvertInfraredToColor(GetInfraredFrame());
+					break;
+
+				default:
+					throw std::runtime_error("invalid source type");
 			}
+
+			obs_source_frame frame = {};
+			frame.width = outputFrameData.width;
+			frame.height = outputFrameData.height;
+			frame.format = outputFrameData.format;
+
+			frame.data[0] = outputFrameData.ptr.get();
+			frame.linesize[0] = outputFrameData.pitch;
+
+			frame.timestamp = now;
+
+			obs_source_output_video(m_source, &frame);
+
+			os_sleepto_ns(now += delay);
 		}
+		catch (const std::exception& e)
+		{
+			blog(LOG_ERROR, "[obs-kinect] %s", e.what());
 
-		obs_source_frame frame = {};
-		frame.width = colorFrameData.width;
-		frame.height = colorFrameData.height;
-		frame.format = colorFrameData.format;
-
-		frame.data[0] = colorFrameData.ptr.get();
-		frame.linesize[0] = colorFrameData.pitch;
-
-		frame.timestamp = now;
-
-		obs_source_output_video(m_source, &frame);
-
-		os_sleepto_ns(now += delay);
+			// Force sleep to prevent log spamming
+			os_sleep_ms(100);
+		}
 	}
 
 	blog(LOG_INFO, "[obs-kinect] Exiting thread");
