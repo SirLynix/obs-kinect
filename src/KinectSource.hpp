@@ -43,6 +43,10 @@ class KinectSource
 		KinectSource(obs_source_t* source);
 		~KinectSource();
 
+		void OnVisibilityUpdate(bool isVisible);
+
+		void ShouldStopOnHide(bool shouldStop);
+
 	private:
 		struct ColorFrameData
 		{
@@ -54,11 +58,15 @@ class KinectSource
 		};
 
 		std::optional<ColorFrameData> RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, std::vector<uint8_t>& memory, bool forceRGBA = false);
+		
+		void Start();
+		void Stop();
 		void ThreadFunc();
 
 		std::atomic_bool m_running;
 		std::thread m_thread;
 		obs_source_t* m_source;
+		bool m_stopOnHide;
 };
 
 #endif

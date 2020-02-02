@@ -42,15 +42,27 @@ template<typename T> using ReleasePtr = std::unique_ptr<T, ReleaseDeleter<T>>;
 
 KinectSource::KinectSource(obs_source_t* source) :
 m_running(true),
-m_source(source)
+m_source(source),
+m_stopOnHide(false)
 {
-	m_thread = std::thread(&KinectSource::ThreadFunc, this);
 }
 
 KinectSource::~KinectSource()
 {
-	m_running = false;
-	m_thread.join();
+	Stop();
+}
+
+void KinectSource::OnVisibilityUpdate(bool isVisible)
+{
+	if (isVisible)
+		Start();
+	else if (m_stopOnHide)
+		Stop();
+}
+
+void KinectSource::ShouldStopOnHide(bool shouldStop)
+{
+	m_stopOnHide = shouldStop;
 }
 
 auto KinectSource::RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, std::vector<uint8_t>& memory, bool forceRGBA) -> std::optional<ColorFrameData>
@@ -159,6 +171,24 @@ auto KinectSource::RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, std::
 	frameData.format = VIDEO_FORMAT_RGBA;
 
 	return frameData;
+}
+
+void KinectSource::Start()
+{
+	if (m_thread.joinable())
+		return;
+
+	m_running = true;
+	m_thread = std::thread(&KinectSource::ThreadFunc, this);
+}
+
+void KinectSource::Stop()
+{
+	if (!m_thread.joinable())
+		return;
+
+	m_running = false;
+	m_thread.join();
 }
 
 void KinectSource::ThreadFunc()

@@ -22,19 +22,26 @@ OBS_DECLARE_MODULE()
 OBS_MODULE_AUTHOR("SirLynix")
 OBS_MODULE_USE_DEFAULT_LOCALE("kinect_source", "en-US")
 
-static void kinect_source_update(void *data, obs_data_t *settings)
+static void kinect_source_update(void* data, obs_data_t* settings)
 {
-	//blog(LOG_INFO, "[obs-kinect] update");
+	KinectSource* kinectSource = static_cast<KinectSource*>(data);
+	kinectSource->ShouldStopOnHide(obs_data_get_bool(settings, "invisible_shutdown"));
 }
 
-static void *color_source_create(obs_data_t *settings, obs_source_t *source)
+static void* kinect_source_create(obs_data_t* settings, obs_source_t* source)
 {
-	return new KinectSource(source);
+	KinectSource* kinect = new KinectSource(source);
+	kinect_source_update(source, settings);
+
+	kinect->OnVisibilityUpdate(obs_source_showing(source));
+
+	return kinect;
 }
 
-static void color_source_destroy(void *data)
+static void kinect_source_destroy(void *data)
 {
-	delete static_cast<KinectSource*>(data);
+	KinectSource* kinectSource = static_cast<KinectSource*>(data);
+	delete kinectSource;
 }
 
 static obs_properties_t* kinect_source_properties(void *unused)
@@ -42,14 +49,14 @@ static obs_properties_t* kinect_source_properties(void *unused)
 	UNUSED_PARAMETER(unused);
 
 	obs_properties_t *props = obs_properties_create();
-	//obs_properties_add_bool(props, "invisible_shutdown", obs_module_text("KinectSource.InvisibleShutdown"));
+	obs_properties_add_bool(props, "invisible_shutdown", obs_module_text("KinectSource.InvisibleShutdown"));
 
 	return props;
 }
 
 static void kinect_source_defaults(obs_data_t *settings)
 {
-	//obs_data_set_default_bool(settings, "invisible_shutdown", false);
+	obs_data_set_default_bool(settings, "invisible_shutdown", false);
 }
 
 void RegisterKinectSource()
@@ -59,11 +66,13 @@ void RegisterKinectSource()
 	info.type = OBS_SOURCE_TYPE_INPUT;
 	info.output_flags = OBS_SOURCE_ASYNC_VIDEO | OBS_SOURCE_DO_NOT_DUPLICATE;
 	info.get_name = [](void*) { return obs_module_text("KinectSource"); };
-	info.create = color_source_create;
-	info.destroy = color_source_destroy;
+	info.create = kinect_source_create;
+	info.destroy = kinect_source_destroy;
 	info.update = kinect_source_update;
 	info.get_defaults = kinect_source_defaults;
 	info.get_properties = kinect_source_properties;
+	info.show = [](void* data) { static_cast<KinectSource*>(data)->OnVisibilityUpdate(true); };
+	info.hide = [](void* data) { static_cast<KinectSource*>(data)->OnVisibilityUpdate(false); };
 	info.icon_type = OBS_ICON_TYPE_CAMERA;
 
 	obs_register_source(&info);
