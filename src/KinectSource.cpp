@@ -98,9 +98,9 @@ auto KinectSource::RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, std::
 		
 	// srsly microsoft
 	if (FAILED(colorFrameDescription->get_Width(&width)) ||
-		FAILED(colorFrameDescription->get_Height(&height)) ||
-		FAILED(colorFrameDescription->get_BytesPerPixel(&bytePerPixel)) ||
-		FAILED(colorFrame->get_RawColorImageFormat(&imageFormat)))
+	    FAILED(colorFrameDescription->get_Height(&height)) ||
+	    FAILED(colorFrameDescription->get_BytesPerPixel(&bytePerPixel)) ||
+	    FAILED(colorFrame->get_RawColorImageFormat(&imageFormat)))
 	{
 		blog(LOG_ERROR, "[obs-kinect] Failed to retrieve color frame description values");
 		return std::nullopt;
