@@ -1,3 +1,6 @@
+# obs-kinect specific files
+config.lua
+
 # Prerequisites
 *.d
 

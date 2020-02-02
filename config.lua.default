@@ -1,0 +1,16 @@
+-- Example config, copy to config.lua before building
+
+libkinect = {
+	Include = "$(KINECTSDK20_DIR)/inc",
+	Lib32 = "$(KINECTSDK20_DIR)/lib/x86",
+	Lib64 = "$(KINECTSDK20_DIR)/lib/x64",
+}
+
+libobs = {
+	Include = "../obs-studio/libobs",
+	Lib32 = "../obs-studio/build32/libobs/Release",
+	Lib64 = "../obs-studio/build64/libobs/Release",
+}
+
+CopyToDebug = [[C:\Users\Lynix\Documents\GitHub\obs-studio\build64\rundir\Debug\obs-plugins\64bit]]
+CopyToRelease = [[C:\Program Files\obs-studio\obs-plugins\64bit]]
