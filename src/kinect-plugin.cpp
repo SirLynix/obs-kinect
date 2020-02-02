@@ -25,13 +25,14 @@ OBS_MODULE_USE_DEFAULT_LOCALE("kinect_source", "en-US")
 static void kinect_source_update(void* data, obs_data_t* settings)
 {
 	KinectSource* kinectSource = static_cast<KinectSource*>(data);
+	kinectSource->SetSourceType(static_cast<KinectSource::SourceType>(obs_data_get_int(settings, "source")));
 	kinectSource->ShouldStopOnHide(obs_data_get_bool(settings, "invisible_shutdown"));
 }
 
 static void* kinect_source_create(obs_data_t* settings, obs_source_t* source)
 {
 	KinectSource* kinect = new KinectSource(source);
-	kinect_source_update(source, settings);
+	kinect_source_update(kinect, settings);
 
 	kinect->OnVisibilityUpdate(obs_source_showing(source));
 
@@ -49,6 +50,12 @@ static obs_properties_t* kinect_source_properties(void *unused)
 	UNUSED_PARAMETER(unused);
 
 	obs_properties_t *props = obs_properties_create();
+
+	obs_property_t* sourceList = obs_properties_add_list(props, "source", obs_module_text("KinectSource.Source"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(sourceList, "Color", static_cast<int>(KinectSource::SourceType::Color));
+	obs_property_list_add_int(sourceList, "Depth", static_cast<int>(KinectSource::SourceType::Depth));
+	obs_property_list_add_int(sourceList, "Infrared", static_cast<int>(KinectSource::SourceType::Infrared));
+
 	obs_properties_add_bool(props, "invisible_shutdown", obs_module_text("KinectSource.InvisibleShutdown"));
 
 	return props;
@@ -56,6 +63,7 @@ static obs_properties_t* kinect_source_properties(void *unused)
 
 static void kinect_source_defaults(obs_data_t *settings)
 {
+	obs_data_set_default_int(settings, "source", static_cast<int>(KinectSource::SourceType::Color));
 	obs_data_set_default_bool(settings, "invisible_shutdown", false);
 }
 

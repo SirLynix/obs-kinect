@@ -20,8 +20,11 @@
 #ifndef OBS_KINECT_PLUGIN_KINECTSOURCE
 #define OBS_KINECT_PLUGIN_KINECTSOURCE
 
+#include "Helper.hpp"
 #include <obs-module.h>
 #include <atomic>
+#include <condition_variable>
+#include <mutex>
 #include <optional>
 #include <thread>
 #include <vector>
@@ -40,12 +43,23 @@
 class KinectSource
 {
 	public:
+		enum class SourceType;
+
 		KinectSource(obs_source_t* source);
 		~KinectSource();
 
 		void OnVisibilityUpdate(bool isVisible);
 
+		void SetSourceType(SourceType sourceType);
+
 		void ShouldStopOnHide(bool shouldStop);
+
+		enum class SourceType
+		{
+			Color,
+			Depth,
+			Infrared
+		};
 
 	private:
 		struct ColorFrameData
@@ -54,18 +68,44 @@ class KinectSource
 			uint32_t width;
 			uint32_t height;
 			uint32_t pitch;
-			uint8_t* ptr;
+			ObserverPtr<uint8_t[]> ptr;
+
+			ReleasePtr<IColorFrame> colorFrame;
 		};
 
+		struct DepthInfraredFrameData
+		{
+			uint32_t width;
+			uint32_t height;
+			uint32_t pitch;
+			ObserverPtr<uint16_t[]> ptr;
+		};
+
+		struct DepthFrameData : DepthInfraredFrameData 
+		{
+			ReleasePtr<IDepthFrame> depthFrame;
+		};
+
+		struct InfraredFrameData : DepthInfraredFrameData 
+		{
+			ReleasePtr<IInfraredFrame> infraredFrame;
+		};
+
+		ColorFrameData ConvertDepthToColor(const DepthFrameData& infraredFrame, std::vector<uint8_t>& memory);
+		ColorFrameData ConvertInfraredToColor(const InfraredFrameData& infraredFrame, std::vector<uint8_t>& memory);
+
 		std::optional<ColorFrameData> RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, std::vector<uint8_t>& memory, bool forceRGBA = false);
+		std::optional<DepthFrameData> RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame);
+		std::optional<InfraredFrameData> RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame);
 		
 		void Start();
 		void Stop();
-		void ThreadFunc();
+		void ThreadFunc(std::condition_variable& cv, std::mutex& m);
 
 		std::atomic_bool m_running;
 		std::thread m_thread;
 		obs_source_t* m_source;
+		std::atomic<SourceType> m_sourceType;
 		bool m_stopOnHide;
 };
 
