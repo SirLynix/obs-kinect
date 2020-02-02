@@ -479,44 +479,41 @@ void KinectSource::ThreadFunc(std::condition_variable& cv, std::mutex& m)
 			m_memory.clear(); //< Does not affect capacity
 			m_memory.reserve(m_requiredMemory);
 
-			std::optional<ColorFrameData> colorFrameDataOpt;
-			std::optional<DepthFrameData> depthFrameDataOpt;
-			std::optional<InfraredFrameData> infraredFrameDataOpt;
-
-			auto GetColorFrame = [&]() -> ColorFrameData&
+			auto GetColorFrame = [&, frameDataOpt = std::optional<ColorFrameData>()]() mutable -> ColorFrameData&
 			{
-				if (!colorFrameDataOpt.has_value())
+				if (!frameDataOpt.has_value())
 				{
-					colorFrameDataOpt = RetrieveColorFrame(pMultiSourceFrame);
-					if (!colorFrameDataOpt)
+					frameDataOpt = RetrieveColorFrame(pMultiSourceFrame);
+					if (!frameDataOpt)
 						throw std::runtime_error("failed to retrieve color frame");
 				}
 
-				return colorFrameDataOpt.value();
+				return frameDataOpt.value();
 			};
 
-			auto GetDepthFrame = [&]() -> DepthFrameData&
+			auto GetDepthFrame = [&, frameDataOpt = std::optional<DepthFrameData>()]() mutable -> DepthFrameData&
 			{
-				if (!depthFrameDataOpt.has_value())
+				if (!frameDataOpt.has_value())
 				{
-					depthFrameDataOpt = RetrieveDepthFrame(pMultiSourceFrame);
-					if (!depthFrameDataOpt)
+					frameDataOpt = RetrieveDepthFrame(pMultiSourceFrame);
+					if (!frameDataOpt)
 						throw std::runtime_error("failed to retrieve depth frame");
 				}
 
-				return depthFrameDataOpt.value();
+				return frameDataOpt.value();
 			};
 
-			auto GetInfraredFrame = [&]() -> InfraredFrameData&
+			auto GetInfraredFrame = [&, frameDataOpt = std::optional<InfraredFrameData>()]() mutable-> InfraredFrameData&
 			{
-				if (!infraredFrameDataOpt.has_value())
+				if (!frameDataOpt.has_value())
 				{
-					infraredFrameDataOpt = RetrieveInfraredFrame(pMultiSourceFrame);
-					if (!infraredFrameDataOpt)
+					frameDataOpt = RetrieveInfraredFrame(pMultiSourceFrame);
+					if (!frameDataOpt)
 						throw std::runtime_error("failed to retrieve infrared frame");
 				}
 
-				return infraredFrameDataOpt.value();
+				return frameDataOpt.value();
+			};
 			};
 
 			ColorFrameData outputFrameData;
@@ -563,4 +560,9 @@ void KinectSource::ThreadFunc(std::condition_variable& cv, std::mutex& m)
 	}
 
 	blog(LOG_INFO, "[obs-kinect] Exiting thread");
+}
+
+auto KinectSource::VirtualGreenScreen(const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, const std::vector<DepthSpacePoint>& depthMapping, std::vector<uint8_t>& memory) -> ColorFrameData 
+{
+	return ColorFrameData();
 }
