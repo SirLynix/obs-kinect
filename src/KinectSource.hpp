@@ -44,6 +44,8 @@ class KinectSource
 {
 	public:
 		enum class SourceType;
+		struct DepthToColorSettings;
+		struct InfraredToColorSettings;
 
 		KinectSource(obs_source_t* source);
 		~KinectSource();
@@ -54,11 +56,28 @@ class KinectSource
 
 		void ShouldStopOnHide(bool shouldStop);
 
+		void UpdateDepthToColor(DepthToColorSettings depthToColor);
+		void UpdateInfraredToColor(InfraredToColorSettings infraredToColor);
+
 		enum class SourceType
 		{
 			Color,
 			Depth,
 			Infrared
+		};
+
+		struct DepthToColorSettings
+		{
+			bool dynamic = false;
+			float averageValue = 0.015f;
+			float standardDeviation = 3.f;
+		};
+
+		struct InfraredToColorSettings
+		{
+			bool dynamic = false;
+			float averageValue = 0.08f;
+			float standardDeviation = 3.f;
 		};
 
 	private:
@@ -88,10 +107,16 @@ class KinectSource
 			ReleasePtr<IInfraredFrame> infraredFrame;
 		};
 
+		struct DynamicValues
+		{
+			double average;
+			double standardDeviation;
+		};
+
 		std::uint8_t* AllocateMemory(std::vector<std::uint8_t>& fallback, std::size_t size);
 
-		ColorFrameData ConvertDepthToColor(const DepthFrameData& infraredFrame);
-		ColorFrameData ConvertInfraredToColor(const InfraredFrameData& infraredFrame);
+		ColorFrameData ConvertDepthToColor(const DepthToColorSettings& settings, const DepthFrameData& infraredFrame);
+		ColorFrameData ConvertInfraredToColor(const InfraredToColorSettings& settings, const InfraredFrameData& infraredFrame);
 
 		std::optional<ColorFrameData> RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, bool forceRGBA = false);
 		std::optional<DepthFrameData> RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame);
@@ -101,7 +126,11 @@ class KinectSource
 		void Stop();
 		void ThreadFunc(std::condition_variable& cv, std::mutex& m);
 
+		static DynamicValues ComputeDynamicValues(const std::uint16_t* values, std::size_t valueCount);
+
 		std::atomic_bool m_running;
+		std::atomic<DepthToColorSettings> m_depthToColorSettings;
+		std::atomic<InfraredToColorSettings> m_infraredToColorSettings;
 		std::atomic<SourceType> m_sourceType;
 		std::size_t m_requiredMemory;
 		std::thread m_thread;

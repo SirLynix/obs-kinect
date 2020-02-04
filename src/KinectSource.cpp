@@ -19,6 +19,8 @@
 #include <util/platform.h>
 #include <algorithm>
 #include <array>
+#include <numeric>
+#include <optional>
 
 KinectSource::KinectSource(obs_source_t* source) :
 m_running(false),
@@ -45,6 +47,16 @@ void KinectSource::OnVisibilityUpdate(bool isVisible)
 void KinectSource::SetSourceType(SourceType sourceType)
 {
 	m_sourceType.store(sourceType, std::memory_order_relaxed);
+}
+
+void KinectSource::UpdateDepthToColor(DepthToColorSettings depthToColor)
+{
+	m_depthToColorSettings = depthToColor;
+}
+
+void KinectSource::UpdateInfraredToColor(InfraredToColorSettings infraredToColor)
+{
+	m_infraredToColorSettings = infraredToColor;
 }
 
 void KinectSource::ShouldStopOnHide(bool shouldStop)
@@ -78,10 +90,20 @@ auto KinectSource::ConvertDepthToColor(const DepthFrameData& depthFrame) -> Colo
 {
 	constexpr float DepthInputMaxValue = 0xFFFF;
 	constexpr float DepthInputMinValue = 0.f;
-	constexpr float DepthValueAverage = 0.015f;
-	constexpr float DepthValueStandardDeviation = 3.f;
 	constexpr float DepthOutputMax = 1.f;
 	constexpr float DepthOutputMin = 0.01f;
+
+	float invFactor;
+	if (settings.dynamic)
+	{
+		const std::uint16_t* depthValues = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
+		std::size_t depthValueCount = depthFrame.width * depthFrame.height;
+
+		DynamicValues dynValues = ComputeDynamicValues(depthValues, depthValueCount);
+		invFactor = float(1.0 / (dynValues.average * dynValues.standardDeviation));
+	}
+	else
+		invFactor = 1.f / (settings.averageValue * settings.standardDeviation);
 
 	ColorFrameData colorFrame;
 
@@ -96,7 +118,7 @@ auto KinectSource::ConvertDepthToColor(const DepthFrameData& depthFrame) -> Colo
 			std::uint16_t value = input[y * depthFrame.width + x];
 
 			float intensityFactor = float(value) / DepthInputMaxValue;
-			intensityFactor /= DepthValueAverage * DepthValueStandardDeviation;
+			intensityFactor *= invFactor;
 			intensityFactor = std::clamp(intensityFactor, DepthOutputMin, DepthOutputMax);
 
 			std::uint8_t intensity = static_cast<std::uint8_t>(intensityFactor * 255.f);
@@ -121,10 +143,20 @@ auto KinectSource::ConvertInfraredToColor(const InfraredFrameData& infraredFrame
 {
 	// Values from InfraredBasics example from Kinect SDK
 	constexpr float InfraredInputMaxValue = 0xFFFF;
-	constexpr float InfraredValueAverage = 0.08f;
-	constexpr float InfraredValueStandardDeviation = 3.f;
 	constexpr float InfraredOutputMax = 1.f;
 	constexpr float InfraredOutputMin = 0.01f;
+
+	float invFactor;
+	if (settings.dynamic)
+	{
+		const std::uint16_t* infraredValues = reinterpret_cast<const std::uint16_t*>(infraredFrame.ptr.get());
+		std::size_t infraredValueCount = infraredFrame.width * infraredFrame.height;
+
+		DynamicValues dynValues = ComputeDynamicValues(infraredValues, infraredValueCount);
+		invFactor = float(1.0 / (dynValues.average * dynValues.standardDeviation));
+	}
+	else
+		invFactor = 1.f / (settings.averageValue * settings.standardDeviation);
 
 	ColorFrameData colorFrame;
 
@@ -139,7 +171,7 @@ auto KinectSource::ConvertInfraredToColor(const InfraredFrameData& infraredFrame
 			std::uint16_t value = input[y * infraredFrame.width + x];
 
 			float intensityFactor = float(value) / InfraredInputMaxValue;
-			intensityFactor /= InfraredValueAverage * InfraredValueStandardDeviation;
+			intensityFactor *= invFactor;
 			intensityFactor = std::clamp(intensityFactor, InfraredOutputMin, InfraredOutputMax);
 
 			std::uint8_t intensity = static_cast<std::uint8_t>(intensityFactor * 255.f);
@@ -525,11 +557,11 @@ void KinectSource::ThreadFunc(std::condition_variable& cv, std::mutex& m)
 					break;
 
 				case SourceType::Depth:
-					outputFrameData = ConvertDepthToColor(GetDepthFrame());
+					outputFrameData = ConvertDepthToColor(m_depthToColorSettings.load(std::memory_order_relaxed), GetDepthFrame());
 					break;
 
 				case SourceType::Infrared:
-					outputFrameData = ConvertInfraredToColor(GetInfraredFrame());
+					outputFrameData = ConvertInfraredToColor(m_infraredToColorSettings.load(std::memory_order_relaxed), GetInfraredFrame());
 					break;
 
 				default:
@@ -562,7 +594,20 @@ void KinectSource::ThreadFunc(std::condition_variable& cv, std::mutex& m)
 	blog(LOG_INFO, "[obs-kinect] Exiting thread");
 }
 
-auto KinectSource::VirtualGreenScreen(const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, const std::vector<DepthSpacePoint>& depthMapping, std::vector<uint8_t>& memory) -> ColorFrameData 
+auto KinectSource::ComputeDynamicValues(const std::uint16_t* values, std::size_t valueCount) -> DynamicValues
 {
-	return ColorFrameData();
+	constexpr std::uint16_t MaxValue = std::numeric_limits<std::uint16_t>::max();
+
+	unsigned long long average = std::accumulate(values, values + valueCount, 0LL) / valueCount;
+	unsigned long long varianceAcc = std::accumulate(values, values + valueCount, 0LL, [average](unsigned long long init, unsigned long long delta)
+	{
+		return init + (delta - average) * (delta - average); // underflow allowed (will overflow back to the right value)
+	});
+
+	double variance = double(varianceAcc) / valueCount;
+
+	double averageValue = double(average) / MaxValue;
+	double standardDeviation = std::sqrt(variance / MaxValue);
+
+	return { averageValue, standardDeviation };
 }

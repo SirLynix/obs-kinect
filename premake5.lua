@@ -31,6 +31,9 @@ workspace("obs-kinect")
 		links("kinect20")
 		links("obs")
 
+		filter({ "action:vs*" })
+			defines("_ENABLE_ATOMIC_ALIGNMENT_FIX")
+
 		filter({ "platforms:x86" })
 			architecture "x32"
 			libdirs(assert(Config.libkinect.Lib32, "Missing kinect lib dir (x86)"))
