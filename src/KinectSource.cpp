@@ -86,7 +86,7 @@ uint8_t* KinectSource::AllocateMemory(std::vector<uint8_t>& fallback, std::size_
 	}
 }
 
-auto KinectSource::ConvertDepthToColor(const DepthFrameData& depthFrame) -> ColorFrameData
+auto KinectSource::ConvertDepthToColor(const DepthToColorSettings& settings, const DepthFrameData& depthFrame) -> ColorFrameData
 {
 	constexpr float DepthInputMaxValue = 0xFFFF;
 	constexpr float DepthInputMinValue = 0.f;
@@ -139,7 +139,7 @@ auto KinectSource::ConvertDepthToColor(const DepthFrameData& depthFrame) -> Colo
 	return colorFrame;
 }
 
-auto KinectSource::ConvertInfraredToColor(const InfraredFrameData& infraredFrame) -> ColorFrameData
+auto KinectSource::ConvertInfraredToColor(const InfraredToColorSettings& settings, const InfraredFrameData& infraredFrame) -> ColorFrameData
 {
 	// Values from InfraredBasics example from Kinect SDK
 	constexpr float InfraredInputMaxValue = 0xFFFF;
@@ -192,32 +192,26 @@ auto KinectSource::ConvertInfraredToColor(const InfraredFrameData& infraredFrame
 	return colorFrame;
 }
 
-auto KinectSource::RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, bool forceRGBA) -> std::optional<ColorFrameData>
+auto KinectSource::RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, bool forceRGBA) -> ColorFrameData
 {
 	ColorFrameData frameData;
 
 	IColorFrameReference* pColorFrameReference;
 	if (FAILED(multiSourceFrame->get_ColorFrameReference(&pColorFrameReference)))
-	{
-		blog(LOG_ERROR, "[obs-kinect] Failed to get color frame reference");
-		return std::nullopt;
-	}
+		throw std::runtime_error("Failed to get color frame reference");
+
 	ReleasePtr<IColorFrameReference> colorFrameReference(pColorFrameReference);
 
 	IColorFrame* pColorFrame;
 	if (FAILED(pColorFrameReference->AcquireFrame(&pColorFrame)))
-	{
-		blog(LOG_ERROR, "[obs-kinect] Failed to acquire color frame");
-		return std::nullopt;
-	}
+		throw std::runtime_error("Failed to acquire color frame");
+
 	frameData.colorFrame.reset(pColorFrame);
 
 	IFrameDescription* pColorFrameDescription;
 	if (FAILED(pColorFrame->get_FrameDescription(&pColorFrameDescription)))
-	{
-		blog(LOG_ERROR, "[obs-kinect] Failed to get color frame description");
-		return std::nullopt;
-	}
+		throw std::runtime_error("Failed to get color frame description");
+
 	ReleasePtr<IFrameDescription> colorFrameDescription(pColorFrameDescription);
 
 	int width;
@@ -231,8 +225,7 @@ auto KinectSource::RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, bool 
 	    FAILED(colorFrameDescription->get_BytesPerPixel(&bytePerPixel)) ||
 	    FAILED(pColorFrame->get_RawColorImageFormat(&imageFormat)))
 	{
-		blog(LOG_ERROR, "[obs-kinect] Failed to retrieve color frame description values");
-		return std::nullopt;
+		throw std::runtime_error("Failed to retrieve color frame description values");
 	}
 
 	frameData.width = width;
@@ -240,45 +233,28 @@ auto KinectSource::RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, bool 
 
 	if (!forceRGBA || imageFormat == ColorImageFormat_Rgba)
 	{
-		auto SetupRawAccess = [&](video_format format)
+		auto SetupRawAccess = [&](video_format format) -> ColorFrameData
 		{
 			BYTE* ptr;
 			UINT pixelCount;
 			if (FAILED(pColorFrame->AccessRawUnderlyingBuffer(&pixelCount, &ptr)) || pixelCount != width * height)
-			{
-				blog(LOG_ERROR, "[obs-kinect] Failed to access color buffer");
-				os_sleep_ms(100);
-				return false;
-			}
+				throw std::runtime_error("Failed to access color buffer");
 
 			frameData.ptr.reset(ptr);
 			frameData.pitch = width * bytePerPixel;
 			frameData.format = format;
 
-			return true;
+			return std::move(frameData);
 		};
 
 		switch (imageFormat)
 		{
-			case ColorImageFormat_Rgba:
-				if (!SetupRawAccess(VIDEO_FORMAT_RGBA))
-					return std::nullopt;
-
-				return frameData;
-
-			case ColorImageFormat_Bgra:
-				if (!SetupRawAccess(VIDEO_FORMAT_BGRA))
-					return std::nullopt;
-
-				return frameData;
+			case ColorImageFormat_Rgba: return SetupRawAccess(VIDEO_FORMAT_RGBA);
+			case ColorImageFormat_Bgra: return SetupRawAccess(VIDEO_FORMAT_BGRA);
 
 			/*
 			FIXME: Output a black screen for some reasons
-			case ColorImageFormat_Yuy2:
-				if (!SetupRawAccess(VIDEO_FORMAT_YUY2))
-					continue;
-
-				return frameData;
+			case ColorImageFormat_Yuy2: return SetupRawAccess(VIDEO_FORMAT_YUY2);
 			*/
 
 			default:
@@ -291,10 +267,7 @@ auto KinectSource::RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, bool 
 	std::uint8_t* memPtr = AllocateMemory(frameData.fallbackMemory, memSize);
 
 	if (FAILED(pColorFrame->CopyConvertedFrameDataToArray(UINT(memSize), reinterpret_cast<BYTE*>(memPtr), ColorImageFormat_Rgba)))
-	{
-		blog(LOG_ERROR, "[obs-kinect] Failed to copy color buffer");
-		return std::nullopt;
-	}
+		throw std::runtime_error("Failed to copy color buffer");
 
 	frameData.ptr.reset(memPtr);
 	frameData.pitch = width * 4;
@@ -303,32 +276,24 @@ auto KinectSource::RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, bool 
 	return frameData;
 }
 
-auto KinectSource::RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame) -> std::optional<DepthFrameData>
+auto KinectSource::RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame) -> DepthFrameData
 {
-	DepthFrameData frameData;
-
 	IDepthFrameReference* pDepthFrameReference;
 	if (FAILED(multiSourceFrame->get_DepthFrameReference(&pDepthFrameReference)))
-	{
-		blog(LOG_ERROR, "[obs-kinect] Failed to get depth frame reference");
-		return std::nullopt;
-	}
+		throw std::runtime_error("Failed to get depth frame reference");
+
 	ReleasePtr<IDepthFrameReference> depthFrameReference(pDepthFrameReference);
 
 	IDepthFrame* pDepthFrame;
 	if (FAILED(pDepthFrameReference->AcquireFrame(&pDepthFrame)))
-	{
-		blog(LOG_ERROR, "[obs-kinect] Failed to acquire depth frame");
-		return std::nullopt;
-	}
-	frameData.depthFrame.reset(pDepthFrame);
+		throw std::runtime_error("Failed to acquire depth frame");
+
+	ReleasePtr<IDepthFrame> depthFrame(pDepthFrame);
 
 	IFrameDescription* pDepthFrameDescription;
 	if (FAILED(pDepthFrame->get_FrameDescription(&pDepthFrameDescription)))
-	{
-		blog(LOG_ERROR, "[obs-kinect] Failed to get depth frame description");
-		return std::nullopt;
-	}
+		throw std::runtime_error("Failed to get depth frame description");
+
 	ReleasePtr<IFrameDescription> depthFrameDescription(pDepthFrameDescription);
 
 	int width;
@@ -337,55 +302,45 @@ auto KinectSource::RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame) -> st
 
 	// srsly microsoft
 	if (FAILED(depthFrameDescription->get_Width(&width)) ||
-		FAILED(depthFrameDescription->get_Height(&height)) ||
-		FAILED(depthFrameDescription->get_BytesPerPixel(&bytePerPixel)))
+	    FAILED(depthFrameDescription->get_Height(&height)) ||
+	    FAILED(depthFrameDescription->get_BytesPerPixel(&bytePerPixel)))
 	{
-		blog(LOG_ERROR, "[obs-kinect] Failed to retrieve depth frame description values");
-		return std::nullopt;
+		throw std::runtime_error("Failed to retrieve depth frame description values");
 	}
 
 	UINT16* ptr;
 	UINT pixelCount;
 	if (FAILED(pDepthFrame->AccessUnderlyingBuffer(&pixelCount, &ptr)) || pixelCount != width * height)
-	{
-		blog(LOG_ERROR, "[obs-kinect] Failed to access depth frame buffer");
-		return std::nullopt;
-	}
+		throw std::runtime_error("Failed to access depth frame buffer");
 
+	DepthFrameData frameData;
 	frameData.width = width;
 	frameData.height = height;
 	frameData.pitch = width * bytePerPixel;
 	frameData.ptr.reset(reinterpret_cast<std::uint8_t*>(ptr));
+	frameData.depthFrame = std::move(depthFrame);
 
 	return frameData;
 }
 
-auto KinectSource::RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame) -> std::optional<InfraredFrameData>
+auto KinectSource::RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame) -> InfraredFrameData
 {
-	InfraredFrameData frameData;
-
 	IInfraredFrameReference* pInfraredFrameReference;
 	if (FAILED(multiSourceFrame->get_InfraredFrameReference(&pInfraredFrameReference)))
-	{
-		blog(LOG_ERROR, "[obs-kinect] Failed to get infrared frame reference");
-		return std::nullopt;
-	}
+		throw std::runtime_error("Failed to get infrared frame reference");
+
 	ReleasePtr<IInfraredFrameReference> infraredFrameReference(pInfraredFrameReference);
 
 	IInfraredFrame* pInfraredFrame;
 	if (FAILED(pInfraredFrameReference->AcquireFrame(&pInfraredFrame)))
-	{
-		blog(LOG_ERROR, "[obs-kinect] Failed to acquire infrared frame");
-		return std::nullopt;
-	}
-	frameData.infraredFrame.reset(pInfraredFrame);
+		throw std::runtime_error("Failed to acquire infrared frame");
+
+	ReleasePtr<IInfraredFrame> infraredFrame(pInfraredFrame);
 
 	IFrameDescription* pInfraredFrameDescription;
 	if (FAILED(pInfraredFrame->get_FrameDescription(&pInfraredFrameDescription)))
-	{
-		blog(LOG_ERROR, "[obs-kinect] Failed to get infrared frame description");
-		return std::nullopt;
-	}
+		throw std::runtime_error("Failed to get infrared frame description");
+
 	ReleasePtr<IFrameDescription> infraredFrameDescription(pInfraredFrameDescription);
 
 	int width;
@@ -394,25 +349,22 @@ auto KinectSource::RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame) ->
 
 	// srsly microsoft
 	if (FAILED(infraredFrameDescription->get_Width(&width)) ||
-		FAILED(infraredFrameDescription->get_Height(&height)) ||
-		FAILED(infraredFrameDescription->get_BytesPerPixel(&bytePerPixel)))
+	    FAILED(infraredFrameDescription->get_Height(&height)) ||
+	    FAILED(infraredFrameDescription->get_BytesPerPixel(&bytePerPixel)))
 	{
-		blog(LOG_ERROR, "[obs-kinect] Failed to retrieve infrared frame description values");
-		return std::nullopt;
+		throw std::runtime_error("Failed to retrieve infrared frame description values");
 	}
 
 	UINT16* ptr;
 	UINT pixelCount;
 	if (FAILED(pInfraredFrame->AccessUnderlyingBuffer(&pixelCount, &ptr)) || pixelCount != width * height)
-	{
-		blog(LOG_ERROR, "[obs-kinect] Failed to access infrared frame buffer");
-		return std::nullopt;
-	}
+		throw std::runtime_error("Failed to access infrared frame buffer");
 
 	frameData.width = width;
 	frameData.height = height;
 	frameData.pitch = width * bytePerPixel;
-	frameData.ptr.reset(reinterpret_cast<uint8_t*>(ptr));
+	frameData.ptr.reset(reinterpret_cast<std::uint8_t*>(ptr));
+	frameData.infraredFrame = std::move(infraredFrame);
 
 	return frameData;
 }
@@ -514,11 +466,7 @@ void KinectSource::ThreadFunc(std::condition_variable& cv, std::mutex& m)
 			auto GetColorFrame = [&, frameDataOpt = std::optional<ColorFrameData>()]() mutable -> ColorFrameData&
 			{
 				if (!frameDataOpt.has_value())
-				{
 					frameDataOpt = RetrieveColorFrame(pMultiSourceFrame);
-					if (!frameDataOpt)
-						throw std::runtime_error("failed to retrieve color frame");
-				}
 
 				return frameDataOpt.value();
 			};
@@ -526,11 +474,7 @@ void KinectSource::ThreadFunc(std::condition_variable& cv, std::mutex& m)
 			auto GetDepthFrame = [&, frameDataOpt = std::optional<DepthFrameData>()]() mutable -> DepthFrameData&
 			{
 				if (!frameDataOpt.has_value())
-				{
 					frameDataOpt = RetrieveDepthFrame(pMultiSourceFrame);
-					if (!frameDataOpt)
-						throw std::runtime_error("failed to retrieve depth frame");
-				}
 
 				return frameDataOpt.value();
 			};
@@ -538,14 +482,9 @@ void KinectSource::ThreadFunc(std::condition_variable& cv, std::mutex& m)
 			auto GetInfraredFrame = [&, frameDataOpt = std::optional<InfraredFrameData>()]() mutable-> InfraredFrameData&
 			{
 				if (!frameDataOpt.has_value())
-				{
 					frameDataOpt = RetrieveInfraredFrame(pMultiSourceFrame);
-					if (!frameDataOpt)
-						throw std::runtime_error("failed to retrieve infrared frame");
-				}
 
 				return frameDataOpt.value();
-			};
 			};
 
 			ColorFrameData outputFrameData;

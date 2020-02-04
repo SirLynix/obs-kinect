@@ -25,7 +25,6 @@
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
-#include <optional>
 #include <thread>
 #include <vector>
 
@@ -118,9 +117,9 @@ class KinectSource
 		ColorFrameData ConvertDepthToColor(const DepthToColorSettings& settings, const DepthFrameData& infraredFrame);
 		ColorFrameData ConvertInfraredToColor(const InfraredToColorSettings& settings, const InfraredFrameData& infraredFrame);
 
-		std::optional<ColorFrameData> RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, bool forceRGBA = false);
-		std::optional<DepthFrameData> RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame);
-		std::optional<InfraredFrameData> RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame);
+		ColorFrameData RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, bool forceRGBA = false);
+		DepthFrameData RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame);
+		InfraredFrameData RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame);
 
 		void Start();
 		void Stop();
