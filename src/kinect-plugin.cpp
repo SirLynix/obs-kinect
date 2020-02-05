@@ -172,7 +172,7 @@ void RegisterKinectSource()
 	info.get_properties = kinect_source_properties;
 	info.show = [](void* data) { static_cast<KinectSource*>(data)->OnVisibilityUpdate(true); };
 	info.hide = [](void* data) { static_cast<KinectSource*>(data)->OnVisibilityUpdate(false); };
-	info.icon_type = OBS_ICON_TYPE_CAMERA;
+	//info.icon_type = OBS_ICON_TYPE_CAMERA;
 
 	obs_register_source(&info);
 }
