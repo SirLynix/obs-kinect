@@ -1,17 +1,21 @@
 -- Example config, copy to config.lua before building
 
+-- You shouldn't have to change this ()
 libkinect = {
 	Include = "$(KINECTSDK20_DIR)/inc",
 	Lib32 = "$(KINECTSDK20_DIR)/lib/x86",
 	Lib64 = "$(KINECTSDK20_DIR)/lib/x64",
 }
 
+-- Where is libobs located (found in OBS repository)
 libobs = {
 	Include = "../obs-studio/libobs",
 	Lib32 = "../obs-studio/build32/libobs/Release",
 	Lib64 = "../obs-studio/build64/libobs/Release",
 }
 
+-- Where to copy generated plugin file after a successful build (depending on configuration/arch)
+-- If you don't want the plugin to be copied, just comment out thoses lines
 CopyToDebug32 = [[C:\Users\Lynix\Documents\GitHub\obs-studio\build32\rundir\Debug\obs-plugins\32bit]]
 CopyToDebug64 = [[C:\Users\Lynix\Documents\GitHub\obs-studio\build64\rundir\Debug\obs-plugins\64bit]]
 CopyToRelease32 = [[C:\Users\Lynix\Documents\GitHub\obs-studio\build32\rundir\Release\obs-plugins\32bit]]
