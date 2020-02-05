@@ -87,6 +87,8 @@ static obs_properties_t* kinect_source_properties(void *unused)
 	obs_property_t* p;
 	obs_property_t* list;
 
+	obs_properties_add_bool(props, "invisible_shutdown", obs_module_text("KinectSource.InvisibleShutdown"));
+
 	list = obs_properties_add_list(props, "source", obs_module_text("KinectSource.Source"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(list, obs_module_text("KinectSource.Source_Color"), static_cast<int>(KinectSource::SourceType::Color));
 	obs_property_list_add_int(list, obs_module_text("KinectSource.Source_Depth"), static_cast<int>(KinectSource::SourceType::Depth));
@@ -117,8 +119,6 @@ static obs_properties_t* kinect_source_properties(void *unused)
 	obs_properties_add_bool(props, "infrared_dynamic", obs_module_text("KinectSource.InfraredDynamic"));
 	obs_properties_add_float_slider(props, "infrared_average", obs_module_text("KinectSource.InfraredAverage"), 0.0, 1.0, 0.005);
 	obs_properties_add_float_slider(props, "infrared_standard_deviation", obs_module_text("KinectSource.InfraredStandardDeviation"), 0.0, 10.0, 0.5);
-
-	obs_properties_add_bool(props, "invisible_shutdown", obs_module_text("KinectSource.InvisibleShutdown"));
 
 	p = obs_properties_add_bool(props, "greenscreen_enabled", obs_module_text("KinectSource.GreenScreenEnabled"));
 	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
