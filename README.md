@@ -74,6 +74,7 @@ There's also a cool effect of transition that you can enable, just play around a
 That's because the color and the IR sensor of the kinect are one centimeter apart and don't see exactly the same thing. What you're seeing is really a "depth shadow".
 
 ![](https://images.ctfassets.net/rf6r9wh4bnrh/1iq47o4qO2cUioS6eksIYa/55d9375728c295b944bbeae2998f22c5/Single-OcclusionShadows-v2.png)
+
 (image from https://daqri.com/blog/depth-cameras-for-mobile-ar/)
 
 I hope to be able to improve this (using the body index masking).
@@ -89,6 +90,10 @@ You can try to use the bilinear filtering, it reduces this a little bit.
 That's because the depth map is one fourth of the color map (on the Kinect v2)
 
 That's the very first version of this plugin, I will work on that in the future. But I doubt it will ever look perfect on fullscreen (this effect is intended for streaming where you typically don't occupy all the screen).
+
+## Why do closes object disappears before reaching the min distance?
+
+Kinect cannot read depth below 50cm in front of it, invalid depth are discarded.
 
 ## Can I use this with VR (since SteamVR lighthouses use infrared too)?
 
