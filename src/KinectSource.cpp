@@ -360,6 +360,7 @@ auto KinectSource::RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame) ->
 	if (FAILED(pInfraredFrame->AccessUnderlyingBuffer(&pixelCount, &ptr)) || pixelCount != width * height)
 		throw std::runtime_error("Failed to access infrared frame buffer");
 
+	InfraredFrameData frameData;
 	frameData.width = width;
 	frameData.height = height;
 	frameData.pitch = width * bytePerPixel;
