@@ -52,6 +52,7 @@ workspace("obs-kinect")
 			defines("NDEBUG")
 			omitframepointer("On")
 			optimize("Full")
+			symbols("On") -- Generate symbols in release too
 
 		if (Config.CopyToDebug32) then
 			filter("configurations:Debug", "architecture:x32")
