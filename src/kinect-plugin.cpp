@@ -88,9 +88,9 @@ static obs_properties_t* kinect_source_properties(void *unused)
 	obs_property_t* list;
 
 	list = obs_properties_add_list(props, "source", obs_module_text("KinectSource.Source"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	obs_property_list_add_int(list, "Color", static_cast<int>(KinectSource::SourceType::Color));
-	obs_property_list_add_int(list, "Depth", static_cast<int>(KinectSource::SourceType::Depth));
-	obs_property_list_add_int(list, "Infrared", static_cast<int>(KinectSource::SourceType::Infrared));
+	obs_property_list_add_int(list, obs_module_text("KinectSource.Source_Color"), static_cast<int>(KinectSource::SourceType::Color));
+	obs_property_list_add_int(list, obs_module_text("KinectSource.Source_Depth"), static_cast<int>(KinectSource::SourceType::Depth));
+	obs_property_list_add_int(list, obs_module_text("KinectSource.Source_Infrared"), static_cast<int>(KinectSource::SourceType::Infrared));
 
 	obs_property_set_modified_callback(list, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
 	{
@@ -112,11 +112,11 @@ static obs_properties_t* kinect_source_properties(void *unused)
 
 	obs_properties_add_bool(props, "depth_dynamic", obs_module_text("KinectSource.DepthDynamic"));
 	obs_properties_add_float_slider(props, "depth_average", obs_module_text("KinectSource.DepthAverage"), 0.0, 1.0, 0.005);
-	obs_properties_add_float_slider(props, "depth_standard_deviation", obs_module_text("KinectSource.DepthAverage"), 0.0, 10.0, 0.5);
+	obs_properties_add_float_slider(props, "depth_standard_deviation", obs_module_text("KinectSource.DepthStandardDeviation"), 0.0, 10.0, 0.5);
 
 	obs_properties_add_bool(props, "infrared_dynamic", obs_module_text("KinectSource.InfraredDynamic"));
 	obs_properties_add_float_slider(props, "infrared_average", obs_module_text("KinectSource.InfraredAverage"), 0.0, 1.0, 0.005);
-	obs_properties_add_float_slider(props, "infrared_standard_deviation", obs_module_text("KinectSource.InfraredAverage"), 0.0, 10.0, 0.5);
+	obs_properties_add_float_slider(props, "infrared_standard_deviation", obs_module_text("KinectSource.InfraredStandardDeviation"), 0.0, 10.0, 0.5);
 
 	obs_properties_add_bool(props, "invisible_shutdown", obs_module_text("KinectSource.InvisibleShutdown"));
 
@@ -139,17 +139,16 @@ static obs_properties_t* kinect_source_properties(void *unused)
 	});
 
 	list = obs_properties_add_list(props, "greenscreen_filtering", obs_module_text("KinectSource.GreenScreenFiltering"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	obs_property_list_add_int(list, "Bilinear", static_cast<int>(KinectSource::DepthFiltering::BilinearFiltering));
-	obs_property_list_add_int(list, "None (fast)", static_cast<int>(KinectSource::DepthFiltering::NoFiltering));
+	obs_property_list_add_int(list, obs_module_text("KinectSource.GreenScreenFilter_Bilinear"), static_cast<int>(KinectSource::DepthFiltering::BilinearFiltering));
+	obs_property_list_add_int(list, obs_module_text("KinectSource.GreenScreenFilter_None"), static_cast<int>(KinectSource::DepthFiltering::NoFiltering));
 
-	obs_properties_add_bool(props, "greenscreen_filtering", obs_module_text("KinectSource.GreenScreenFiltering"));
-	obs_properties_add_int_slider(props, "greenscreen_fadedist", obs_module_text("KinectSource.GreenScreenFadeDist"), 0, 200, 1);
 	obs_properties_add_int_slider(props, "greenscreen_maxdist", obs_module_text("KinectSource.GreenScreenMaxDist"), 0, 10000, 10);
-	obs_properties_add_int_slider(props, "greenscreen_mindist", obs_module_text("KinectSource.GreenScreenMaxDist"), 0, 10000, 10);
-	obs_properties_add_int(props, "greenscreen_crop_left", obs_module_text("KinectSource.GreenScreenCropLeft"), 0, 1920, 1);
-	obs_properties_add_int(props, "greenscreen_crop_top", obs_module_text("KinectSource.GreenScreenCropTop"), 0, 1080, 1);
-	obs_properties_add_int(props, "greenscreen_crop_right", obs_module_text("KinectSource.GreenScreenCropRight"), 0, 1920, 1);
-	obs_properties_add_int(props, "greenscreen_crop_bottom", obs_module_text("KinectSource.GreenScreenCropBottom"), 0, 1080, 1);
+	obs_properties_add_int_slider(props, "greenscreen_mindist", obs_module_text("KinectSource.GreenScreenMinDist"), 0, 10000, 10);
+	obs_properties_add_int_slider(props, "greenscreen_fadedist", obs_module_text("KinectSource.GreenScreenFadeDist"), 0, 200, 1);
+	obs_properties_add_int(props, "greenscreen_crop_left", obs_module_text("KinectSource.GreenScreenCropLeft"), 0, 1920, 10);
+	obs_properties_add_int(props, "greenscreen_crop_top", obs_module_text("KinectSource.GreenScreenCropTop"), 0, 1080, 10);
+	obs_properties_add_int(props, "greenscreen_crop_right", obs_module_text("KinectSource.GreenScreenCropRight"), 0, 1920, 10);
+	obs_properties_add_int(props, "greenscreen_crop_bottom", obs_module_text("KinectSource.GreenScreenCropBottom"), 0, 1080, 10);
 
 	return props;
 }
