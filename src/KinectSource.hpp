@@ -42,8 +42,10 @@
 class KinectSource
 {
 	public:
+		enum class DepthFiltering;
 		enum class SourceType;
 		struct DepthToColorSettings;
+		struct GreenScreenSettings;
 		struct InfraredToColorSettings;
 
 		KinectSource(obs_source_t* source);
@@ -56,13 +58,21 @@ class KinectSource
 		void ShouldStopOnHide(bool shouldStop);
 
 		void UpdateDepthToColor(DepthToColorSettings depthToColor);
+		void UpdateGreenScreen(GreenScreenSettings greenScreen);
 		void UpdateInfraredToColor(InfraredToColorSettings infraredToColor);
+
+		enum class DepthFiltering
+		{
+			NoFiltering = 0,
+			
+			BilinearFiltering = 1,
+		};
 
 		enum class SourceType
 		{
-			Color,
-			Depth,
-			Infrared
+			Color = 0,
+			Depth = 1,
+			Infrared = 2
 		};
 
 		struct DepthToColorSettings
@@ -70,6 +80,15 @@ class KinectSource
 			bool dynamic = false;
 			float averageValue = 0.015f;
 			float standardDeviation = 3.f;
+		};
+
+		struct GreenScreenSettings
+		{
+			bool enabled = true;
+			DepthFiltering filtering = DepthFiltering::BilinearFiltering;
+			std::uint16_t depthMax = 1200;
+			std::uint16_t depthMin = 1;
+			std::uint16_t fadeDist = 100;
 		};
 
 		struct InfraredToColorSettings
@@ -125,10 +144,13 @@ class KinectSource
 		void Stop();
 		void ThreadFunc(std::condition_variable& cv, std::mutex& m);
 
+		ColorFrameData VirtualGreenScreen(const GreenScreenSettings& settings, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, const DepthSpacePoint* depthMapping);
+
 		static DynamicValues ComputeDynamicValues(const std::uint16_t* values, std::size_t valueCount);
 
 		std::atomic_bool m_running;
 		std::atomic<DepthToColorSettings> m_depthToColorSettings;
+		std::atomic<GreenScreenSettings> m_greenScreenSettings;
 		std::atomic<InfraredToColorSettings> m_infraredToColorSettings;
 		std::atomic<SourceType> m_sourceType;
 		std::size_t m_requiredMemory;

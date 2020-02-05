@@ -42,6 +42,15 @@ static void kinect_source_update(void* data, obs_data_t* settings)
 
 	kinectSource->UpdateDepthToColor(depthToColor);
 
+	KinectSource::GreenScreenSettings greenScreen;
+	greenScreen.filtering = static_cast<KinectSource::DepthFiltering>(obs_data_get_int(settings, "greenscreen_filtering"));
+	greenScreen.enabled = obs_data_get_bool(settings, "greenscreen_enabled");
+	greenScreen.depthMax = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_maxdist"));
+	greenScreen.depthMin = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_mindist"));
+	greenScreen.fadeDist = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_fadedist"));
+
+	kinectSource->UpdateGreenScreen(greenScreen);
+
 	KinectSource::InfraredToColorSettings infraredToColor;
 	infraredToColor.averageValue = float(obs_data_get_double(settings, "infrared_average"));
 	infraredToColor.dynamic = obs_data_get_bool(settings, "infrared_dynamic");
@@ -72,13 +81,14 @@ static obs_properties_t* kinect_source_properties(void *unused)
 
 	obs_properties_t* props = obs_properties_create();
 	obs_property_t* p;
+	obs_property_t* list;
 
-	obs_property_t* sourceList = obs_properties_add_list(props, "source", obs_module_text("KinectSource.Source"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	obs_property_list_add_int(sourceList, "Color", static_cast<int>(KinectSource::SourceType::Color));
-	obs_property_list_add_int(sourceList, "Depth", static_cast<int>(KinectSource::SourceType::Depth));
-	obs_property_list_add_int(sourceList, "Infrared", static_cast<int>(KinectSource::SourceType::Infrared));
+	list = obs_properties_add_list(props, "source", obs_module_text("KinectSource.Source"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(list, "Color", static_cast<int>(KinectSource::SourceType::Color));
+	obs_property_list_add_int(list, "Depth", static_cast<int>(KinectSource::SourceType::Depth));
+	obs_property_list_add_int(list, "Infrared", static_cast<int>(KinectSource::SourceType::Infrared));
 
-	obs_property_set_modified_callback(sourceList, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
+	obs_property_set_modified_callback(list, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
 	{
 		KinectSource::SourceType sourceType = static_cast<KinectSource::SourceType>(obs_data_get_int(s, "source"));
 
@@ -106,6 +116,28 @@ static obs_properties_t* kinect_source_properties(void *unused)
 
 	obs_properties_add_bool(props, "invisible_shutdown", obs_module_text("KinectSource.InvisibleShutdown"));
 
+	p = obs_properties_add_bool(props, "greenscreen_enabled", obs_module_text("KinectSource.GreenScreenEnabled"));
+	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
+	{
+		bool enabled = obs_data_get_bool(s, "greenscreen_enabled");
+
+		set_property_visibility(props, "greenscreen_filtering", enabled);
+		set_property_visibility(props, "greenscreen_fadedist", enabled);
+		set_property_visibility(props, "greenscreen_maxdist", enabled);
+		set_property_visibility(props, "greenscreen_mindist", enabled);
+
+		return true;
+	});
+
+	list = obs_properties_add_list(props, "greenscreen_filtering", obs_module_text("KinectSource.GreenScreenFiltering"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(list, "Bilinear", static_cast<int>(KinectSource::DepthFiltering::BilinearFiltering));
+	obs_property_list_add_int(list, "None (fast)", static_cast<int>(KinectSource::DepthFiltering::NoFiltering));
+
+	obs_properties_add_bool(props, "greenscreen_filtering", obs_module_text("KinectSource.GreenScreenFiltering"));
+	obs_properties_add_int_slider(props, "greenscreen_fadedist", obs_module_text("KinectSource.GreenScreenFadeDist"), 0, 200, 1);
+	obs_properties_add_int_slider(props, "greenscreen_maxdist", obs_module_text("KinectSource.GreenScreenMaxDist"), 0, 10000, 10);
+	obs_properties_add_int_slider(props, "greenscreen_mindist", obs_module_text("KinectSource.GreenScreenMaxDist"), 0, 10000, 10);
+
 	return props;
 }
 
@@ -119,6 +151,11 @@ static void kinect_source_defaults(obs_data_t *settings)
 	obs_data_set_default_double(settings, "infrared_average", 0.08);
 	obs_data_set_default_bool(settings, "infrared_dynamic", false);
 	obs_data_set_default_double(settings, "infrared_standard_deviation", 3);
+	obs_data_set_default_bool(settings, "greenscreen_enabled", false);
+	obs_data_set_default_int(settings, "greenscreen_filtering", static_cast<int>(KinectSource::DepthFiltering::BilinearFiltering));
+	obs_data_set_default_int(settings, "greenscreen_fadedist", 100);
+	obs_data_set_default_int(settings, "greenscreen_maxdist", 1200);
+	obs_data_set_default_int(settings, "greenscreen_mindist", 1);
 }
 
 void RegisterKinectSource()

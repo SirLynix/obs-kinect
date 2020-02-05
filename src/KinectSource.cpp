@@ -54,6 +54,11 @@ void KinectSource::UpdateDepthToColor(DepthToColorSettings depthToColor)
 	m_depthToColorSettings = depthToColor;
 }
 
+void KinectSource::UpdateGreenScreen(GreenScreenSettings greenScreen)
+{
+	m_greenScreenSettings = greenScreen;
+}
+
 void KinectSource::UpdateInfraredToColor(InfraredToColorSettings infraredToColor)
 {
 	m_infraredToColorSettings = infraredToColor;
@@ -407,6 +412,14 @@ void KinectSource::ThreadFunc(std::condition_variable& cv, std::mutex& m)
 
 	ReleasePtr<IKinectSensor> kinectSensor(pKinectSensor);
 
+	ICoordinateMapper* pCoordinateMapper;
+	if (FAILED(kinectSensor->get_CoordinateMapper(&pCoordinateMapper)))
+	{
+		blog(LOG_ERROR, "[obs-kinect] Failed to retrieve coordinate mapper");
+		return;
+	}
+	ReleasePtr<ICoordinateMapper> coordinateMapper(pCoordinateMapper);
+
 	if (FAILED(kinectSensor->Open()))
 	{
 		blog(LOG_ERROR, "[obs-kinect] Failed to open kinect sensor");
@@ -508,6 +521,38 @@ void KinectSource::ThreadFunc(std::condition_variable& cv, std::mutex& m)
 					throw std::runtime_error("invalid source type");
 			}
 
+			auto GetDepthCoordinates = [&, depthCoordinatesPtr = std::optional<DepthSpacePoint*>(), fallbackMem = std::vector<std::uint8_t>()]() mutable->DepthSpacePoint*
+			{
+				if (!depthCoordinatesPtr)
+				{
+					std::size_t colorPixelCount = outputFrameData.width * outputFrameData.height;
+
+					DepthFrameData& depthFrame = GetDepthFrame();
+					if (outputFrameData.width != depthFrame.width || outputFrameData.height != depthFrame.height)
+					{
+						const UINT16* depthPtr = reinterpret_cast<const UINT16*>(depthFrame.ptr.get());
+						std::size_t depthPixelCount = depthFrame.width * depthFrame.height;
+
+						DepthSpacePoint* coordinatePtr = reinterpret_cast<DepthSpacePoint*>(AllocateMemory(fallbackMem, colorPixelCount * sizeof(DepthSpacePoint)));
+
+						if (FAILED(coordinateMapper->MapColorFrameToDepthSpace(UINT(depthPixelCount), depthPtr, UINT(colorPixelCount), coordinatePtr)))
+							throw std::runtime_error("failed to map color to depth");
+
+						depthCoordinatesPtr = coordinatePtr;
+					}
+					else
+					{
+						// Don't map depth to depth/infrared
+						depthCoordinatesPtr = nullptr;
+					}
+				}
+
+				return depthCoordinatesPtr.value();
+			};
+
+			if (GreenScreenSettings greenScreenConfig = m_greenScreenSettings.load(std::memory_order_relaxed); greenScreenConfig.enabled)
+				outputFrameData = VirtualGreenScreen(greenScreenConfig, outputFrameData, GetDepthFrame(), GetDepthCoordinates());
+
 			obs_source_frame frame = {};
 			frame.width = outputFrameData.width;
 			frame.height = outputFrameData.height;
@@ -532,6 +577,202 @@ void KinectSource::ThreadFunc(std::condition_variable& cv, std::mutex& m)
 	}
 
 	blog(LOG_INFO, "[obs-kinect] Exiting thread");
+}
+
+auto KinectSource::VirtualGreenScreen(const GreenScreenSettings& settings, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, const DepthSpacePoint* depthMapping) -> ColorFrameData
+{
+	//TODO: Update color frame directly?
+
+	// A lot of this function's code is based on optimization I know compilers do and on processor branch prediction
+
+	constexpr float InvalidDepth = -std::numeric_limits<float>::infinity();
+
+	if (colorFrame.format != VIDEO_FORMAT_RGBA)
+		throw std::runtime_error("unexpected color format");
+
+	ColorFrameData virtualGreenScreen;
+	virtualGreenScreen.width = colorFrame.width;
+	virtualGreenScreen.height = colorFrame.height;
+	virtualGreenScreen.pitch = colorFrame.pitch;
+	virtualGreenScreen.format = colorFrame.format;
+	virtualGreenScreen.ptr.reset(AllocateMemory(virtualGreenScreen.fallbackMemory, colorFrame.width * colorFrame.height * 4));
+
+	const std::uint16_t* depthPixels = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
+
+	// You're entering the "I hope compiler-senpai will be able to optimize this"
+	// also known as "oh that's why it runs at 2 fps on debug"
+	auto DepthTest = [&](std::uint16_t depthValue)
+	{
+		if (depthValue < settings.depthMin || depthValue > settings.depthMax)
+			return false;
+
+		return true;
+	};
+
+	float invDepthProgressive = 1.f / settings.fadeDist;
+
+	auto AlphaValue = [&](std::uint16_t depthValue)
+	{
+		if (depthValue < settings.depthMin)
+			return 0.f;
+
+		if (depthValue > settings.depthMax)
+		{
+			if (depthValue - settings.depthMax < settings.fadeDist)
+				return 1.f - float(depthValue - settings.depthMax) * invDepthProgressive;
+
+			return 0.f;
+		}
+
+		return 1.f;
+	};
+
+	std::uint8_t* output = virtualGreenScreen.ptr.get();
+	auto NoPixel = [&]()
+	{
+		*output++ = 0;
+		*output++ = 0;
+		*output++ = 0;
+		*output++ = 0;
+	};
+
+	auto PartialPixel = [&](std::uint8_t* rgba, float alphaFactor)
+	{
+		*output++ = *rgba++; //< r
+		*output++ = *rgba++; //< g
+		*output++ = *rgba++; //< b
+		*output++ = static_cast<std::uint8_t>(*rgba++ * alphaFactor); //< a
+	};
+
+	auto FullPixel = [&](std::uint8_t* rgba)
+	{
+		*output++ = *rgba++; //< r
+		*output++ = *rgba++; //< g
+		*output++ = *rgba++; //< b
+		*output++ = *rgba++; //< a
+	};
+
+	auto ColorBasedOnDepth = [&](std::size_t x, std::size_t y, std::uint16_t depthValue)
+	{
+		if (settings.fadeDist == 0) //< Costs nothing, thanks to branch-predictor senpai
+		{
+			if (DepthTest(depthValue))
+			{
+				std::uint8_t* colorPtr = &colorFrame.ptr[colorFrame.pitch * y + x * 4];
+				FullPixel(colorPtr);
+			}
+			else
+				NoPixel();
+		}
+		else
+		{
+			float alphaFactor = AlphaValue(depthValue);
+			std::uint8_t* colorPtr = &colorFrame.ptr[colorFrame.pitch * y + x * 4];
+			PartialPixel(colorPtr, alphaFactor);
+		}
+	};
+
+	for (std::size_t y = 0; y < virtualGreenScreen.height; ++y)
+	{
+		for (std::size_t x = 0; x < virtualGreenScreen.width; ++x)
+		{
+			if (depthMapping)
+			{
+				const DepthSpacePoint& depthCoordinates = depthMapping[y * virtualGreenScreen.width + x];
+				if (depthCoordinates.X == InvalidDepth || depthCoordinates.Y == InvalidDepth)
+				{
+					NoPixel();
+					continue;
+				}
+
+				switch (settings.filtering)
+				{
+					case DepthFiltering::BilinearFiltering:
+					{
+						auto DepthAt = [&](std::uint32_t x, std::uint32_t y)
+						{
+							x = std::min(x, depthFrame.width);
+							y = std::min(y, depthFrame.height);
+							return depthPixels[depthFrame.width * y + x];
+						};
+
+						auto AlphaFactor = [&](std::uint32_t x, std::uint32_t y) -> float
+						{
+							return AlphaValue(DepthAt(x, y));
+						};
+
+						std::uint32_t dX = static_cast<std::uint32_t>(depthCoordinates.X);
+						std::uint32_t dY = static_cast<std::uint32_t>(depthCoordinates.Y);
+
+						float tx = depthCoordinates.X - dX;
+						float ty = depthCoordinates.Y - dY;
+
+						std::uint16_t d00 = DepthAt(dX, dY);
+						std::uint16_t d10 = DepthAt(dX + 1, dY);
+						std::uint16_t d01 = DepthAt(dX, dY + 1);
+						std::uint16_t d11 = DepthAt(dX + 1, dY + 1);
+						auto Lerp = [](float from, float to, float factor)
+						{
+							// 0 means no depth value, take the neighbor's one
+							if (from == 0)
+								return to;
+							else if (to == 0)
+								return from;
+
+							return from * (1.f - factor) + to * factor;
+						};
+
+						std::uint16_t depthValue = static_cast<std::uint16_t>(Lerp(Lerp(d00, d10, tx), Lerp(d10, d11, tx), ty));
+						ColorBasedOnDepth(x, y, depthValue);
+						/*float v00 = AlphaValue(DepthAt(dX, dY));
+						float v10 = AlphaValue(DepthAt(dX + 1, dY));
+						float v01 = AlphaValue(DepthAt(dX, dY + 1));
+						float v11 = AlphaValue(DepthAt(dX + 1, dY + 1));
+
+						auto Lerp = [](float from, float to, float factor)
+						{
+							return from * (1.f - factor) + to * factor;
+						};
+
+						// Apply bilinear filtering (lerp horizontally then vertically)
+						float alphaFactor = Lerp(Lerp(v00, v10, tx), Lerp(v10, v11, tx), ty);
+
+						std::uint8_t* colorPtr = &colorFrame.ptr[colorFrame.pitch * y + x * 4];
+						PartialPixel(colorPtr, alphaFactor);*/
+						break;
+					}
+
+					case DepthFiltering::NoFiltering:
+					{
+						int dX = static_cast<int>(depthCoordinates.X + 0.5f);
+						int dY = static_cast<int>(depthCoordinates.Y + 0.5f);
+
+						if (dX < 0 || dX >= int(depthFrame.width) ||
+						    dY < 0 || dY >= int(depthFrame.height))
+						{
+							NoPixel();
+							continue;
+						}
+
+						std::uint16_t depthValue = depthPixels[depthFrame.width * dY + dX];
+						ColorBasedOnDepth(x, y, depthValue);
+						break;
+					}
+
+					default:
+						NoPixel();
+						break;
+				}
+			}
+			else
+			{
+				std::uint16_t depthValue = depthPixels[depthFrame.width * y + x];
+				ColorBasedOnDepth(x, y, depthValue);
+			}
+		}
+	}
+
+	return virtualGreenScreen;
 }
 
 auto KinectSource::ComputeDynamicValues(const std::uint16_t* values, std::size_t valueCount) -> DynamicValues
