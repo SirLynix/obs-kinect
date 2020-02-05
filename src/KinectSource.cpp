@@ -627,8 +627,7 @@ auto KinectSource::VirtualGreenScreen(const GreenScreenSettings& settings, const
 		return 1.f;
 	};
 
-	std::uint8_t* output = virtualGreenScreen.ptr.get();
-	auto NoPixel = [&]()
+	auto FullTransparency = [](std::uint8_t* output)
 	{
 		*output++ = 0;
 		*output++ = 0;
@@ -636,7 +635,7 @@ auto KinectSource::VirtualGreenScreen(const GreenScreenSettings& settings, const
 		*output++ = 0;
 	};
 
-	auto PartialPixel = [&](std::uint8_t* rgba, float alphaFactor)
+	auto PartialTransparency = [](std::uint8_t* output, std::uint8_t* rgba, float alphaFactor)
 	{
 		*output++ = *rgba++; //< r
 		*output++ = *rgba++; //< g
@@ -644,7 +643,7 @@ auto KinectSource::VirtualGreenScreen(const GreenScreenSettings& settings, const
 		*output++ = static_cast<std::uint8_t>(*rgba++ * alphaFactor); //< a
 	};
 
-	auto FullPixel = [&](std::uint8_t* rgba)
+	auto NoTransparency = [](std::uint8_t* output, std::uint8_t* rgba)
 	{
 		*output++ = *rgba++; //< r
 		*output++ = *rgba++; //< g
@@ -652,36 +651,44 @@ auto KinectSource::VirtualGreenScreen(const GreenScreenSettings& settings, const
 		*output++ = *rgba++; //< a
 	};
 
-	auto ColorBasedOnDepth = [&](std::size_t x, std::size_t y, std::uint16_t depthValue)
+	auto ColorBasedOnDepth = [&](std::uint8_t* output, std::size_t x, std::size_t y, std::uint16_t depthValue)
 	{
 		if (settings.fadeDist == 0) //< Costs nothing, thanks to branch-predictor senpai
 		{
 			if (DepthTest(depthValue))
 			{
 				std::uint8_t* colorPtr = &colorFrame.ptr[colorFrame.pitch * y + x * 4];
-				FullPixel(colorPtr);
+				NoTransparency(output, colorPtr);
 			}
 			else
-				NoPixel();
+				FullTransparency(output);
 		}
 		else
 		{
 			float alphaFactor = AlphaValue(depthValue);
 			std::uint8_t* colorPtr = &colorFrame.ptr[colorFrame.pitch * y + x * 4];
-			PartialPixel(colorPtr, alphaFactor);
+			PartialTransparency(output, colorPtr, alphaFactor);
 		}
 	};
 
-	for (std::size_t y = 0; y < virtualGreenScreen.height; ++y)
+	// If we need to crop, zero the frame first
+	if ((settings.cropBottom & settings.cropLeft & settings.cropRight & settings.cropTop) != 0)
+		std::memset(virtualGreenScreen.ptr.get(), 0, virtualGreenScreen.width * virtualGreenScreen.height * 4);
+
+	std::size_t width = (settings.cropRight < virtualGreenScreen.width) ? virtualGreenScreen.width - settings.cropRight : 0;
+	std::size_t height = (settings.cropBottom < virtualGreenScreen.height) ? virtualGreenScreen.height - settings.cropBottom : 0;
+
+	for (std::size_t y = settings.cropTop; y < height; ++y)
 	{
-		for (std::size_t x = 0; x < virtualGreenScreen.width; ++x)
+		for (std::size_t x = settings.cropLeft; x < width; ++x)
 		{
+			std::uint8_t* output = &virtualGreenScreen.ptr[y * virtualGreenScreen.pitch + x * 4];
 			if (depthMapping)
 			{
 				const DepthSpacePoint& depthCoordinates = depthMapping[y * virtualGreenScreen.width + x];
 				if (depthCoordinates.X == InvalidDepth || depthCoordinates.Y == InvalidDepth)
 				{
-					NoPixel();
+					FullTransparency(output);
 					continue;
 				}
 
@@ -723,7 +730,7 @@ auto KinectSource::VirtualGreenScreen(const GreenScreenSettings& settings, const
 						};
 
 						std::uint16_t depthValue = static_cast<std::uint16_t>(Lerp(Lerp(d00, d10, tx), Lerp(d10, d11, tx), ty));
-						ColorBasedOnDepth(x, y, depthValue);
+						ColorBasedOnDepth(output, x, y, depthValue);
 						/*float v00 = AlphaValue(DepthAt(dX, dY));
 						float v10 = AlphaValue(DepthAt(dX + 1, dY));
 						float v01 = AlphaValue(DepthAt(dX, dY + 1));
@@ -750,24 +757,24 @@ auto KinectSource::VirtualGreenScreen(const GreenScreenSettings& settings, const
 						if (dX < 0 || dX >= int(depthFrame.width) ||
 						    dY < 0 || dY >= int(depthFrame.height))
 						{
-							NoPixel();
+							FullTransparency(output);
 							continue;
 						}
 
 						std::uint16_t depthValue = depthPixels[depthFrame.width * dY + dX];
-						ColorBasedOnDepth(x, y, depthValue);
+						ColorBasedOnDepth(output, x, y, depthValue);
 						break;
 					}
 
 					default:
-						NoPixel();
+						FullTransparency(output);
 						break;
 				}
 			}
 			else
 			{
 				std::uint16_t depthValue = depthPixels[depthFrame.width * y + x];
-				ColorBasedOnDepth(x, y, depthValue);
+				ColorBasedOnDepth(output, x, y, depthValue);
 			}
 		}
 	}

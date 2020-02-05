@@ -86,6 +86,10 @@ class KinectSource
 		{
 			bool enabled = true;
 			DepthFiltering filtering = DepthFiltering::BilinearFiltering;
+			std::uint16_t cropLeft = 0;
+			std::uint16_t cropTop = 0;
+			std::uint16_t cropRight = 0;
+			std::uint16_t cropBottom = 0;
 			std::uint16_t depthMax = 1200;
 			std::uint16_t depthMin = 1;
 			std::uint16_t fadeDist = 100;

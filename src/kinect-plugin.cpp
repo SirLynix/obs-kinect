@@ -48,6 +48,10 @@ static void kinect_source_update(void* data, obs_data_t* settings)
 	greenScreen.depthMax = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_maxdist"));
 	greenScreen.depthMin = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_mindist"));
 	greenScreen.fadeDist = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_fadedist"));
+	greenScreen.cropLeft = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_crop_left"));
+	greenScreen.cropTop = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_crop_top"));
+	greenScreen.cropRight = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_crop_right"));
+	greenScreen.cropBottom = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_crop_bottom"));
 
 	kinectSource->UpdateGreenScreen(greenScreen);
 
@@ -121,6 +125,11 @@ static obs_properties_t* kinect_source_properties(void *unused)
 	{
 		bool enabled = obs_data_get_bool(s, "greenscreen_enabled");
 
+		set_property_visibility(props, "greenscreen_crop_left", enabled);
+		set_property_visibility(props, "greenscreen_crop_top", enabled);
+		set_property_visibility(props, "greenscreen_crop_right", enabled);
+		set_property_visibility(props, "greenscreen_crop_bottom", enabled);
+
 		set_property_visibility(props, "greenscreen_filtering", enabled);
 		set_property_visibility(props, "greenscreen_fadedist", enabled);
 		set_property_visibility(props, "greenscreen_maxdist", enabled);
@@ -137,6 +146,10 @@ static obs_properties_t* kinect_source_properties(void *unused)
 	obs_properties_add_int_slider(props, "greenscreen_fadedist", obs_module_text("KinectSource.GreenScreenFadeDist"), 0, 200, 1);
 	obs_properties_add_int_slider(props, "greenscreen_maxdist", obs_module_text("KinectSource.GreenScreenMaxDist"), 0, 10000, 10);
 	obs_properties_add_int_slider(props, "greenscreen_mindist", obs_module_text("KinectSource.GreenScreenMaxDist"), 0, 10000, 10);
+	obs_properties_add_int(props, "greenscreen_crop_left", obs_module_text("KinectSource.GreenScreenCropLeft"), 0, 1920, 1);
+	obs_properties_add_int(props, "greenscreen_crop_top", obs_module_text("KinectSource.GreenScreenCropTop"), 0, 1080, 1);
+	obs_properties_add_int(props, "greenscreen_crop_right", obs_module_text("KinectSource.GreenScreenCropRight"), 0, 1920, 1);
+	obs_properties_add_int(props, "greenscreen_crop_bottom", obs_module_text("KinectSource.GreenScreenCropBottom"), 0, 1080, 1);
 
 	return props;
 }
@@ -152,6 +165,10 @@ static void kinect_source_defaults(obs_data_t *settings)
 	obs_data_set_default_bool(settings, "infrared_dynamic", false);
 	obs_data_set_default_double(settings, "infrared_standard_deviation", 3);
 	obs_data_set_default_bool(settings, "greenscreen_enabled", false);
+	obs_data_set_default_int(settings, "greenscreen_crop_left", 0);
+	obs_data_set_default_int(settings, "greenscreen_crop_top", 0);
+	obs_data_set_default_int(settings, "greenscreen_crop_right", 0);
+	obs_data_set_default_int(settings, "greenscreen_crop_bottom", 0);
 	obs_data_set_default_int(settings, "greenscreen_filtering", static_cast<int>(KinectSource::DepthFiltering::BilinearFiltering));
 	obs_data_set_default_int(settings, "greenscreen_fadedist", 100);
 	obs_data_set_default_int(settings, "greenscreen_maxdist", 1200);
