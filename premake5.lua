@@ -18,6 +18,13 @@ workspace("obs-kinect")
 		location("build/" .. _ACTION)
 	end
 
+	-- Trigger premake before building, to automatically include new files (and premake changes)
+	if (os.ishost("windows")) then
+		local commandLine = "premake5.exe " .. table.concat(_ARGV, ' ')
+
+		prebuildcommands("cd ../.. && " .. commandLine)
+	end
+
 	project("obs-kinect")
 		kind("SharedLib")
 		language("C++")
