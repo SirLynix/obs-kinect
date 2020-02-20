@@ -38,12 +38,14 @@ m_stopOnHide(false)
 
 	ObsGraphics obsGfx;
 
+	m_bodyIndexTexture = gs_texture_create(512, 424, GS_R8, 1, nullptr, GS_DYNAMIC);
 	m_colorTexture = gs_texture_create(1920, 1080, GS_RGBA, 1, nullptr, GS_DYNAMIC);
 	m_depthMappingTexture = gs_texture_create(1920, 1080, GS_RG32F, 1, nullptr, GS_DYNAMIC);
 	m_depthTexture = gs_texture_create(512, 424, GS_R16, 1, nullptr, GS_DYNAMIC);
 	m_infraredTexture = gs_texture_create(512, 424, GS_R16, 1, nullptr, GS_DYNAMIC);
 
 	m_alphaMaskFilter.emplace();
+	m_bodyIndexFilterEffect.emplace();
 	m_depthIRConvertEffect.emplace();
 	m_gaussianBlur.emplace(GS_RGBA);
 	m_depthFilter.emplace();
@@ -52,6 +54,7 @@ m_stopOnHide(false)
 KinectSource::~KinectSource()
 {
 	ObsGraphics obsGfx;
+	gs_texture_destroy(m_bodyIndexTexture);
 	gs_texture_destroy(m_colorTexture);
 	gs_texture_destroy(m_depthMappingTexture);
 	gs_texture_destroy(m_depthTexture);
@@ -63,12 +66,19 @@ void KinectSource::OnVisibilityUpdate(bool isVisible)
 	if (isVisible)
 		m_device.StartCapture(); //< Does nothing if already capturing
 	else if (m_stopOnHide)
+	{
 		m_device.StopCapture();
+		m_finalTexture.reset();
+	}
 }
 
 void KinectSource::SetSourceType(SourceType sourceType)
 {
-	m_sourceType = sourceType;
+	if (m_sourceType != sourceType)
+	{
+		m_finalTexture.reset();
+		m_sourceType = sourceType;
+	}
 }
 
 void KinectSource::UpdateDepthToColor(DepthToColorSettings depthToColor)
@@ -78,6 +88,9 @@ void KinectSource::UpdateDepthToColor(DepthToColorSettings depthToColor)
 
 void KinectSource::UpdateGreenScreen(GreenScreenSettings greenScreen)
 {
+	if (greenScreen.enabled != m_greenScreenSettings.enabled)
+		m_finalTexture.reset();
+
 	m_greenScreenSettings = greenScreen;
 }
 
@@ -244,8 +257,7 @@ void KinectSource::Update(float /*seconds*/)
 
 		if (m_greenScreenSettings.enabled)
 		{
-			DepthFilterEffect::Params filterParams;
-			
+			gs_texture_t* depthMappingTexture;
 			if (m_sourceType == SourceType::Color)
 			{
 				KinectDevice::ColorFrameData& colorFrame = frameData->colorFrame.value();
@@ -254,18 +266,44 @@ void KinectSource::Update(float /*seconds*/)
 				DepthMappingFrameData depthMappingFrame = RetrieveDepthMappingFrame(colorFrame, depthFrame);
 
 				UpdateTexture(m_depthMappingTexture, depthMappingFrame.width, depthMappingFrame.height, depthMappingFrame.pitch, depthMappingFrame.ptr.get());
-				filterParams.colorToDepthTexture = m_depthMappingTexture;
+				depthMappingTexture = m_depthMappingTexture;
 			}
 			else
-				filterParams.colorToDepthTexture = nullptr;
+				depthMappingTexture = nullptr;
 
-			filterParams.colorTexture = sourceTexture;
-			filterParams.depthTexture = m_depthTexture;
-			filterParams.maxDepth = m_greenScreenSettings.depthMax;
-			filterParams.minDepth = m_greenScreenSettings.depthMin;
-			filterParams.progressiveDepth = m_greenScreenSettings.fadeDist;
+			gs_texture_t* filterTexture;
+			if (m_greenScreenSettings.type == GreenScreenType::Depth)
+			{
+				DepthFilterEffect::Params filterParams;
+				filterParams.colorToDepthTexture = depthMappingTexture;
+				filterParams.depthTexture = m_depthTexture;
+				filterParams.maxDepth = m_greenScreenSettings.depthMax;
+				filterParams.minDepth = m_greenScreenSettings.depthMin;
+				filterParams.progressiveDepth = m_greenScreenSettings.fadeDist;
 
-			gs_texture_t* filterTexture = m_depthFilter->Filter(filterParams);
+				std::uint32_t width = gs_texture_get_width(sourceTexture);
+				std::uint32_t height = gs_texture_get_height(sourceTexture);
+
+				filterTexture = m_depthFilter->Filter(width, height, filterParams);
+			}
+			else
+			{
+				if (!frameData->bodyIndexFrame.has_value())
+					return;
+
+				KinectDevice::BodyIndexFrameData& bodyIndexFrame = frameData->bodyIndexFrame.value();
+				UpdateTexture(m_bodyIndexTexture, bodyIndexFrame.width, bodyIndexFrame.height, bodyIndexFrame.pitch, bodyIndexFrame.ptr.get());
+
+				BodyIndexFilterEffect::Params filterParams;
+				filterParams.bodyIndexTexture = m_bodyIndexTexture;
+				filterParams.colorToDepthTexture = depthMappingTexture;
+
+				std::uint32_t width = gs_texture_get_width(sourceTexture);
+				std::uint32_t height = gs_texture_get_height(sourceTexture);
+
+				filterTexture = m_bodyIndexFilterEffect->Filter(width, height, filterParams);
+			}
+
 			if (m_greenScreenSettings.blurPassCount > 0)
 				filterTexture = m_gaussianBlur->Blur(filterTexture, m_greenScreenSettings.blurPassCount);
 

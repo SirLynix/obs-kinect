@@ -72,6 +72,10 @@ class KinectDevice
 			std::vector<std::uint8_t> memory; //< TODO: Reuse memory
 		};
 
+		struct BodyIndexFrameData : FrameData
+		{
+		};
+
 		struct ColorFrameData : FrameData
 		{
 			video_format format;
@@ -87,12 +91,14 @@ class KinectDevice
 
 		struct KinectFrame
 		{
+			std::optional<BodyIndexFrameData> bodyIndexFrame;
 			std::optional<ColorFrameData> colorFrame;
 			std::optional<DepthFrameData> depthFrame;
 			std::optional<InfraredFrameData> infraredFrame;
 		};
 
 	private:
+		BodyIndexFrameData RetrieveBodyIndexFrame(IMultiSourceFrame* multiSourceFrame);
 		ColorFrameData RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame);
 		DepthFrameData RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame);
 		InfraredFrameData RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame);
@@ -101,7 +107,6 @@ class KinectDevice
 
 		ReleasePtr<IKinectSensor> m_kinectSensor;
 		ReleasePtr<ICoordinateMapper> m_coordinateMapper;
-		ClosePtr<IKinectSensor> m_openedKinectSensor;
 		KinectFramePtr m_lastFrame;
 		std::mutex m_lastFrameLock;
 		std::atomic_bool m_running;

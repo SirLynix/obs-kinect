@@ -15,19 +15,16 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "DepthFilterEffect.hpp"
+#include "BodyIndexFilterEffect.hpp"
 #include "Helper.hpp"
 #include <string>
 #include <stdexcept>
 
-static const char* depthFilterEffect = R"(
+static const char* bodyIndexFilter = R"(
 uniform float4x4 ViewProj;
-uniform texture2d DepthImage;
+uniform texture2d BodyIndexImage;
 uniform texture2d DepthMappingImage;
 uniform float2 InvDepthImageSize;
-uniform float InvDepthProgressive;
-uniform float MaxDepth;
-uniform float MinDepth;
 
 sampler_state textureSampler {
 	Filter   = Linear;
@@ -57,23 +54,20 @@ VertData VSDefault(VertData vert_in)
 float4 PSDepthCorrection(VertData vert_in) : TARGET
 {
 	float2 texCoords = DepthMappingImage.Sample(textureSampler, vert_in.uv).xy * InvDepthImageSize;
-	float depth = DepthImage.Sample(depthSampler, texCoords).r;
+	float bodyIndex = BodyIndexImage.Sample(depthSampler, texCoords).r;
 
-	bool check = (texCoords.x > 0.0 && texCoords.y > 0.0 && texCoords.x < 1.0 && texCoords.y < 1.0) &&
-	             (depth > MinDepth && depth < MaxDepth);
-
-	float value = (check) ? saturate((MaxDepth - depth) * InvDepthProgressive) : 0.0;
+	bool check = (bodyIndex < 0.1);
+	float value = (check) ? 1.0 : 0.0;
 
 	return float4(value, value, value, value);
 }
 
 float4 PSNoDepthCorrection(VertData vert_in) : TARGET
 {
-	float depth = DepthImage.Sample(depthSampler, vert_in.uv).r;
+	float bodyIndex = BodyIndexImage.Sample(depthSampler, vert_in.uv).r;
 
-	bool check = (depth > MinDepth && depth < MaxDepth);
-
-	float value = (check) ? saturate((MaxDepth - depth) * InvDepthProgressive) : 0.0;
+	bool check = (bodyIndex < 0.1);
+	float value = (check) ? 1.0 : 0.0;
 
 	return float4(value, value, value, value);
 }
@@ -97,21 +91,18 @@ technique WithoutDepthCorrection
 }
 )";
 
-DepthFilterEffect::DepthFilterEffect()
+BodyIndexFilterEffect::BodyIndexFilterEffect()
 {
 	ObsGraphics gfx;
 
 	char* errStr;
 
-	m_effect = gs_effect_create(depthFilterEffect, "depth_filter.effect", &errStr);
+	m_effect = gs_effect_create(bodyIndexFilter, "body_index_filter.effect", &errStr);
 	if (m_effect)
 	{
-		m_params_DepthImage = gs_effect_get_param_by_name(m_effect, "DepthImage");
+		m_params_BodyIndexImage = gs_effect_get_param_by_name(m_effect, "BodyIndexImage");
 		m_params_DepthMappingImage = gs_effect_get_param_by_name(m_effect, "DepthMappingImage");
 		m_params_InvDepthImageSize = gs_effect_get_param_by_name(m_effect, "InvDepthImageSize");
-		m_params_InvDepthProgressive = gs_effect_get_param_by_name(m_effect, "InvDepthProgressive");
-		m_params_MaxDepth = gs_effect_get_param_by_name(m_effect, "MaxDepth");
-		m_params_MinDepth = gs_effect_get_param_by_name(m_effect, "MinDepth");
 
 		m_tech_DepthCorrection = gs_effect_get_technique(m_effect, "DepthCorrection");
 		m_tech_WithoutDepthCorrection = gs_effect_get_technique(m_effect, "WithoutDepthCorrection");
@@ -128,7 +119,7 @@ DepthFilterEffect::DepthFilterEffect()
 	}
 }
 
-DepthFilterEffect::~DepthFilterEffect()
+BodyIndexFilterEffect::~BodyIndexFilterEffect()
 {
 	ObsGraphics gfx;
 
@@ -136,10 +127,10 @@ DepthFilterEffect::~DepthFilterEffect()
 	gs_texrender_destroy(m_workTexture);
 }
 
-gs_texture_t* DepthFilterEffect::Filter(std::uint32_t width, std::uint32_t height, const Params& params)
+gs_texture_t* BodyIndexFilterEffect::Filter(std::uint32_t width, std::uint32_t height, const Params& params)
 {
-	std::uint32_t depthWidth = gs_texture_get_width(params.depthTexture);
-	std::uint32_t depthHeight = gs_texture_get_height(params.depthTexture);
+	std::uint32_t bodyIndexWidth = gs_texture_get_width(params.bodyIndexTexture);
+	std::uint32_t bodyIndexHeight = gs_texture_get_height(params.bodyIndexTexture);
 
 	gs_texrender_reset(m_workTexture);
 	if (!gs_texrender_begin(m_workTexture, width, height))
@@ -149,17 +140,14 @@ gs_texture_t* DepthFilterEffect::Filter(std::uint32_t width, std::uint32_t heigh
 	gs_clear(GS_CLEAR_COLOR, &black, 0.f, 0);
 	gs_ortho(0.0f, float(width), 0.0f, float(height), -100.0f, 100.0f);
 
-	vec2 invDepthSize = { 1.f / depthWidth, 1.f / depthHeight };
+	vec2 invDepthSize = { 1.f / bodyIndexWidth, 1.f / bodyIndexHeight };
 
 	constexpr float maxDepthValue = 0xFFFF;
 	constexpr float invMaxDepthValue = 1.f / maxDepthValue;
 
 	gs_effect_set_vec2(m_params_InvDepthImageSize, &invDepthSize);
-	gs_effect_set_texture(m_params_DepthImage, params.depthTexture);
+	gs_effect_set_texture(m_params_BodyIndexImage, params.bodyIndexTexture);
 	gs_effect_set_texture(m_params_DepthMappingImage, params.colorToDepthTexture);
-	gs_effect_set_float(m_params_InvDepthProgressive, maxDepthValue / params.progressiveDepth);
-	gs_effect_set_float(m_params_MaxDepth, params.maxDepth * invMaxDepthValue);
-	gs_effect_set_float(m_params_MinDepth, params.minDepth * invMaxDepthValue);
 
 	gs_technique_t* technique = (params.colorToDepthTexture) ? m_tech_DepthCorrection : m_tech_WithoutDepthCorrection;
 

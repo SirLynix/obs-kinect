@@ -22,6 +22,7 @@
 
 #include "Helper.hpp"
 #include "AlphaMaskEffect.hpp"
+#include "BodyIndexFilterEffect.hpp"
 #include "ConvertDepthIRToColorEffect.hpp"
 #include "DepthFilterEffect.hpp"
 #include "GaussianBlurEffect.hpp"
@@ -37,6 +38,7 @@
 class KinectSource
 {
 	public:
+		enum class GreenScreenType;
 		enum class SourceType;
 		struct DepthToColorSettings;
 		struct GreenScreenSettings;
@@ -58,6 +60,12 @@ class KinectSource
 		void UpdateGreenScreen(GreenScreenSettings greenScreen);
 		void UpdateInfraredToColor(InfraredToColorSettings infraredToColor);
 
+		enum class GreenScreenType
+		{
+			Body,
+			Depth
+		};
+
 		enum class SourceType
 		{
 			Color = 0,
@@ -74,6 +82,7 @@ class KinectSource
 
 		struct GreenScreenSettings
 		{
+			GreenScreenType type = GreenScreenType::Depth;
 			bool enabled = true;
 			std::size_t blurPassCount = 3;
 			std::uint16_t depthMax = 1200;
@@ -104,19 +113,16 @@ class KinectSource
 			double standardDeviation;
 		};
 
-		//std::uint8_t* AllocateMemory(std::vector<std::uint8_t>& fallback, std::size_t size);
-
-		//KinectDevice::ColorFrameData ConvertDepthToColor(const DepthToColorSettings& settings, const DepthFrameData& infraredFrame);
-		//KinectDevice::ColorFrameData ConvertInfraredToColor(const InfraredToColorSettings& settings, const InfraredFrameData& infraredFrame);
-
 		DepthMappingFrameData RetrieveDepthMappingFrame(const KinectDevice::ColorFrameData& colorFrame, const KinectDevice::DepthFrameData& depthFrame);
 
 		static DynamicValues ComputeDynamicValues(const std::uint16_t* values, std::size_t valueCount);
 
 		std::optional<AlphaMaskEffect> m_alphaMaskFilter;
+		std::optional<BodyIndexFilterEffect> m_bodyIndexFilterEffect;
 		std::optional<ConvertDepthIRToColorEffect> m_depthIRConvertEffect;
 		std::optional<DepthFilterEffect> m_depthFilter;
 		std::optional<GaussianBlurEffect> m_gaussianBlur;
+		gs_texture_t* m_bodyIndexTexture;
 		gs_texture_t* m_colorTexture;
 		gs_texture_t* m_depthMappingTexture;
 		gs_texture_t* m_depthTexture;

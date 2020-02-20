@@ -43,19 +43,6 @@ m_running(false)
 		throw std::runtime_error("failed to retrieve coordinate mapper");
 
 	m_coordinateMapper.reset(pCoordinateMapper);
-
-	if (FAILED(m_kinectSensor->Open()))
-		throw std::runtime_error("failed to open Kinect sensor");
-
-	m_openedKinectSensor.reset(m_kinectSensor.get());
-
-	std::array<wchar_t, 256> wideId = { L"<failed to get id>" };
-	m_openedKinectSensor->get_UniqueKinectId(UINT(wideId.size()), wideId.data());
-
-	std::array<char, wideId.size()> id = { "<failed to get id>" };
-	WideCharToMultiByte(CP_UTF8, 0, wideId.data(), int(wideId.size()), id.data(), int(id.size()), nullptr, nullptr);
-
-	blog(LOG_INFO, "found kinect sensor (%s)", id.data());
 }
 
 KinectDevice::~KinectDevice()
@@ -82,6 +69,56 @@ bool KinectDevice::MapColorToDepth(const std::uint16_t* depthValues, std::size_t
 		return false;
 
 	return true;
+}
+
+auto KinectDevice::RetrieveBodyIndexFrame(IMultiSourceFrame* multiSourceFrame) -> BodyIndexFrameData
+{
+	IBodyIndexFrameReference* pBodyIndexFrameReference;
+	if (FAILED(multiSourceFrame->get_BodyIndexFrameReference(&pBodyIndexFrameReference)))
+		throw std::runtime_error("Failed to get body index frame reference");
+
+	ReleasePtr<IBodyIndexFrameReference> bodyIndexFrameReference(pBodyIndexFrameReference);
+
+	IBodyIndexFrame* pBodyIndexFrame;
+	if (FAILED(pBodyIndexFrameReference->AcquireFrame(&pBodyIndexFrame)))
+		throw std::runtime_error("Failed to acquire body index frame");
+
+	ReleasePtr<IBodyIndexFrame> bodyIndexFrame(pBodyIndexFrame);
+
+	IFrameDescription* pBodyIndexFrameDescription;
+	if (FAILED(bodyIndexFrame->get_FrameDescription(&pBodyIndexFrameDescription)))
+		throw std::runtime_error("Failed to get body index frame description");
+
+	ReleasePtr<IFrameDescription> bodyIndexFrameDescription(pBodyIndexFrameDescription);
+
+	int width;
+	int height;
+	unsigned int bytePerPixel;
+
+	// srsly microsoft
+	if (FAILED(bodyIndexFrameDescription->get_Width(&width)) ||
+	    FAILED(bodyIndexFrameDescription->get_Height(&height)) ||
+	    FAILED(bodyIndexFrameDescription->get_BytesPerPixel(&bytePerPixel)))
+	{
+		throw std::runtime_error("Failed to retrieve bodyIndex frame description values");
+	}
+
+	if (bytePerPixel != sizeof(BYTE))
+		throw std::runtime_error("Unexpected BPP");
+
+	BodyIndexFrameData frameData;
+	frameData.memory.resize(width * height * sizeof(BYTE));
+	BYTE* memPtr = reinterpret_cast<BYTE*>(frameData.memory.data());
+
+	if (FAILED(bodyIndexFrame->CopyFrameDataToArray(UINT(width * height), memPtr)))
+		throw std::runtime_error("Failed to access body index frame buffer");
+
+	frameData.width = width;
+	frameData.height = height;
+	frameData.pitch = width * bytePerPixel;
+	frameData.ptr.reset(frameData.memory.data());
+
+	return frameData;
 }
 
 auto KinectDevice::RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame) -> ColorFrameData
@@ -266,16 +303,30 @@ void KinectDevice::StopCapture()
 		return;
 
 	m_running = false;
-	m_lastFrame.reset();
 	m_thread.join();
+	m_lastFrame.reset();
 }
 
 void KinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& error)
 {
 	ReleasePtr<IMultiSourceFrameReader> multiSourceFrameReader;
+	ClosePtr<IKinectSensor> openedKinectSensor;
 
 	try
 	{
+		if (FAILED(m_kinectSensor->Open()))
+			throw std::runtime_error("failed to open Kinect sensor");
+
+		openedKinectSensor.reset(m_kinectSensor.get());
+
+		std::array<wchar_t, 256> wideId = { L"<failed to get id>" };
+		openedKinectSensor->get_UniqueKinectId(UINT(wideId.size()), wideId.data());
+
+		std::array<char, wideId.size()> id = { "<failed to get id>" };
+		WideCharToMultiByte(CP_UTF8, 0, wideId.data(), int(wideId.size()), id.data(), int(id.size()), nullptr, nullptr);
+
+		blog(LOG_INFO, "found kinect sensor (%s)", id.data());
+
 		DWORD enabledSources = 0;
 		// Is the cost of enabling color/depth/infrared sources that high? Should we add an option to only enable thoses in use?
 		/*switch (m_sourceType)
@@ -286,10 +337,10 @@ void KinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::e
 			default: break;
 		}*/
 
-		enabledSources |= FrameSourceTypes_Color | FrameSourceTypes_Depth | FrameSourceTypes_Infrared;
+		enabledSources |= FrameSourceTypes_Color | FrameSourceTypes_Depth | FrameSourceTypes_Infrared | FrameSourceTypes_BodyIndex;
 
 		IMultiSourceFrameReader* pMultiSourceFrameReader;
-		if (FAILED(m_openedKinectSensor->OpenMultiSourceFrameReader(enabledSources, &pMultiSourceFrameReader)))
+		if (FAILED(openedKinectSensor->OpenMultiSourceFrameReader(enabledSources, &pMultiSourceFrameReader)))
 			throw std::runtime_error("failed to acquire source frame reader");
 
 		multiSourceFrameReader.reset(pMultiSourceFrameReader);
@@ -332,6 +383,7 @@ void KinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::e
 		try
 		{
 			KinectFramePtr framePtr = std::make_shared<KinectFrame>();
+			framePtr->bodyIndexFrame = RetrieveBodyIndexFrame(multiSourceFrame.get());
 			framePtr->colorFrame = RetrieveColorFrame(multiSourceFrame.get());
 			framePtr->depthFrame = RetrieveDepthFrame(multiSourceFrame.get());
 			framePtr->infraredFrame = RetrieveInfraredFrame(multiSourceFrame.get());

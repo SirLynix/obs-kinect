@@ -17,39 +17,33 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_DEPTHFILTEREFFECT
-#define OBS_KINECT_PLUGIN_DEPTHFILTEREFFECT
+#ifndef OBS_KINECT_PLUGIN_BODYINDEXFILTEREFFECT
+#define OBS_KINECT_PLUGIN_BODYINDEXFILTEREFFECT
 
 #include <obs-module.h>
 #include <cstdint>
 
-class DepthFilterEffect
+class BodyIndexFilterEffect
 {
 	public:
 		struct Params;
 
-		DepthFilterEffect();
-		~DepthFilterEffect();
+		BodyIndexFilterEffect();
+		~BodyIndexFilterEffect();
 
 		gs_texture_t* Filter(std::uint32_t width, std::uint32_t height, const Params& params);
 
 		struct Params
 		{
+			gs_texture_t* bodyIndexTexture;
 			gs_texture_t* colorToDepthTexture;
-			gs_texture_t* depthTexture;
-			float progressiveDepth;
-			float maxDepth;
-			float minDepth;
 		};
 
 	private:
 		gs_effect_t* m_effect;
-		gs_eparam_t* m_params_DepthImage;
+		gs_eparam_t* m_params_BodyIndexImage;
 		gs_eparam_t* m_params_DepthMappingImage;
 		gs_eparam_t* m_params_InvDepthImageSize;
-		gs_eparam_t* m_params_InvDepthProgressive;
-		gs_eparam_t* m_params_MaxDepth;
-		gs_eparam_t* m_params_MinDepth;
 		gs_technique_t* m_tech_DepthCorrection;
 		gs_technique_t* m_tech_WithoutDepthCorrection;
 		gs_texrender_t* m_workTexture;
