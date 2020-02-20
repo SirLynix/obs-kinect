@@ -17,47 +17,28 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_HELPER
-#define OBS_KINECT_PLUGIN_HELPER
+#ifndef OBS_KINECT_PLUGIN_GAUSSIANBLUREFFECT
+#define OBS_KINECT_PLUGIN_GAUSSIANBLUREFFECT
 
 #include <obs-module.h>
-#include <memory>
+#include <cstddef>
 
-template<typename Interface>
-struct CloseDeleter
+class GaussianBlurEffect
 {
-	void operator()(Interface* handle) const
-	{
-		handle->Close();
-	}
-};
+	public:
+		GaussianBlurEffect(gs_color_format colorFormat);
+		~GaussianBlurEffect();
 
-template<typename T>
-struct DummyDeleter
-{
-	template<typename U>
-	void operator()(U*) const
-	{
-	}
-};
+		gs_texture_t* Blur(gs_texture_t* source, std::size_t count);
 
-template<typename Interface>
-struct ReleaseDeleter
-{
-	void operator()(Interface* handle) const
-	{
-		handle->Release();
-	}
-};
-
-template<typename T> using ClosePtr = std::unique_ptr<T, CloseDeleter<T>>;
-template<typename T> using ObserverPtr = std::unique_ptr<T, DummyDeleter<T>>;
-template<typename T> using ReleasePtr = std::unique_ptr<T, ReleaseDeleter<T>>;
-
-struct ObsGraphics
-{
-	ObsGraphics() { obs_enter_graphics(); }
-	~ObsGraphics() { obs_leave_graphics(); }
+	private:
+		gs_effect_t* m_blurEffect;
+		gs_eparam_t* m_blurEffect_Filter;
+		gs_eparam_t* m_blurEffect_Image;
+		gs_eparam_t* m_blurEffect_InvImageSize;
+		gs_technique_t* m_blurEffect_DrawTech;
+		gs_texrender_t* m_workTextureA;
+		gs_texrender_t* m_workTextureB;
 };
 
 #endif

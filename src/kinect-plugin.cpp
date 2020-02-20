@@ -43,15 +43,11 @@ static void kinect_source_update(void* data, obs_data_t* settings)
 	kinectSource->UpdateDepthToColor(depthToColor);
 
 	KinectSource::GreenScreenSettings greenScreen;
-	greenScreen.filtering = static_cast<KinectSource::DepthFiltering>(obs_data_get_int(settings, "greenscreen_filtering"));
+	greenScreen.blurPassCount = static_cast<std::size_t>(obs_data_get_int(settings, "greenscreen_blurpasses"));
 	greenScreen.enabled = obs_data_get_bool(settings, "greenscreen_enabled");
 	greenScreen.depthMax = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_maxdist"));
 	greenScreen.depthMin = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_mindist"));
 	greenScreen.fadeDist = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_fadedist"));
-	greenScreen.cropLeft = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_crop_left"));
-	greenScreen.cropTop = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_crop_top"));
-	greenScreen.cropRight = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_crop_right"));
-	greenScreen.cropBottom = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_crop_bottom"));
 
 	kinectSource->UpdateGreenScreen(greenScreen);
 
@@ -125,30 +121,18 @@ static obs_properties_t* kinect_source_properties(void *unused)
 	{
 		bool enabled = obs_data_get_bool(s, "greenscreen_enabled");
 
-		set_property_visibility(props, "greenscreen_crop_left", enabled);
-		set_property_visibility(props, "greenscreen_crop_top", enabled);
-		set_property_visibility(props, "greenscreen_crop_right", enabled);
-		set_property_visibility(props, "greenscreen_crop_bottom", enabled);
-
-		set_property_visibility(props, "greenscreen_filtering", enabled);
 		set_property_visibility(props, "greenscreen_fadedist", enabled);
 		set_property_visibility(props, "greenscreen_maxdist", enabled);
 		set_property_visibility(props, "greenscreen_mindist", enabled);
+		set_property_visibility(props, "greenscreen_blurpasses", enabled);
 
 		return true;
 	});
 
-	list = obs_properties_add_list(props, "greenscreen_filtering", obs_module_text("KinectSource.GreenScreenFiltering"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	obs_property_list_add_int(list, obs_module_text("KinectSource.GreenScreenFilter_Bilinear"), static_cast<int>(KinectSource::DepthFiltering::BilinearFiltering));
-	obs_property_list_add_int(list, obs_module_text("KinectSource.GreenScreenFilter_None"), static_cast<int>(KinectSource::DepthFiltering::NoFiltering));
-
 	obs_properties_add_int_slider(props, "greenscreen_maxdist", obs_module_text("KinectSource.GreenScreenMaxDist"), 0, 10000, 10);
 	obs_properties_add_int_slider(props, "greenscreen_mindist", obs_module_text("KinectSource.GreenScreenMinDist"), 0, 10000, 10);
 	obs_properties_add_int_slider(props, "greenscreen_fadedist", obs_module_text("KinectSource.GreenScreenFadeDist"), 0, 200, 1);
-	obs_properties_add_int(props, "greenscreen_crop_left", obs_module_text("KinectSource.GreenScreenCropLeft"), 0, 1920, 10);
-	obs_properties_add_int(props, "greenscreen_crop_top", obs_module_text("KinectSource.GreenScreenCropTop"), 0, 1080, 10);
-	obs_properties_add_int(props, "greenscreen_crop_right", obs_module_text("KinectSource.GreenScreenCropRight"), 0, 1920, 10);
-	obs_properties_add_int(props, "greenscreen_crop_bottom", obs_module_text("KinectSource.GreenScreenCropBottom"), 0, 1080, 10);
+	obs_properties_add_int_slider(props, "greenscreen_blurpasses", obs_module_text("KinectSource.BlurPassCount"), 0, 20, 1);
 
 	return props;
 }
@@ -168,10 +152,22 @@ static void kinect_source_defaults(obs_data_t *settings)
 	obs_data_set_default_int(settings, "greenscreen_crop_top", 0);
 	obs_data_set_default_int(settings, "greenscreen_crop_right", 0);
 	obs_data_set_default_int(settings, "greenscreen_crop_bottom", 0);
-	obs_data_set_default_int(settings, "greenscreen_filtering", static_cast<int>(KinectSource::DepthFiltering::BilinearFiltering));
+	obs_data_set_default_int(settings, "greenscreen_blurpasses", 3);
 	obs_data_set_default_int(settings, "greenscreen_fadedist", 100);
 	obs_data_set_default_int(settings, "greenscreen_maxdist", 1200);
 	obs_data_set_default_int(settings, "greenscreen_mindist", 1);
+}
+
+static void kinect_video_render(void* data, gs_effect_t* /*effect*/)
+{
+	KinectSource* kinectSource = static_cast<KinectSource*>(data);
+	kinectSource->Render();
+}
+
+static void kinect_video_tick(void* data, float seconds)
+{
+	KinectSource* kinectSource = static_cast<KinectSource*>(data);
+	kinectSource->Update(seconds);
 }
 
 void RegisterKinectSource()
@@ -179,13 +175,17 @@ void RegisterKinectSource()
 	struct obs_source_info info = {};
 	info.id = "kinect_source";
 	info.type = OBS_SOURCE_TYPE_INPUT;
-	info.output_flags = OBS_SOURCE_ASYNC_VIDEO | OBS_SOURCE_DO_NOT_DUPLICATE;
+	info.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_DO_NOT_DUPLICATE | OBS_SOURCE_CUSTOM_DRAW;
 	info.get_name = [](void*) { return obs_module_text("KinectSource"); };
 	info.create = kinect_source_create;
 	info.destroy = kinect_source_destroy;
 	info.update = kinect_source_update;
 	info.get_defaults = kinect_source_defaults;
 	info.get_properties = kinect_source_properties;
+	info.get_width = [](void*) -> uint32_t { return 1920; };
+	info.get_height = [](void*) -> uint32_t { return 1080; };
+	info.video_render = kinect_video_render;
+	info.video_tick = kinect_video_tick;
 	info.show = [](void* data) { static_cast<KinectSource*>(data)->OnVisibilityUpdate(true); };
 	info.hide = [](void* data) { static_cast<KinectSource*>(data)->OnVisibilityUpdate(false); };
 	//info.icon_type = OBS_ICON_TYPE_CAMERA;

@@ -17,47 +17,43 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_HELPER
-#define OBS_KINECT_PLUGIN_HELPER
+#ifndef OBS_KINECT_PLUGIN_DEPTHFILTEREFFECT
+#define OBS_KINECT_PLUGIN_DEPTHFILTEREFFECT
 
 #include <obs-module.h>
-#include <memory>
+#include <cstddef>
 
-template<typename Interface>
-struct CloseDeleter
+class DepthFilterEffect
 {
-	void operator()(Interface* handle) const
-	{
-		handle->Close();
-	}
-};
+	public:
+		struct Params;
 
-template<typename T>
-struct DummyDeleter
-{
-	template<typename U>
-	void operator()(U*) const
-	{
-	}
-};
+		DepthFilterEffect();
+		~DepthFilterEffect();
 
-template<typename Interface>
-struct ReleaseDeleter
-{
-	void operator()(Interface* handle) const
-	{
-		handle->Release();
-	}
-};
+		gs_texture_t* Filter(const Params& params);
 
-template<typename T> using ClosePtr = std::unique_ptr<T, CloseDeleter<T>>;
-template<typename T> using ObserverPtr = std::unique_ptr<T, DummyDeleter<T>>;
-template<typename T> using ReleasePtr = std::unique_ptr<T, ReleaseDeleter<T>>;
+		struct Params
+		{
+			gs_texture_t* colorTexture; 
+			gs_texture_t* colorToDepthTexture;
+			gs_texture_t* depthTexture;
+			float progressiveDepth;
+			float maxDepth;
+			float minDepth;
+		};
 
-struct ObsGraphics
-{
-	ObsGraphics() { obs_enter_graphics(); }
-	~ObsGraphics() { obs_leave_graphics(); }
+	private:
+		gs_effect_t* m_effect;
+		gs_eparam_t* m_params_DepthImage;
+		gs_eparam_t* m_params_DepthMappingImage;
+		gs_eparam_t* m_params_InvDepthImageSize;
+		gs_eparam_t* m_params_InvDepthProgressive;
+		gs_eparam_t* m_params_MaxDepth;
+		gs_eparam_t* m_params_MinDepth;
+		gs_technique_t* m_tech_DepthCorrection;
+		gs_technique_t* m_tech_WithoutDepthCorrection;
+		gs_texrender_t* m_workTexture;
 };
 
 #endif

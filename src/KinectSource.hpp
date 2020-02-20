@@ -21,28 +21,22 @@
 #define OBS_KINECT_PLUGIN_KINECTSOURCE
 
 #include "Helper.hpp"
+#include "AlphaMaskEffect.hpp"
+#include "ConvertDepthIRToColorEffect.hpp"
+#include "DepthFilterEffect.hpp"
+#include "GaussianBlurEffect.hpp"
+#include "KinectDevice.hpp"
 #include <obs-module.h>
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
+#include <optional>
 #include <thread>
 #include <vector>
-
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-
-#include <Kinect.h>
-#include <windows.h>
 
 class KinectSource
 {
 	public:
-		enum class DepthFiltering;
 		enum class SourceType;
 		struct DepthToColorSettings;
 		struct GreenScreenSettings;
@@ -53,20 +47,16 @@ class KinectSource
 
 		void OnVisibilityUpdate(bool isVisible);
 
+		void Render();
+
 		void SetSourceType(SourceType sourceType);
 
 		void ShouldStopOnHide(bool shouldStop);
 
+		void Update(float seconds);
 		void UpdateDepthToColor(DepthToColorSettings depthToColor);
 		void UpdateGreenScreen(GreenScreenSettings greenScreen);
 		void UpdateInfraredToColor(InfraredToColorSettings infraredToColor);
-
-		enum class DepthFiltering
-		{
-			NoFiltering = 0,
-			
-			BilinearFiltering = 1,
-		};
 
 		enum class SourceType
 		{
@@ -85,11 +75,7 @@ class KinectSource
 		struct GreenScreenSettings
 		{
 			bool enabled = true;
-			DepthFiltering filtering = DepthFiltering::BilinearFiltering;
-			std::uint16_t cropLeft = 0;
-			std::uint16_t cropTop = 0;
-			std::uint16_t cropRight = 0;
-			std::uint16_t cropBottom = 0;
+			std::size_t blurPassCount = 3;
 			std::uint16_t depthMax = 1200;
 			std::uint16_t depthMin = 1;
 			std::uint16_t fadeDist = 100;
@@ -103,30 +89,13 @@ class KinectSource
 		};
 
 	private:
-		struct FrameData
+		struct DepthMappingFrameData
 		{
-			uint32_t width;
-			uint32_t height;
-			uint32_t pitch;
+			std::uint32_t width;
+			std::uint32_t height;
+			std::uint32_t pitch;
 			ObserverPtr<std::uint8_t[]> ptr;
-			std::vector<std::uint8_t> fallbackMemory; //< Used only when memory consumption increases
-		};
-
-		struct ColorFrameData : FrameData
-		{
-			video_format format;
-
-			ReleasePtr<IColorFrame> colorFrame;
-		};
-
-		struct DepthFrameData : FrameData
-		{
-			ReleasePtr<IDepthFrame> depthFrame;
-		};
-
-		struct InfraredFrameData : FrameData
-		{
-			ReleasePtr<IInfraredFrame> infraredFrame;
+			std::vector<std::uint8_t> memory; //< TODO: Reuse memory
 		};
 
 		struct DynamicValues
@@ -135,32 +104,30 @@ class KinectSource
 			double standardDeviation;
 		};
 
-		std::uint8_t* AllocateMemory(std::vector<std::uint8_t>& fallback, std::size_t size);
+		//std::uint8_t* AllocateMemory(std::vector<std::uint8_t>& fallback, std::size_t size);
 
-		ColorFrameData ConvertDepthToColor(const DepthToColorSettings& settings, const DepthFrameData& infraredFrame);
-		ColorFrameData ConvertInfraredToColor(const InfraredToColorSettings& settings, const InfraredFrameData& infraredFrame);
+		//KinectDevice::ColorFrameData ConvertDepthToColor(const DepthToColorSettings& settings, const DepthFrameData& infraredFrame);
+		//KinectDevice::ColorFrameData ConvertInfraredToColor(const InfraredToColorSettings& settings, const InfraredFrameData& infraredFrame);
 
-		ColorFrameData RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame, bool forceRGBA = false);
-		DepthFrameData RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame);
-		InfraredFrameData RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame);
-
-		void Start();
-		void Stop();
-		void ThreadFunc(std::condition_variable& cv, std::mutex& m);
-
-		ColorFrameData VirtualGreenScreen(const GreenScreenSettings& settings, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, const DepthSpacePoint* depthMapping);
+		DepthMappingFrameData RetrieveDepthMappingFrame(const KinectDevice::ColorFrameData& colorFrame, const KinectDevice::DepthFrameData& depthFrame);
 
 		static DynamicValues ComputeDynamicValues(const std::uint16_t* values, std::size_t valueCount);
 
-		std::atomic_bool m_running;
-		std::atomic<DepthToColorSettings> m_depthToColorSettings;
-		std::atomic<GreenScreenSettings> m_greenScreenSettings;
-		std::atomic<InfraredToColorSettings> m_infraredToColorSettings;
-		std::atomic<SourceType> m_sourceType;
-		std::size_t m_requiredMemory;
-		std::thread m_thread;
-		std::vector<std::uint8_t> m_memory;
+		std::optional<AlphaMaskEffect> m_alphaMaskFilter;
+		std::optional<ConvertDepthIRToColorEffect> m_depthIRConvertEffect;
+		std::optional<DepthFilterEffect> m_depthFilter;
+		std::optional<GaussianBlurEffect> m_gaussianBlur;
+		gs_texture_t* m_colorTexture;
+		gs_texture_t* m_depthMappingTexture;
+		gs_texture_t* m_depthTexture;
+		gs_texture_t* m_infraredTexture;
+		ObserverPtr<gs_texture_t> m_finalTexture;
+		DepthToColorSettings m_depthToColorSettings;
+		GreenScreenSettings m_greenScreenSettings;
+		InfraredToColorSettings m_infraredToColorSettings;
+		SourceType m_sourceType;
 		obs_source_t* m_source;
+		KinectDevice m_device;
 		bool m_stopOnHide;
 };
 

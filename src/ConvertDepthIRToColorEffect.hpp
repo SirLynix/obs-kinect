@@ -17,47 +17,26 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_HELPER
-#define OBS_KINECT_PLUGIN_HELPER
+#ifndef OBS_KINECT_PLUGIN_COLORMULTIPLIEREFFECT
+#define OBS_KINECT_PLUGIN_COLORMULTIPLIEREFFECT
 
 #include <obs-module.h>
-#include <memory>
+#include <cstdint>
 
-template<typename Interface>
-struct CloseDeleter
+class ConvertDepthIRToColorEffect
 {
-	void operator()(Interface* handle) const
-	{
-		handle->Close();
-	}
-};
+	public:
+		ConvertDepthIRToColorEffect();
+		~ConvertDepthIRToColorEffect();
 
-template<typename T>
-struct DummyDeleter
-{
-	template<typename U>
-	void operator()(U*) const
-	{
-	}
-};
+		gs_texture_t* Convert(std::uint32_t width, std::uint32_t height, gs_texture_t* source, float averageValue, float standardDeviation);
 
-template<typename Interface>
-struct ReleaseDeleter
-{
-	void operator()(Interface* handle) const
-	{
-		handle->Release();
-	}
-};
-
-template<typename T> using ClosePtr = std::unique_ptr<T, CloseDeleter<T>>;
-template<typename T> using ObserverPtr = std::unique_ptr<T, DummyDeleter<T>>;
-template<typename T> using ReleasePtr = std::unique_ptr<T, ReleaseDeleter<T>>;
-
-struct ObsGraphics
-{
-	ObsGraphics() { obs_enter_graphics(); }
-	~ObsGraphics() { obs_leave_graphics(); }
+	private:
+		gs_effect_t* m_effect;
+		gs_eparam_t* m_params_ColorImage;
+		gs_eparam_t* m_params_ColorMultiplier;
+		gs_technique_t* m_tech_Draw;
+		gs_texrender_t* m_workTexture;
 };
 
 #endif
