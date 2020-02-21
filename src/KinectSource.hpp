@@ -84,6 +84,7 @@ class KinectSource
 		{
 			GreenScreenType type = GreenScreenType::Depth;
 			bool enabled = true;
+			bool gpuDepthMapping = true;
 			std::size_t blurPassCount = 3;
 			std::uint16_t depthMax = 1200;
 			std::uint16_t depthMin = 1;
@@ -117,20 +118,21 @@ class KinectSource
 
 		static DynamicValues ComputeDynamicValues(const std::uint16_t* values, std::size_t valueCount);
 
-		std::optional<AlphaMaskEffect> m_alphaMaskFilter;
-		std::optional<BodyIndexFilterEffect> m_bodyIndexFilterEffect;
-		std::optional<ConvertDepthIRToColorEffect> m_depthIRConvertEffect;
-		std::optional<DepthFilterEffect> m_depthFilter;
-		std::optional<GaussianBlurEffect> m_gaussianBlur;
-		gs_texture_t* m_bodyIndexTexture;
-		gs_texture_t* m_colorTexture;
-		gs_texture_t* m_depthMappingTexture;
-		gs_texture_t* m_depthTexture;
-		gs_texture_t* m_infraredTexture;
+		std::vector<std::uint8_t> m_testMemory;
+		AlphaMaskEffect m_alphaMaskFilter;
+		BodyIndexFilterEffect m_bodyIndexFilterEffect;
+		ConvertDepthIRToColorEffect m_depthIRConvertEffect;
+		DepthFilterEffect m_depthFilter;
+		GaussianBlurEffect m_gaussianBlur;
 		ObserverPtr<gs_texture_t> m_finalTexture;
 		DepthToColorSettings m_depthToColorSettings;
 		GreenScreenSettings m_greenScreenSettings;
 		InfraredToColorSettings m_infraredToColorSettings;
+		ObsTexturePtr m_bodyIndexTexture;
+		ObsTexturePtr m_colorTexture;
+		ObsTexturePtr m_depthMappingTexture;
+		ObsTexturePtr m_depthTexture;
+		ObsTexturePtr m_infraredTexture;
 		SourceType m_sourceType;
 		obs_source_t* m_source;
 		KinectDevice m_device;

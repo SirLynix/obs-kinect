@@ -78,7 +78,7 @@ class KinectDevice
 
 		struct ColorFrameData : FrameData
 		{
-			video_format format;
+			gs_color_format format;
 		};
 
 		struct DepthFrameData : FrameData

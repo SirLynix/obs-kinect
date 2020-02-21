@@ -170,7 +170,7 @@ auto KinectDevice::RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame) -> Co
 
 	frameData.ptr.reset(memPtr);
 	frameData.pitch = width * 4;
-	frameData.format = VIDEO_FORMAT_RGBA;
+	frameData.format = GS_RGBA;
 
 	return frameData;
 }

@@ -60,4 +60,15 @@ struct ObsGraphics
 	~ObsGraphics() { obs_leave_graphics(); }
 };
 
+struct ObsTextureDeleter
+{
+	void operator()(gs_texture_t* texture) const
+	{
+		ObsGraphics gfx;
+		gs_texture_destroy(texture);
+	}
+};
+
+using ObsTexturePtr = std::unique_ptr<gs_texture_t, ObsTextureDeleter>;
+
 #endif

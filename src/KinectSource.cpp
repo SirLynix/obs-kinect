@@ -30,36 +30,14 @@
 #define warn(format, ...) blog(LOG_WARNING, format, ##__VA_ARGS__)
 
 KinectSource::KinectSource(obs_source_t* source) :
+m_gaussianBlur(GS_RGBA),
 m_sourceType(SourceType::Color),
 m_source(source),
 m_stopOnHide(false)
 {
-	m_device.StartCapture();
-
-	ObsGraphics obsGfx;
-
-	m_bodyIndexTexture = gs_texture_create(512, 424, GS_R8, 1, nullptr, GS_DYNAMIC);
-	m_colorTexture = gs_texture_create(1920, 1080, GS_RGBA, 1, nullptr, GS_DYNAMIC);
-	m_depthMappingTexture = gs_texture_create(1920, 1080, GS_RG32F, 1, nullptr, GS_DYNAMIC);
-	m_depthTexture = gs_texture_create(512, 424, GS_R16, 1, nullptr, GS_DYNAMIC);
-	m_infraredTexture = gs_texture_create(512, 424, GS_R16, 1, nullptr, GS_DYNAMIC);
-
-	m_alphaMaskFilter.emplace();
-	m_bodyIndexFilterEffect.emplace();
-	m_depthIRConvertEffect.emplace();
-	m_gaussianBlur.emplace(GS_RGBA);
-	m_depthFilter.emplace();
 }
 
-KinectSource::~KinectSource()
-{
-	ObsGraphics obsGfx;
-	gs_texture_destroy(m_bodyIndexTexture);
-	gs_texture_destroy(m_colorTexture);
-	gs_texture_destroy(m_depthMappingTexture);
-	gs_texture_destroy(m_depthTexture);
-	gs_texture_destroy(m_infraredTexture);
-}
+KinectSource::~KinectSource() = default;
 
 void KinectSource::OnVisibilityUpdate(bool isVisible)
 {
@@ -134,37 +112,37 @@ void KinectSource::Render()
 
 void KinectSource::Update(float /*seconds*/)
 {
-	auto UpdateTexture = [](gs_texture_t*& texture, std::uint32_t width, std::uint32_t height, std::uint32_t pitch, const std::uint8_t* content)
+	auto UpdateTexture = [](ObsTexturePtr& texture, gs_color_format format, std::uint32_t width, std::uint32_t height, std::uint32_t pitch, const std::uint8_t* content)
 	{
-		if (width != gs_texture_get_width(texture) || height != gs_texture_get_height(texture))
+		gs_texture_t* texPtr = texture.get();
+		if (!texPtr || format != gs_texture_get_color_format(texPtr) || width != gs_texture_get_width(texPtr) || height != gs_texture_get_height(texPtr))
 		{
-			gs_color_format format = gs_texture_get_color_format(texture);
-
-			gs_texture_destroy(texture);
-			texture = gs_texture_create(width, height, format, 1, &content, GS_DYNAMIC);
+			texture.reset(gs_texture_create(width, height, format, 1, &content, GS_DYNAMIC));
+			if (!texture)
+				throw std::runtime_error("failed to create texture");
 		}
 		else
 		{
 			uint8_t* ptr;
 			uint32_t pitch;
-			if (gs_texture_map(texture, &ptr, &pitch))
+			if (!gs_texture_map(texPtr, &ptr, &pitch))
+				throw std::runtime_error("failed to map texture");
+
+			if (pitch == pitch)
+				std::memcpy(ptr, content, pitch * height);
+			else
 			{
-				if (pitch == pitch)
-					std::memcpy(ptr, content, pitch * height);
-				else
+				std::uint32_t bestPitch = std::min(pitch, pitch);
+				for (std::size_t y = 0; y < height; ++y)
 				{
-					std::uint32_t bestPitch = std::min(pitch, pitch);
-					for (std::size_t y = 0; y < height; ++y)
-					{
-						const std::uint8_t* input = &content[y * pitch];
-						std::uint8_t* output = ptr + y * pitch;
+					const std::uint8_t* input = &content[y * pitch];
+					std::uint8_t* output = ptr + y * pitch;
 
-						std::memcpy(output, input, bestPitch);
-					}
+					std::memcpy(output, input, bestPitch);
 				}
-
-				gs_texture_unmap(texture);
 			}
+
+			gs_texture_unmap(texPtr);
 		}
 	};
 
@@ -176,10 +154,10 @@ void KinectSource::Update(float /*seconds*/)
 
 		ObsGraphics obsGfx;
 
-		if (m_greenScreenSettings.enabled || m_sourceType == SourceType::Depth)
+		if ((m_greenScreenSettings.enabled && m_greenScreenSettings.gpuDepthMapping) || m_sourceType == SourceType::Depth)
 		{
 			KinectDevice::DepthFrameData& depthFrame = frameData->depthFrame.value();
-			UpdateTexture(m_depthTexture, depthFrame.width, depthFrame.height, depthFrame.pitch, depthFrame.ptr.get());
+			UpdateTexture(m_depthTexture, GS_R16, depthFrame.width, depthFrame.height, depthFrame.pitch, depthFrame.ptr.get());
 		}
 
 		gs_texture_t* sourceTexture;
@@ -192,8 +170,8 @@ void KinectSource::Update(float /*seconds*/)
 
 				KinectDevice::ColorFrameData& colorFrame = frameData->colorFrame.value();
 
-				UpdateTexture(m_colorTexture, colorFrame.width, colorFrame.height, colorFrame.pitch, colorFrame.ptr.get());
-				sourceTexture = m_colorTexture;
+				UpdateTexture(m_colorTexture, colorFrame.format, colorFrame.width, colorFrame.height, colorFrame.pitch, colorFrame.ptr.get());
+				sourceTexture = m_colorTexture.get();
 				break;
 			}
 
@@ -218,7 +196,7 @@ void KinectSource::Update(float /*seconds*/)
 					standardDeviation = m_depthToColorSettings.standardDeviation;
 				}
 
-				sourceTexture = m_depthIRConvertEffect->Convert(1920, 1080, m_depthTexture, averageValue, standardDeviation);
+				sourceTexture = m_depthIRConvertEffect.Convert(1920, 1080, m_depthTexture.get(), averageValue, standardDeviation);
 				break;
 			}
 
@@ -246,8 +224,8 @@ void KinectSource::Update(float /*seconds*/)
 					standardDeviation = m_infraredToColorSettings.standardDeviation;
 				}
 
-				UpdateTexture(m_infraredTexture, irFrame.width, irFrame.height, irFrame.pitch, irFrame.ptr.get());
-				sourceTexture = m_depthIRConvertEffect->Convert(1920, 1080, m_infraredTexture, averageValue, standardDeviation);
+				UpdateTexture(m_infraredTexture, GS_R16, irFrame.width, irFrame.height, irFrame.pitch, irFrame.ptr.get());
+				sourceTexture = m_depthIRConvertEffect.Convert(1920, 1080, m_infraredTexture.get(), averageValue, standardDeviation);
 				break;
 			}
 
@@ -258,6 +236,7 @@ void KinectSource::Update(float /*seconds*/)
 		if (m_greenScreenSettings.enabled)
 		{
 			gs_texture_t* depthMappingTexture;
+			gs_texture_t* depthValues;
 			if (m_sourceType == SourceType::Color)
 			{
 				KinectDevice::ColorFrameData& colorFrame = frameData->colorFrame.value();
@@ -265,18 +244,65 @@ void KinectSource::Update(float /*seconds*/)
 
 				DepthMappingFrameData depthMappingFrame = RetrieveDepthMappingFrame(colorFrame, depthFrame);
 
-				UpdateTexture(m_depthMappingTexture, depthMappingFrame.width, depthMappingFrame.height, depthMappingFrame.pitch, depthMappingFrame.ptr.get());
-				depthMappingTexture = m_depthMappingTexture;
+				if (m_greenScreenSettings.gpuDepthMapping)
+				{
+					UpdateTexture(m_depthMappingTexture, GS_RG32F, depthMappingFrame.width, depthMappingFrame.height, depthMappingFrame.pitch, depthMappingFrame.ptr.get());
+					depthMappingTexture = m_depthMappingTexture.get();
+					depthValues = m_depthTexture.get();
+				}
+				else
+				{
+					constexpr float InvalidDepth = -std::numeric_limits<float>::infinity();
+
+					const std::uint16_t* depthPixels = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
+					const KinectDevice::DepthCoordinates* depthMapping = reinterpret_cast<const KinectDevice::DepthCoordinates*>(depthMappingFrame.ptr.get());
+
+					m_testMemory.resize(colorFrame.width * colorFrame.height * sizeof(std::uint16_t));
+					std::uint16_t* depthOutput = reinterpret_cast<std::uint16_t*>(m_testMemory.data());
+
+					for (std::size_t y = 0; y < colorFrame.height; ++y)
+					{
+						for (std::size_t x = 0; x < colorFrame.width; ++x)
+						{
+							std::uint16_t* output = &depthOutput[y * colorFrame.width + x];
+							const KinectDevice::DepthCoordinates& depthCoordinates = depthMapping[y * depthMappingFrame.width + x];
+							if (depthCoordinates.x == InvalidDepth || depthCoordinates.y == InvalidDepth)
+							{
+								*output = 0;
+								continue;
+							}
+
+							int dX = static_cast<int>(depthCoordinates.x + 0.5f);
+							int dY = static_cast<int>(depthCoordinates.y + 0.5f);
+
+							if (dX < 0 || dX >= int(depthFrame.width) ||
+							    dY < 0 || dY >= int(depthFrame.height))
+							{
+								*output = 0;
+								continue;
+							}
+
+							*output = depthPixels[depthFrame.width * dY + dX];
+						}
+					}
+
+					UpdateTexture(m_depthMappingTexture, GS_R16, colorFrame.width, colorFrame.height, colorFrame.width * sizeof(std::uint16_t), m_testMemory.data());
+					depthMappingTexture = nullptr;
+					depthValues = m_depthMappingTexture.get();
+				}
 			}
 			else
+			{
 				depthMappingTexture = nullptr;
+				depthValues = m_depthTexture.get();
+			}
 
 			gs_texture_t* filterTexture;
 			if (m_greenScreenSettings.type == GreenScreenType::Depth)
 			{
 				DepthFilterEffect::Params filterParams;
 				filterParams.colorToDepthTexture = depthMappingTexture;
-				filterParams.depthTexture = m_depthTexture;
+				filterParams.depthTexture = depthValues;
 				filterParams.maxDepth = m_greenScreenSettings.depthMax;
 				filterParams.minDepth = m_greenScreenSettings.depthMin;
 				filterParams.progressiveDepth = m_greenScreenSettings.fadeDist;
@@ -284,7 +310,7 @@ void KinectSource::Update(float /*seconds*/)
 				std::uint32_t width = gs_texture_get_width(sourceTexture);
 				std::uint32_t height = gs_texture_get_height(sourceTexture);
 
-				filterTexture = m_depthFilter->Filter(width, height, filterParams);
+				filterTexture = m_depthFilter.Filter(width, height, filterParams);
 			}
 			else
 			{
@@ -292,22 +318,22 @@ void KinectSource::Update(float /*seconds*/)
 					return;
 
 				KinectDevice::BodyIndexFrameData& bodyIndexFrame = frameData->bodyIndexFrame.value();
-				UpdateTexture(m_bodyIndexTexture, bodyIndexFrame.width, bodyIndexFrame.height, bodyIndexFrame.pitch, bodyIndexFrame.ptr.get());
+				UpdateTexture(m_bodyIndexTexture, GS_R8, bodyIndexFrame.width, bodyIndexFrame.height, bodyIndexFrame.pitch, bodyIndexFrame.ptr.get());
 
 				BodyIndexFilterEffect::Params filterParams;
-				filterParams.bodyIndexTexture = m_bodyIndexTexture;
+				filterParams.bodyIndexTexture = m_bodyIndexTexture.get();
 				filterParams.colorToDepthTexture = depthMappingTexture;
 
 				std::uint32_t width = gs_texture_get_width(sourceTexture);
 				std::uint32_t height = gs_texture_get_height(sourceTexture);
 
-				filterTexture = m_bodyIndexFilterEffect->Filter(width, height, filterParams);
+				filterTexture = m_bodyIndexFilterEffect.Filter(width, height, filterParams);
 			}
 
 			if (m_greenScreenSettings.blurPassCount > 0)
-				filterTexture = m_gaussianBlur->Blur(filterTexture, m_greenScreenSettings.blurPassCount);
+				filterTexture = m_gaussianBlur.Blur(filterTexture, m_greenScreenSettings.blurPassCount);
 
-			gs_texture_t* filteredTexture = m_alphaMaskFilter->Filter(sourceTexture, filterTexture);
+			gs_texture_t* filteredTexture = m_alphaMaskFilter.Filter(sourceTexture, filterTexture);
 
 			m_finalTexture.reset(filteredTexture);
 		}
@@ -320,142 +346,26 @@ void KinectSource::Update(float /*seconds*/)
 	}
 }
 
-/*
-auto KinectSource::ConvertDepthToColor(const DepthToColorSettings& settings, const DepthFrameData& depthFrame) -> ColorFrameData
-{
-	constexpr float DepthInputMaxValue = 0xFFFF;
-	constexpr float DepthInputMinValue = 0.f;
-	constexpr float DepthOutputMax = 1.f;
-	constexpr float DepthOutputMin = 0.01f;
-
-	float invFactor;
-	if (settings.dynamic)
-	{
-		const std::uint16_t* depthValues = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
-		std::size_t depthValueCount = depthFrame.width * depthFrame.height;
-
-		DynamicValues dynValues = ComputeDynamicValues(depthValues, depthValueCount);
-		invFactor = float(1.0 / (dynValues.average * dynValues.standardDeviation));
-	}
-	else
-		invFactor = 1.f / (settings.averageValue * settings.standardDeviation);
-
-	ColorFrameData colorFrame;
-
-	std::uint8_t* memPtr = AllocateMemory(colorFrame.fallbackMemory, depthFrame.width * depthFrame.height * 4);
-	std::uint8_t* output = memPtr;
-	const std::uint16_t* input = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
-
-	for (std::size_t y = 0; y < depthFrame.height; ++y)
-	{
-		for (std::size_t x = 0; x < depthFrame.width; ++x)
-		{
-			std::uint16_t value = input[y * depthFrame.width + x];
-
-			float intensityFactor = float(value) / DepthInputMaxValue;
-			intensityFactor *= invFactor;
-			intensityFactor = std::clamp(intensityFactor, DepthOutputMin, DepthOutputMax);
-
-			std::uint8_t intensity = static_cast<std::uint8_t>(intensityFactor * 255.f);
-
-			*output++ = intensity;
-			*output++ = intensity;
-			*output++ = intensity;
-			*output++ = 255;
-		}
-	}
-
-	colorFrame.format = VIDEO_FORMAT_RGBA;
-	colorFrame.height = depthFrame.height;
-	colorFrame.pitch = depthFrame.width * 4;
-	colorFrame.ptr.reset(memPtr);
-	colorFrame.width = depthFrame.width;
-
-	return colorFrame;
-}
-
-auto KinectSource::ConvertInfraredToColor(const InfraredToColorSettings& settings, const InfraredFrameData& infraredFrame) -> ColorFrameData
-{
-	// Values from InfraredBasics example from Kinect SDK
-	constexpr float InfraredInputMaxValue = 0xFFFF;
-	constexpr float InfraredOutputMax = 1.f;
-	constexpr float InfraredOutputMin = 0.01f;
-
-	float invFactor;
-	if (settings.dynamic)
-	{
-		const std::uint16_t* infraredValues = reinterpret_cast<const std::uint16_t*>(infraredFrame.ptr.get());
-		std::size_t infraredValueCount = infraredFrame.width * infraredFrame.height;
-
-		DynamicValues dynValues = ComputeDynamicValues(infraredValues, infraredValueCount);
-		invFactor = float(1.0 / (dynValues.average * dynValues.standardDeviation));
-	}
-	else
-		invFactor = 1.f / (settings.averageValue * settings.standardDeviation);
-
-	ColorFrameData colorFrame;
-
-	std::uint8_t* memPtr = AllocateMemory(colorFrame.fallbackMemory, infraredFrame.width * infraredFrame.height * 4);
-	std::uint8_t* output = memPtr;
-	const std::uint16_t* input = reinterpret_cast<const std::uint16_t*>(infraredFrame.ptr.get());
-
-	for (std::size_t y = 0; y < infraredFrame.height; ++y)
-	{
-		for (std::size_t x = 0; x < infraredFrame.width; ++x)
-		{
-			std::uint16_t value = input[y * infraredFrame.width + x];
-
-			float intensityFactor = float(value) / InfraredInputMaxValue;
-			intensityFactor *= invFactor;
-			intensityFactor = std::clamp(intensityFactor, InfraredOutputMin, InfraredOutputMax);
-
-			std::uint8_t intensity = static_cast<std::uint8_t>(intensityFactor * 255.f);
-
-			*output++ = intensity;
-			*output++ = intensity;
-			*output++ = intensity;
-			*output++ = 255;
-		}
-	}
-
-	colorFrame.format = VIDEO_FORMAT_RGBA;
-	colorFrame.height = infraredFrame.height;
-	colorFrame.pitch = infraredFrame.width * 4;
-	colorFrame.ptr.reset(memPtr);
-	colorFrame.width = infraredFrame.width;
-
-	return colorFrame;
-}
-*/
 auto KinectSource::RetrieveDepthMappingFrame(const KinectDevice::ColorFrameData& colorFrame, const KinectDevice::DepthFrameData& depthFrame) -> DepthMappingFrameData
 {
-	static_assert(sizeof(DepthSpacePoint) == 2 * sizeof(float));
-
 	DepthMappingFrameData outputFrameData;
 	outputFrameData.width = colorFrame.width;
 	outputFrameData.height = colorFrame.height;
 	outputFrameData.pitch = colorFrame.pitch;
 
-	if (outputFrameData.width != depthFrame.width || outputFrameData.height != depthFrame.height)
-	{
-		std::size_t colorPixelCount = outputFrameData.width * outputFrameData.height;
+	std::size_t colorPixelCount = outputFrameData.width * outputFrameData.height;
 
-		const std::uint16_t* depthPtr = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
-		std::size_t depthPixelCount = depthFrame.width * depthFrame.height;
+	const std::uint16_t* depthPtr = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
+	std::size_t depthPixelCount = depthFrame.width * depthFrame.height;
 
-		outputFrameData.memory.resize(colorPixelCount * sizeof(KinectDevice::DepthCoordinates));
+	outputFrameData.memory.resize(colorPixelCount * sizeof(KinectDevice::DepthCoordinates));
 
-		KinectDevice::DepthCoordinates* coordinatePtr = reinterpret_cast<KinectDevice::DepthCoordinates*>(outputFrameData.memory.data());
+	KinectDevice::DepthCoordinates* coordinatePtr = reinterpret_cast<KinectDevice::DepthCoordinates*>(outputFrameData.memory.data());
 
-		if (!m_device.MapColorToDepth(depthPtr, depthPixelCount, colorPixelCount, coordinatePtr))
-			throw std::runtime_error("failed to map color to depth");
+	if (!m_device.MapColorToDepth(depthPtr, depthPixelCount, colorPixelCount, coordinatePtr))
+		throw std::runtime_error("failed to map color to depth");
 
-		outputFrameData.ptr.reset(reinterpret_cast<std::uint8_t*>(coordinatePtr));
-	}
-	else
-	{
-		// Don't map depth to depth/infrared
-	}
+	outputFrameData.ptr.reset(reinterpret_cast<std::uint8_t*>(coordinatePtr));
 
 	return outputFrameData;
 }
