@@ -42,7 +42,16 @@ KinectSource::~KinectSource() = default;
 void KinectSource::OnVisibilityUpdate(bool isVisible)
 {
 	if (isVisible)
-		m_device.StartCapture(); //< Does nothing if already capturing
+	{
+		try
+		{
+			m_device.StartCapture(); //< Does nothing if already capturing
+		}
+		catch (const std::exception& e)
+		{
+			warn("failed to start capture: %s", e.what());
+		}
+	}
 	else if (m_stopOnHide)
 	{
 		m_device.StopCapture();
