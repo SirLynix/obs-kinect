@@ -124,6 +124,7 @@ static obs_properties_t* kinect_source_properties(void *unused)
 
 		set_property_visibility(props, "greenscreen_blurpasses", enabled);
 		set_property_visibility(props, "greenscreen_type", enabled);
+		set_property_visibility(props, "greenscreen_gpudepthmapping", enabled);
 
 		bool depthSettingsVisible = (enabled && type == KinectSource::GreenScreenType::Depth);
 
