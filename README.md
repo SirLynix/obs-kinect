@@ -5,20 +5,21 @@ OBS Plugin to access Kinect data (and setup a virtual green screen based on dept
 # Requirement
 
 - Windows. For now this plugin is only compatible with Windows as it uses the official Kinect for Windows API (may change in the future).
-- A Kinect (obviously), v2 (xbox one) preferred (this plugin should work with v1 but this hasn't been tested), they're *relatively* cheap on eBay (between 50€ and 100€)
-- If your Kinect isn't pluggable to your computer: a Kinect to USB adapter (search for PeakLead Kinect to USB on Amazon)
-- Not running on a potato computer, especially for the faux green screen effect since this plugin processes pixels **on the CPU** which requires a lot of power (especially with the Kinect v2, as it has a 1080p color camera).
-- [Kinect for Windows runtime](https://www.microsoft.com/en-us/download/details.aspx?id=44559) or [Kinect for Windows SDK](https://www.microsoft.com/en-us/download/details.aspx?id=44561) (if you plan to build this yourself or play with Kinect examples)
-- OBS Studio >= 24.0.3 (hasn't been tested on older versions)
+- A Kinect (obviously), v2 (xbox one) preferred (this plugin should work with v1 but this hasn't been tested), they're *relatively* cheap on eBay (between 50€ and 100€).
+- If your Kinect isn't pluggable to your computer: a Kinect to USB adapter (search for PeakLead Kinect to USB on Amazon).
+- Not running on a potato computer, Kinect itself requires a little bit of CPU power, especially when using the faux green screen effect (I'm trying to improve that) because of the color-to-depth mapping (which is done on the CPU). The plugin itself runs on the GPU.
+- [Kinect for Windows runtime](https://www.microsoft.com/en-us/download/details.aspx?id=44559) or [Kinect for Windows SDK](https://www.microsoft.com/en-us/download/details.aspx?id=44561) (if you plan to build this yourself or play with Kinect examples).
+- OBS Studio >= 24.0.3 (hasn't been tested on older versions).
 
 # To do
 
-- Improve green-screen filtering
-- Test & debug with Kinect v1
-- Support Linux and macOS (using [libfreenect](https://github.com/OpenKinect/libfreenect) and [libfreenect2](https://github.com/OpenKinect/libfreenect2))
-- Use shaders to do faux green-screen processing. 1080p pixel processing is a really heavy CPU task and would benefit a lot to run on the GPU.
+- ~~Improve green-screen filtering using gaussian blur~~
+- Optimize green-screen filtering effect (especially the color-to-depth mapping part, if possible)
+- Add support for Kinect v1
+- Add support for Linux and macOS (using [libfreenect](https://github.com/OpenKinect/libfreenect) and [libfreenect2](https://github.com/OpenKinect/libfreenect2))
+- ~~Use shaders to do faux green-screen processing. 1080p pixel processing is a really heavy CPU task and would benefit a lot to run on the GPU~~
 - Add more fun effects (use issues to post your ideas)
-- Add possibility to use body index masking (pixels identified by Kinect SDK to be you)
+- ~~Add possibility to use body index masking (pixels identified by Kinect SDK to be you)~~
 - Support audio?
 
 # How to use
@@ -45,13 +46,13 @@ Unfortunately since some of the features I'm planning are based on Windows Kinec
 
 ## Does this plugin works for the Kinect v1?
 
-It should, since this plugin relies on the official Kinect for Windows SDK which works with both Kinect devices.
+Not yet, I hope I will be able to add support for it in the future.
 
 ## I have a Kinect for Xbox One, how can I use it on my computer?
 
 Unfortunately, Microsoft used a proprietary port on the Xbox One. You have to buy a USB 3.0 and AC adapter to use it on your computer (search for PeakLead Kinect to USB on Amazon).
 
-Don't forget to install the [Kinect for Windows runtime](https://www.microsoft.com/en-us/download/details.aspx?id=44559) before using this plugin
+Don't forget to install the [Kinect for Windows runtime](https://www.microsoft.com/en-us/download/details.aspx?id=44559) before using this plugin.
 
 ## What is the use of having access to the depth and infrared images?
 
@@ -69,6 +70,8 @@ It also allows you to crop the source image, in case you have some depth artifac
 
 There's also a cool effect of transition that you can enable, just play around and have fun.
 
+Since 0.2 there's also a "Body" filter which uses the body informations from Kinect (basically Kinect tries to identifies pixels associated with a human being), which can filter you out even if you move away from the sensor.
+
 ## Why do I have some "transparency shadow" around me/my hands?
 
 That's because the color and the IR sensor of the kinect are one centimeter apart and don't see exactly the same thing. What you're seeing is really a "depth shadow".
@@ -81,15 +84,10 @@ I hope to be able to improve this (using the body index masking).
 
 ## It flickers so much
 
-I know right? That's how the raw depth map is. I hope to be able to improve this.
+That's how Kinect depth map is, but I'm doing my best to improve it.
 
-You can try to use the bilinear filtering, it reduces this a little bit.
-
-## Ew, that effect is ugly, it's so pixelated
-
-That's because the depth map is one fourth of the color map (on the Kinect v2)
-
-That's the very first version of this plugin, I will work on that in the future. But I doubt it will ever look perfect on fullscreen (this effect is intended for streaming where you typically don't occupy all the screen).
+Since version 0.2 you can use blur passes on the filter image to improve the result.
+You can also try to use the new body filter.
 
 ## Why do closes object disappears before reaching the min distance?
 
@@ -105,13 +103,9 @@ I'm lacking a better name, being a developper implies I sucks at naming things.
 
 ## Why didn't you buy a real green screen instead of a Kinect?
 
-I don't have the space to use a real green screen, and don't want to run into lights issues.
+I don't have the space to use a real green screen, and don't want to run into light setup.
 
-Also I wanted a Kinect so badly.
-
-## It uses so much CPU
-
-Yup, that's because all of the pixel processing is done on the CPU for now, I'm thinking of using the GPU to apply the green screen effect.
+Also I wanted a Kinect so badly since it got out.
 
 ## Hey I have an idea
 
@@ -125,3 +119,10 @@ Fork this project, improve it and make a [pull request](https://github.com/SirLy
 
 Because I don't speak it, I could only do the english and french translations, but you can make it available by making a [pull request](https://github.com/SirLynix/obs-kinect/pulls) with your language file!
 
+## What's the "GPU depth mapping/Use GPU to fetch color-to-depth values" option?
+
+Color to depth mapping is done using a depth mapping texture, which allows the shader to get a color pixel depth coordinates but involves an indirect/dependent texture lookup. Every GPU on the market should support this (even the integrated ones) but it can be rather expensive on some GPUs.
+
+In case this is an issue for you, you can uncheck that box to generate color to depth values on the CPU.
+
+I do not recommend unchecking this box if you're not experiencing any issue.
