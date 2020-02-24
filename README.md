@@ -2,6 +2,15 @@
 
 OBS Plugin to access Kinect data (and setup a virtual green screen based on depth).
 
+# Features
+
+This plugins allows you to access a Kinect v2 (originally for XBox One) streams and setup a "virtual green screen effect" based on depth/body data.
+
+![Example of a virtual Green screen made by obs-kinect](https://files.digitalpulsesoftware.net/obs-kinect.png)
+
+[Example video](https://www.youtube.com/watch?v=4QWad1WISOY):  
+[![Demo video](https://img.youtube.com/vi/4QWad1WISOY/0.jpg)](https://www.youtube.com/watch?v=4QWad1WISOY)
+
 # Requirement
 
 - Windows. For now this plugin is only compatible with Windows as it uses the official Kinect for Windows API (may change in the future).
