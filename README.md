@@ -14,7 +14,7 @@ This plugins allows you to access a Kinect v2 (originally for XBox One) streams 
 # Requirement
 
 - Windows. For now this plugin is only compatible with Windows as it uses the official Kinect for Windows API (may change in the future).
-- A Kinect (obviously), v2 (xbox one) preferred (this plugin should work with v1 but this hasn't been tested), they're *relatively* cheap on eBay (between 50€ and 100€).
+- A Kinect (obviously), v2 (xbox one) preferred (this plugins aims to support v1 in the future but this hasn't been done yet), they're *relatively* cheap on eBay (between 50€ and 100€).
 - If your Kinect isn't pluggable to your computer: a Kinect to USB adapter (search for PeakLead Kinect to USB on Amazon).
 - Not running on a potato computer, Kinect itself requires a little bit of CPU power, especially when using the faux green screen effect (I'm trying to improve that) because of the color-to-depth mapping (which is done on the CPU). The plugin itself runs on the GPU.
 - [Kinect for Windows runtime](https://www.microsoft.com/en-us/download/details.aspx?id=44559) or [Kinect for Windows SDK](https://www.microsoft.com/en-us/download/details.aspx?id=44561) (if you plan to build this yourself or play with Kinect examples).
