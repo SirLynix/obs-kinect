@@ -104,7 +104,9 @@ Kinect cannot read depth below 50cm in front of it, invalid depth are discarded.
 
 ## Can I use this with VR (since SteamVR lighthouses use infrared too)?
 
-I tested it with the HTC Vive base stations (SteamVR 1.0) and didn't have any issues, should be fine.
+I tested it with the HTC Vive base stations (SteamVR 1.0) and didn't have any issues related to Kinect depth mapping. However the Kinect may cause tracking issues (or even prevent VR tracking).
+
+[Here's a cool guide](https://skarredghost.com/2016/12/09/how-to-use-kinect-with-htc-vive/) about reducing those interferences.
 
 ## Why is it called a "green screen" even though there's no green involved
 
@@ -135,3 +137,9 @@ Color to depth mapping is done using a depth mapping texture, which allows the s
 In case this is an issue for you, you can uncheck that box to generate color to depth values on the CPU.
 
 I do not recommend unchecking this box if you're not experiencing any issue.
+
+## Does this plugin supports other devices than Kinect?
+
+Nope, and I doubt it will as this is the only depth camera I have.
+
+If you're looking for Intel Realsense support (which seems to be a way better device than Kinect today), [OBS has builtin support for this](https://youtu.be/wW4HiiksDcU)
