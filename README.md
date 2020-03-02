@@ -18,7 +18,8 @@ This plugins allows you to access a Kinect v2 (originally for XBox One) streams 
 - If your Kinect isn't pluggable to your computer: a Kinect to USB adapter (search for PeakLead Kinect to USB on Amazon).
 - Not running on a potato computer, Kinect itself requires a little bit of CPU power, especially when using the faux green screen effect (I'm trying to improve that) because of the color-to-depth mapping (which is done on the CPU). The plugin itself runs on the GPU.
 - [Kinect for Windows runtime](https://www.microsoft.com/en-us/download/details.aspx?id=44559) or [Kinect for Windows SDK](https://www.microsoft.com/en-us/download/details.aspx?id=44561) (if you plan to build this yourself or play with Kinect examples).
-- OBS Studio >= 24.0.3 (hasn't been tested on older versions).
+- OBS Studio >= 24.0.0 (hasn't been tested on older versions).
+- Visual Studio 2019 redistribuables ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe)) 
 
 # To do
 
