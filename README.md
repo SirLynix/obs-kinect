@@ -32,11 +32,11 @@ This plugins allows you to access a Kinect v2 (originally for XBox One) streams 
 - ~~Add possibility to use body index masking (pixels identified by Kinect SDK to be you)~~
 - Support audio?
 
-# How to use
+# How to use (for end-users, you probably want this)
 
 Download the [latest releases](https://github.com/SirLynix/obs-kinect/releases) and copy the files in your OBS folder, restart OBS and you should have a "Kinect source" available
 
-# How to build
+# How to build (for people wanting to contribute)
 
 Clone and build OBS-studio first.
 Be sure to have the [Kinect for Windows SDK](https://www.microsoft.com/en-us/download/details.aspx?id=44561)
