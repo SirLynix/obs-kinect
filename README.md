@@ -34,7 +34,7 @@ This plugins allows you to access a Kinect v2 (originally for XBox One) streams 
 
 # How to use
 
-Download the latest releases and copy the files in your OBS folder, restart OBS and you should have a "Kinect source" available
+Download the [latest releases](https://github.com/SirLynix/obs-kinect/releases) and copy the files in your OBS folder, restart OBS and you should have a "Kinect source" available
 
 # How to build
 
