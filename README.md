@@ -81,11 +81,12 @@ Be sure to tune the depth/infrared to color values to what suits you the most.
 
 Kinect gives us a color map (like any webcam does) and a depth map, allowing to get the distance between a pixel and the Kinect sensor.
 The green screen effect discard pixels being too far (or too close) and voilà.
-It also allows you to crop the source image, in case you have some depth artifacts. It also helps to decrease CPU power required for this effect (as cropped pixels are not processed).
 
 There's also a cool effect of transition that you can enable, just play around and have fun.
 
 Since 0.2 there's also a "Body" filter which uses the body informations from Kinect (basically Kinect tries to identifies pixels associated with a human being), which can filter you out even if you move away from the sensor.
+
+Since the depth and body maps provided by Kinect have lower resolution than the color map, the raw effect looks kinda harsh. Fortunately this plugin also provide a real-time blur improving the effect.
 
 ## Why do I have some "transparency shadow" around me/my hands?
 
@@ -106,7 +107,8 @@ You can also try to use the new body filter.
 
 ## Why do closes object disappears before reaching the min distance?
 
-Kinect cannot read depth below 50cm in front of it, invalid depth are discarded.
+Kinect cannot read depth below 50cm in front of it and invalid depth are discarded.
+Try moving your Kinect further away from the object/person you want to film.
 
 ## Can I use this with VR (since SteamVR lighthouses use infrared too)?
 
