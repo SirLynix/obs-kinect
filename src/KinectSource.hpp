@@ -89,6 +89,7 @@ class KinectSource
 			std::uint16_t depthMax = 1200;
 			std::uint16_t depthMin = 1;
 			std::uint16_t fadeDist = 100;
+			std::uint8_t maxDirtyDepth = 0;
 		};
 
 		struct InfraredToColorSettings
@@ -118,7 +119,8 @@ class KinectSource
 
 		static DynamicValues ComputeDynamicValues(const std::uint16_t* values, std::size_t valueCount);
 
-		std::vector<std::uint8_t> m_testMemory;
+		std::vector<std::uint8_t> m_depthMappingMemory;
+		std::vector<std::uint8_t> m_depthMappingDirtyCounter;
 		AlphaMaskEffect m_alphaMaskFilter;
 		BodyIndexFilterEffect m_bodyIndexFilterEffect;
 		ConvertDepthIRToColorEffect m_depthIRConvertEffect;

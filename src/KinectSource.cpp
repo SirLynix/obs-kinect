@@ -253,8 +253,13 @@ void KinectSource::Update(float /*seconds*/)
 
 				DepthMappingFrameData depthMappingFrame = RetrieveDepthMappingFrame(colorFrame, depthFrame);
 
-				if (m_greenScreenSettings.gpuDepthMapping)
+				if (m_greenScreenSettings.gpuDepthMapping && m_greenScreenSettings.maxDirtyDepth == 0)
 				{
+					m_depthMappingMemory.clear();
+					m_depthMappingMemory.shrink_to_fit();
+					m_depthMappingDirtyCounter.clear();
+					m_depthMappingDirtyCounter.shrink_to_fit();
+
 					UpdateTexture(m_depthMappingTexture, GS_RG32F, depthMappingFrame.width, depthMappingFrame.height, depthMappingFrame.pitch, depthMappingFrame.ptr.get());
 					depthMappingTexture = m_depthMappingTexture.get();
 					depthValues = m_depthTexture.get();
@@ -266,18 +271,22 @@ void KinectSource::Update(float /*seconds*/)
 					const std::uint16_t* depthPixels = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
 					const KinectDevice::DepthCoordinates* depthMapping = reinterpret_cast<const KinectDevice::DepthCoordinates*>(depthMappingFrame.ptr.get());
 
-					m_testMemory.resize(colorFrame.width * colorFrame.height * sizeof(std::uint16_t));
-					std::uint16_t* depthOutput = reinterpret_cast<std::uint16_t*>(m_testMemory.data());
+					m_depthMappingMemory.resize(colorFrame.width * colorFrame.height * sizeof(std::uint16_t));
+					m_depthMappingDirtyCounter.resize(colorFrame.width * colorFrame.height);
+					std::uint16_t* depthOutput = reinterpret_cast<std::uint16_t*>(m_depthMappingMemory.data());
 
 					for (std::size_t y = 0; y < colorFrame.height; ++y)
 					{
 						for (std::size_t x = 0; x < colorFrame.width; ++x)
 						{
+							std::uint8_t& dirtyCounter = m_depthMappingDirtyCounter[y * colorFrame.width + x];
 							std::uint16_t* output = &depthOutput[y * colorFrame.width + x];
 							const KinectDevice::DepthCoordinates& depthCoordinates = depthMapping[y * depthMappingFrame.width + x];
 							if (depthCoordinates.x == InvalidDepth || depthCoordinates.y == InvalidDepth)
 							{
-								*output = 0;
+								if (++dirtyCounter > m_greenScreenSettings.maxDirtyDepth)
+									*output = 0;
+
 								continue;
 							}
 
@@ -287,15 +296,18 @@ void KinectSource::Update(float /*seconds*/)
 							if (dX < 0 || dX >= int(depthFrame.width) ||
 							    dY < 0 || dY >= int(depthFrame.height))
 							{
-								*output = 0;
+								if (++dirtyCounter > m_greenScreenSettings.maxDirtyDepth)
+									*output = 0;
+
 								continue;
 							}
 
 							*output = depthPixels[depthFrame.width * dY + dX];
+							dirtyCounter = 0;
 						}
 					}
 
-					UpdateTexture(m_depthMappingTexture, GS_R16, colorFrame.width, colorFrame.height, colorFrame.width * sizeof(std::uint16_t), m_testMemory.data());
+					UpdateTexture(m_depthMappingTexture, GS_R16, colorFrame.width, colorFrame.height, colorFrame.width * sizeof(std::uint16_t), m_depthMappingMemory.data());
 					depthMappingTexture = nullptr;
 					depthValues = m_depthMappingTexture.get();
 				}
