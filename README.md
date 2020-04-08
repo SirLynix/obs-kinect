@@ -146,6 +146,12 @@ In case this is an issue for you, you can uncheck that box to generate color to 
 
 I do not recommend unchecking this box if you're not experiencing any issue.
 
+## What are "depth-lagging frames"?
+
+With the 0.3 release I introduced "depth-lagging frames" to helps with flickering. As Kinect depth grid flickers (because it doesn't sample the same points every frame), this option allows the plugin to fetch the last known depth value for that pixel up to X previous depth frames if required. 
+
+This helps with flickering but also introduces a "movement shadow", which may or may not be okay according to what you do.
+
 ## Does this plugin supports other devices than Kinect?
 
 Nope, and I doubt it will as this is the only depth camera I have.
