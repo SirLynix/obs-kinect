@@ -51,6 +51,7 @@ class KinectSource
 
 		void Render();
 
+		void SetServicePriority(KinectDevice::ProcessPriority servicePriority);
 		void SetSourceType(SourceType sourceType);
 
 		void ShouldStopOnHide(bool shouldStop);

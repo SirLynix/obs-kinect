@@ -43,6 +43,7 @@
 class KinectDevice
 {
 	public:
+		enum class ProcessPriority;
 		struct DepthCoordinates;
 		struct KinectFrame;
 		using KinectFramePtr = std::shared_ptr<KinectFrame>;
@@ -54,8 +55,17 @@ class KinectDevice
 
 		bool MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthCoordinates* depthCoordinatesOut);
 
+		bool SetServicePriority(ProcessPriority priority);
+
 		void StartCapture();
 		void StopCapture(bool force = false);
+
+		enum class ProcessPriority
+		{
+			High,
+			AboveNormal,
+			Normal
+		};
 
 		struct DepthCoordinates
 		{
@@ -108,9 +118,11 @@ class KinectDevice
 		ReleasePtr<IKinectSensor> m_kinectSensor;
 		ReleasePtr<ICoordinateMapper> m_coordinateMapper;
 		KinectFramePtr m_lastFrame;
+		ProcessPriority m_servicePriority;
 		std::mutex m_lastFrameLock;
 		std::atomic_bool m_running;
 		std::thread m_thread;
+		bool m_hasRequestedPrivilege;
 		unsigned int m_captureCounter;
 };
 

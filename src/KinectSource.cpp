@@ -60,6 +60,11 @@ void KinectSource::OnVisibilityUpdate(bool isVisible)
 	}
 }
 
+void KinectSource::SetServicePriority(KinectDevice::ProcessPriority servicePriority)
+{
+	m_device.SetServicePriority(servicePriority);
+}
+
 void KinectSource::SetSourceType(SourceType sourceType)
 {
 	if (m_sourceType != sourceType)

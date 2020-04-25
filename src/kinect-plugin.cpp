@@ -43,6 +43,7 @@ void set_property_visibility(obs_properties_t* props, const char* propertyName, 
 static void kinect_source_update(void* data, obs_data_t* settings)
 {
 	KinectSource* kinectSource = static_cast<KinectSource*>(data);
+	kinectSource->SetServicePriority(static_cast<KinectDevice::ProcessPriority>(obs_data_get_int(settings, "service_priority")));
 	kinectSource->SetSourceType(static_cast<KinectSource::SourceType>(obs_data_get_int(settings, "source")));
 	kinectSource->ShouldStopOnHide(obs_data_get_bool(settings, "invisible_shutdown"));
 
@@ -95,6 +96,11 @@ static obs_properties_t* kinect_source_properties(void *unused)
 
 	obs_properties_t* props = obs_properties_create();
 	obs_property_t* p;
+
+	p = obs_properties_add_list(props, "service_priority", obs_module_text("KinectSource.Priority"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(p, obs_module_text("KinectSource.Priority_High"), static_cast<int>(KinectDevice::ProcessPriority::High));
+	obs_property_list_add_int(p, obs_module_text("KinectSource.Priority_AboveNormal"), static_cast<int>(KinectDevice::ProcessPriority::AboveNormal));
+	obs_property_list_add_int(p, obs_module_text("KinectSource.Priority_Normal"), static_cast<int>(KinectDevice::ProcessPriority::Normal));
 
 	obs_properties_add_bool(props, "invisible_shutdown", obs_module_text("KinectSource.InvisibleShutdown"));
 
@@ -169,6 +175,7 @@ static obs_properties_t* kinect_source_properties(void *unused)
 
 static void kinect_source_defaults(obs_data_t *settings)
 {
+	obs_data_set_default_int(settings, "service_priority", static_cast<int>(KinectDevice::ProcessPriority::Normal));
 	obs_data_set_default_int(settings, "source", static_cast<int>(KinectSource::SourceType::Color));
 	obs_data_set_default_bool(settings, "invisible_shutdown", false);
 	obs_data_set_default_double(settings, "depth_average", 0.015);

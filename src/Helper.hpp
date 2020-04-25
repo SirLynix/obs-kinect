@@ -22,6 +22,27 @@
 
 #include <obs-module.h>
 #include <memory>
+#include <type_traits>
+
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#include <windows.h>
+
+struct CloseHandleDeleter
+{
+	void operator()(HANDLE handle) const
+	{
+		CloseHandle(handle);
+	}
+};
+
+using HandlePtr = std::unique_ptr<std::remove_pointer_t<HANDLE>, CloseHandleDeleter>;
 
 template<typename Interface>
 struct CloseDeleter

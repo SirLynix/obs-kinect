@@ -21,6 +21,7 @@
 #include <array>
 #include <numeric>
 #include <optional>
+#include <tlhelp32.h>
 
 #define blog(log_level, format, ...)                    \
 	blog(log_level, "[obs-kinect] " format, ##__VA_ARGS__)
@@ -30,7 +31,9 @@
 #define warn(format, ...) blog(LOG_WARNING, format, ##__VA_ARGS__)
 
 KinectDevice::KinectDevice() :
+m_servicePriority(ProcessPriority::Normal),
 m_running(false),
+m_hasRequestedPrivilege(false),
 m_captureCounter(0)
 {
 	IKinectSensor* pKinectSensor;
@@ -49,6 +52,7 @@ m_captureCounter(0)
 KinectDevice::~KinectDevice()
 {
 	StopCapture(true);
+	SetServicePriority(ProcessPriority::Normal);
 }
 
 auto KinectDevice::GetLastFrame() -> KinectFramePtr
@@ -70,6 +74,105 @@ bool KinectDevice::MapColorToDepth(const std::uint16_t* depthValues, std::size_t
 		return false;
 
 	return true;
+}
+
+bool KinectDevice::SetServicePriority(ProcessPriority priority)
+{
+	if (m_servicePriority == priority)
+		return true;
+
+	DWORD priorityClass;
+	switch (priority)
+	{
+		case ProcessPriority::High:        priorityClass = HIGH_PRIORITY_CLASS; break;
+		case ProcessPriority::AboveNormal: priorityClass = ABOVE_NORMAL_PRIORITY_CLASS; break;
+		case ProcessPriority::Normal:      priorityClass = NORMAL_PRIORITY_CLASS; break;
+
+		default:
+			warn("unknown process priority %d", int(priority));
+			return false;
+	}
+
+	if (!m_hasRequestedPrivilege)
+	{
+		TOKEN_PRIVILEGES tkp;
+
+		LUID luid;
+		if (!LookupPrivilegeValue(nullptr, SE_INC_BASE_PRIORITY_NAME, &luid))
+		{
+			warn("failed to get privilege SE_INC_BASE_PRIORITY_NAME");
+			return false;
+		}
+
+		tkp.PrivilegeCount = 1;
+		tkp.Privileges[0].Luid = luid;
+		tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+		HANDLE token;
+		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token))
+		{
+			warn("failed to open processor token");
+			return false;
+		}
+		HandlePtr tokenOwner(token);
+
+		if (!AdjustTokenPrivileges(token, FALSE, &tkp, sizeof(tkp), nullptr, nullptr))
+		{
+			warn("failed to adjust token privileges");
+			return false;
+		}
+
+		info("adjusted token privileges");
+		m_hasRequestedPrivilege = true;
+	}
+
+	HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	if (snapshot == INVALID_HANDLE_VALUE)
+	{
+		warn("failed to retrieve processes snapshot");
+		return false;
+	}
+	HandlePtr snapshotOwner(snapshot);
+
+	PROCESSENTRY32 entry;
+	entry.dwSize = sizeof(PROCESSENTRY32);
+
+	if (Process32First(snapshot, &entry))
+	{
+		do
+		{
+#ifdef UNICODE
+			if (wcscmp(entry.szExeFile, L"KinectService.exe") == 0)
+#else
+			if (strcmp(entry.szExeFile, "KinectService.exe") == 0)
+#endif
+			{
+				info("found KinectService.exe, trying to update its priority...");
+
+				HANDLE process = OpenProcess(PROCESS_SET_INFORMATION, FALSE, entry.th32ProcessID);
+				if (!process)
+				{
+					warn("failed to open process");
+					return false;
+				}
+				HandlePtr processOwner(process);
+
+				if (!SetPriorityClass(process, priorityClass))
+				{
+					warn("failed to update process priority");
+					return false;
+				}
+
+				info("KinectService.exe priority updated successfully");
+				m_servicePriority = priority;
+				return true;
+			}
+		}
+		while (Process32Next(snapshot, &entry));
+	}
+
+	warn("KinectService.exe not found");
+	return false;
 }
 
 auto KinectDevice::RetrieveBodyIndexFrame(IMultiSourceFrame* multiSourceFrame) -> BodyIndexFrameData
