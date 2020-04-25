@@ -224,7 +224,7 @@ void RegisterKinectSource()
 	info.video_tick = kinect_video_tick;
 	info.show = [](void* data) { static_cast<KinectSource*>(data)->OnVisibilityUpdate(true); };
 	info.hide = [](void* data) { static_cast<KinectSource*>(data)->OnVisibilityUpdate(false); };
-	//info.icon_type = OBS_ICON_TYPE_CAMERA;
+	info.icon_type = OBS_ICON_TYPE_CAMERA;
 
 	obs_register_source(&info);
 }
