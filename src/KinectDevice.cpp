@@ -16,6 +16,7 @@
 ******************************************************************************/
 
 #include "KinectDevice.hpp"
+#include "KinectDeviceAccess.hpp"
 #include <util/platform.h>
 #include <algorithm>
 #include <array>
@@ -32,9 +33,9 @@
 
 KinectDevice::KinectDevice() :
 m_servicePriority(ProcessPriority::Normal),
+m_deviceSourceUpdated(true),
 m_running(false),
-m_hasRequestedPrivilege(false),
-m_captureCounter(0)
+m_hasRequestedPrivilege(false)
 {
 	IKinectSensor* pKinectSensor;
 	if (FAILED(GetDefaultKinectSensor(&pKinectSensor)))
@@ -51,11 +52,23 @@ m_captureCounter(0)
 
 KinectDevice::~KinectDevice()
 {
-	StopCapture(true);
-	SetServicePriority(ProcessPriority::Normal);
+	m_accesses.clear();
 }
 
-auto KinectDevice::GetLastFrame() -> KinectFramePtr
+KinectDeviceAccess KinectDevice::AcquireAccess(EnabledSourceFlags enabledSources)
+{
+	if (m_accesses.empty())
+		StartCapture();
+
+	auto& accessDataPtr = m_accesses.emplace_back(std::make_unique<AccessData>());
+	accessDataPtr->enabledSources = enabledSources;
+
+	UpdateEnabledSources();
+
+	return KinectDeviceAccess(*this, accessDataPtr.get());
+}
+
+auto KinectDevice::GetLastFrame() -> KinectFrameConstPtr
 {
 	std::lock_guard<std::mutex> lock(m_lastFrameLock);
 	return m_lastFrame;
@@ -76,103 +89,38 @@ bool KinectDevice::MapColorToDepth(const std::uint16_t* depthValues, std::size_t
 	return true;
 }
 
-bool KinectDevice::SetServicePriority(ProcessPriority priority)
+void KinectDevice::ReleaseAccess(AccessData* accessData)
 {
-	if (m_servicePriority == priority)
-		return true;
+	auto it = std::find_if(m_accesses.begin(), m_accesses.end(), [=](const std::unique_ptr<AccessData>& data) { return data.get() == accessData; });
+	assert(it != m_accesses.end());
+	m_accesses.erase(it);
 
-	DWORD priorityClass;
-	switch (priority)
+	UpdateEnabledSources();
+	UpdateServicePriority();
+
+	if (m_accesses.empty())
+		StopCapture();
+}
+
+void KinectDevice::UpdateEnabledSources()
+{
+	EnabledSourceFlags sourceFlags = 0;
+	for (auto& access : m_accesses)
+		sourceFlags |= access->enabledSources;
+
+	SetEnabledSources(sourceFlags);
+}
+
+void KinectDevice::UpdateServicePriority()
+{
+	ProcessPriority highestPriority = ProcessPriority::Normal;
+	for (auto& access : m_accesses)
 	{
-		case ProcessPriority::High:        priorityClass = HIGH_PRIORITY_CLASS; break;
-		case ProcessPriority::AboveNormal: priorityClass = ABOVE_NORMAL_PRIORITY_CLASS; break;
-		case ProcessPriority::Normal:      priorityClass = NORMAL_PRIORITY_CLASS; break;
-
-		default:
-			warn("unknown process priority %d", int(priority));
-			return false;
+		if (access->servicePriority > highestPriority)
+			highestPriority = access->servicePriority;
 	}
 
-	if (!m_hasRequestedPrivilege)
-	{
-		TOKEN_PRIVILEGES tkp;
-
-		LUID luid;
-		if (!LookupPrivilegeValue(nullptr, SE_INC_BASE_PRIORITY_NAME, &luid))
-		{
-			warn("failed to get privilege SE_INC_BASE_PRIORITY_NAME");
-			return false;
-		}
-
-		tkp.PrivilegeCount = 1;
-		tkp.Privileges[0].Luid = luid;
-		tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-
-		HANDLE token;
-		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token))
-		{
-			warn("failed to open processor token");
-			return false;
-		}
-		HandlePtr tokenOwner(token);
-
-		if (!AdjustTokenPrivileges(token, FALSE, &tkp, sizeof(tkp), nullptr, nullptr))
-		{
-			warn("failed to adjust token privileges");
-			return false;
-		}
-
-		info("adjusted token privileges");
-		m_hasRequestedPrivilege = true;
-	}
-
-	HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-	if (snapshot == INVALID_HANDLE_VALUE)
-	{
-		warn("failed to retrieve processes snapshot");
-		return false;
-	}
-	HandlePtr snapshotOwner(snapshot);
-
-	PROCESSENTRY32 entry;
-	entry.dwSize = sizeof(PROCESSENTRY32);
-
-	if (Process32First(snapshot, &entry))
-	{
-		do
-		{
-#ifdef UNICODE
-			if (wcscmp(entry.szExeFile, L"KinectService.exe") == 0)
-#else
-			if (strcmp(entry.szExeFile, "KinectService.exe") == 0)
-#endif
-			{
-				info("found KinectService.exe, trying to update its priority...");
-
-				HANDLE process = OpenProcess(PROCESS_SET_INFORMATION, FALSE, entry.th32ProcessID);
-				if (!process)
-				{
-					warn("failed to open process");
-					return false;
-				}
-				HandlePtr processOwner(process);
-
-				if (!SetPriorityClass(process, priorityClass))
-				{
-					warn("failed to update process priority");
-					return false;
-				}
-
-				info("KinectService.exe priority updated successfully");
-				m_servicePriority = priority;
-				return true;
-			}
-		}
-		while (Process32Next(snapshot, &entry));
-	}
-
-	warn("KinectService.exe not found");
-	return false;
+	SetServicePriority(highestPriority);
 }
 
 auto KinectDevice::RetrieveBodyIndexFrame(IMultiSourceFrame* multiSourceFrame) -> BodyIndexFrameData
@@ -329,6 +277,30 @@ auto KinectDevice::RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame) -> De
 	return frameData;
 }
 
+DepthMappingFrameData KinectDevice::RetrieveDepthMappingFrame(const ColorFrameData& colorFrame, const DepthFrameData& depthFrame)
+{
+	DepthMappingFrameData outputFrameData;
+	outputFrameData.width = colorFrame.width;
+	outputFrameData.height = colorFrame.height;
+	outputFrameData.pitch = colorFrame.pitch;
+
+	std::size_t colorPixelCount = outputFrameData.width * outputFrameData.height;
+
+	const std::uint16_t* depthPtr = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
+	std::size_t depthPixelCount = depthFrame.width * depthFrame.height;
+
+	outputFrameData.memory.resize(colorPixelCount * sizeof(KinectDevice::DepthCoordinates));
+
+	KinectDevice::DepthCoordinates* coordinatePtr = reinterpret_cast<KinectDevice::DepthCoordinates*>(outputFrameData.memory.data());
+
+	if (!MapColorToDepth(depthPtr, depthPixelCount, colorPixelCount, coordinatePtr))
+		throw std::runtime_error("failed to map color to depth");
+
+	outputFrameData.ptr.reset(reinterpret_cast<std::uint8_t*>(coordinatePtr));
+
+	return outputFrameData;
+}
+
 auto KinectDevice::RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame) -> InfraredFrameData
 {
 	IInfraredFrameReference* pInfraredFrameReference;
@@ -379,9 +351,116 @@ auto KinectDevice::RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame) ->
 	return frameData;
 }
 
+void KinectDevice::SetEnabledSources(EnabledSourceFlags sourceFlags)
+{
+	if (m_deviceSources == sourceFlags)
+		return;
+
+	std::lock_guard<std::mutex> lock(m_deviceSourceLock);
+	m_deviceSources = sourceFlags;
+	m_deviceSourceUpdated = false;
+}
+
+bool KinectDevice::SetServicePriority(ProcessPriority priority)
+{
+	if (m_servicePriority == priority)
+		return true;
+
+	DWORD priorityClass;
+	switch (priority)
+	{
+		case ProcessPriority::High:        priorityClass = HIGH_PRIORITY_CLASS; break;
+		case ProcessPriority::AboveNormal: priorityClass = ABOVE_NORMAL_PRIORITY_CLASS; break;
+		case ProcessPriority::Normal:      priorityClass = NORMAL_PRIORITY_CLASS; break;
+
+		default:
+			warn("unknown process priority %d", int(priority));
+			return false;
+	}
+
+	if (!m_hasRequestedPrivilege)
+	{
+		LUID luid;
+		if (!LookupPrivilegeValue(nullptr, SE_INC_BASE_PRIORITY_NAME, &luid))
+		{
+			warn("failed to get privilege SE_INC_BASE_PRIORITY_NAME");
+			return false;
+		}
+
+		TOKEN_PRIVILEGES tkp;
+		tkp.PrivilegeCount = 1;
+		tkp.Privileges[0].Luid = luid;
+		tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+		HANDLE token;
+		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token))
+		{
+			warn("failed to open processor token");
+			return false;
+		}
+		HandlePtr tokenOwner(token);
+
+		if (!AdjustTokenPrivileges(token, FALSE, &tkp, sizeof(tkp), nullptr, nullptr))
+		{
+			warn("failed to adjust token privileges");
+			return false;
+		}
+
+		info("adjusted token privileges successfully");
+		m_hasRequestedPrivilege = true;
+	}
+
+	HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	if (snapshot == INVALID_HANDLE_VALUE)
+	{
+		warn("failed to retrieve processes snapshot");
+		return false;
+	}
+	HandlePtr snapshotOwner(snapshot);
+
+	PROCESSENTRY32 entry;
+	entry.dwSize = sizeof(PROCESSENTRY32);
+
+	if (Process32First(snapshot, &entry))
+	{
+		do
+		{
+#ifdef UNICODE
+			if (wcscmp(entry.szExeFile, L"KinectService.exe") == 0)
+#else
+			if (strcmp(entry.szExeFile, "KinectService.exe") == 0)
+#endif
+			{
+				info("found KinectService.exe, trying to update its priority...");
+
+				HANDLE process = OpenProcess(PROCESS_SET_INFORMATION, FALSE, entry.th32ProcessID);
+				if (!process)
+				{
+					warn("failed to open process");
+					return false;
+				}
+				HandlePtr processOwner(process);
+
+				if (!SetPriorityClass(process, priorityClass))
+				{
+					warn("failed to update process priority");
+					return false;
+				}
+
+				info("KinectService.exe priority updated successfully");
+				m_servicePriority = priority;
+				return true;
+			}
+		}
+		while (Process32Next(snapshot, &entry));
+	}
+
+	warn("KinectService.exe not found");
+	return false;
+}
+
 void KinectDevice::StartCapture()
 {
-	m_captureCounter++;
 	if (m_running)
 		return;
 
@@ -402,16 +481,11 @@ void KinectDevice::StartCapture()
 		std::rethrow_exception(exceptionPtr);
 }
 
-void KinectDevice::StopCapture(bool force)
+void KinectDevice::StopCapture()
 {
 	if (!m_running)
 		return;
 
-	assert(m_captureCounter > 0);
-	if (--m_captureCounter > 0 && !force)
-		return;
-
-	m_captureCounter = 0;
 	m_running = false;
 	m_thread.join();
 	m_lastFrame.reset();
@@ -421,6 +495,67 @@ void KinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::e
 {
 	ReleasePtr<IMultiSourceFrameReader> multiSourceFrameReader;
 	ClosePtr<IKinectSensor> openedKinectSensor;
+
+	EnabledSourceFlags enabledSourceFlags = 0;
+	DWORD enabledFrameSourceTypes = 0;
+
+	auto LogSourceUpdate = [&]()
+	{
+		std::string log;
+		log.reserve(64);
+		if (enabledSourceFlags & Source_Body)
+			log += "Body | ";
+
+		if (enabledSourceFlags & Source_Color)
+			log += "Color | ";
+
+		if (enabledSourceFlags & Source_ColorToDepthMapping)
+			log += "ColorToDepth | ";
+
+		if (enabledSourceFlags & Source_Depth)
+			log += "Depth | ";
+
+		if (enabledSourceFlags & Source_Infrared)
+			log += "Infrared | ";
+
+		if (!log.empty())
+			log.resize(log.size() - 3);
+		else
+			log = "Empty";
+
+		info("Kinect active sources: %s", log.c_str());
+	};
+
+
+	auto UpdateMultiSourceFrameReader = [&](EnabledSourceFlags enabledSources)
+	{
+		DWORD newFrameSourcesTypes = 0;
+		if (enabledSources & Source_Body)
+			newFrameSourcesTypes |= FrameSourceTypes_BodyIndex;
+
+		if (enabledSources & (Source_Color | Source_ColorToDepthMapping))
+			newFrameSourcesTypes |= FrameSourceTypes_Color;
+
+		if (enabledSources & (Source_Depth | Source_ColorToDepthMapping))
+			newFrameSourcesTypes |= FrameSourceTypes_Depth;
+
+		if (enabledSources & Source_Infrared)
+			newFrameSourcesTypes |= FrameSourceTypes_Infrared;
+
+		if (!multiSourceFrameReader || newFrameSourcesTypes != enabledFrameSourceTypes)
+		{
+			IMultiSourceFrameReader* pMultiSourceFrameReader;
+			if (FAILED(openedKinectSensor->OpenMultiSourceFrameReader(newFrameSourcesTypes, &pMultiSourceFrameReader)))
+				throw std::runtime_error("failed to acquire source frame reader");
+
+			multiSourceFrameReader.reset(pMultiSourceFrameReader);
+		}
+
+		enabledFrameSourceTypes = newFrameSourcesTypes;
+		enabledSourceFlags = enabledSources;
+
+		LogSourceUpdate();
+	};
 
 	try
 	{
@@ -435,25 +570,7 @@ void KinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::e
 		std::array<char, wideId.size()> id = { "<failed to get id>" };
 		WideCharToMultiByte(CP_UTF8, 0, wideId.data(), int(wideId.size()), id.data(), int(id.size()), nullptr, nullptr);
 
-		blog(LOG_INFO, "found kinect sensor (%s)", id.data());
-
-		DWORD enabledSources = 0;
-		// Is the cost of enabling color/depth/infrared sources that high? Should we add an option to only enable thoses in use?
-		/*switch (m_sourceType)
-		{
-			case SourceType::Color: enabledSources |= FrameSourceTypes_Color; break;
-			case SourceType::Depth: enabledSources |= FrameSourceTypes_Depth; break;
-			case SourceType::Infrared: enabledSources |= FrameSourceTypes_Infrared; break;
-			default: break;
-		}*/
-
-		enabledSources |= FrameSourceTypes_Color | FrameSourceTypes_Depth | FrameSourceTypes_Infrared | FrameSourceTypes_BodyIndex;
-
-		IMultiSourceFrameReader* pMultiSourceFrameReader;
-		if (FAILED(openedKinectSensor->OpenMultiSourceFrameReader(enabledSources, &pMultiSourceFrameReader)))
-			throw std::runtime_error("failed to acquire source frame reader");
-
-		multiSourceFrameReader.reset(pMultiSourceFrameReader);
+		info("found kinect sensor (%s)", id.data());
 	}
 	catch (const std::exception&)
 	{
@@ -473,6 +590,27 @@ void KinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::e
 
 	while (m_running)
 	{
+		{
+			std::unique_lock<std::mutex> lock(m_deviceSourceLock);
+			if (!multiSourceFrameReader || !m_deviceSourceUpdated)
+			{
+
+				try
+				{
+					UpdateMultiSourceFrameReader(m_deviceSources);
+					m_deviceSourceUpdated = true;
+				}
+				catch (const std::exception& e)
+				{
+					blog(LOG_ERROR, "%s", e.what());
+					lock.unlock();
+
+					os_sleep_ms(10);
+					continue;
+				}
+			}
+		}
+
 		IMultiSourceFrame* pMultiSourceFrame;
 		HRESULT acquireResult = multiSourceFrameReader->AcquireLatestFrame(&pMultiSourceFrame);
 			
@@ -493,10 +631,21 @@ void KinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::e
 		try
 		{
 			KinectFramePtr framePtr = std::make_shared<KinectFrame>();
-			framePtr->bodyIndexFrame = RetrieveBodyIndexFrame(multiSourceFrame.get());
-			framePtr->colorFrame = RetrieveColorFrame(multiSourceFrame.get());
-			framePtr->depthFrame = RetrieveDepthFrame(multiSourceFrame.get());
-			framePtr->infraredFrame = RetrieveInfraredFrame(multiSourceFrame.get());
+			if (enabledSourceFlags & Source_Body)
+				framePtr->bodyIndexFrame = RetrieveBodyIndexFrame(multiSourceFrame.get());
+
+			if (enabledSourceFlags & (Source_Color | Source_ColorToDepthMapping))
+				framePtr->colorFrame = RetrieveColorFrame(multiSourceFrame.get());
+
+			if (enabledSourceFlags & (Source_Depth | Source_ColorToDepthMapping))
+				framePtr->depthFrame = RetrieveDepthFrame(multiSourceFrame.get());
+
+			if (enabledSourceFlags & Source_Infrared)
+				framePtr->infraredFrame = RetrieveInfraredFrame(multiSourceFrame.get());
+
+			if (enabledSourceFlags & Source_ColorToDepthMapping)
+				framePtr->depthMappingFrame = RetrieveDepthMappingFrame(*framePtr->colorFrame, *framePtr->depthFrame);
+
 			{
 				std::lock_guard<std::mutex> lock(m_lastFrameLock);
 				m_lastFrame = std::move(framePtr);

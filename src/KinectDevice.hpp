@@ -20,7 +20,9 @@
 #ifndef OBS_KINECT_PLUGIN_KINECTDEVICE
 #define OBS_KINECT_PLUGIN_KINECTDEVICE
 
+#include "Enums.hpp"
 #include "Helper.hpp"
+#include "KinectFrame.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
@@ -40,32 +42,26 @@
 #include <Kinect.h>
 #include <windows.h>
 
+class KinectDeviceAccess;
+
 class KinectDevice
 {
+	friend KinectDeviceAccess;
+
 	public:
-		enum class ProcessPriority;
 		struct DepthCoordinates;
-		struct KinectFrame;
-		using KinectFramePtr = std::shared_ptr<KinectFrame>;
 
 		KinectDevice();
 		~KinectDevice();
 
-		KinectFramePtr GetLastFrame();
+		KinectDeviceAccess AcquireAccess(EnabledSourceFlags enabledSources);
+
+		KinectFrameConstPtr GetLastFrame();
 
 		bool MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthCoordinates* depthCoordinatesOut);
 
-		bool SetServicePriority(ProcessPriority priority);
-
 		void StartCapture();
-		void StopCapture(bool force = false);
-
-		enum class ProcessPriority
-		{
-			High,
-			AboveNormal,
-			Normal
-		};
+		void StopCapture();
 
 		struct DepthCoordinates
 		{
@@ -73,57 +69,41 @@ class KinectDevice
 			float y;
 		};
 
-		struct FrameData
-		{
-			std::uint32_t width;
-			std::uint32_t height;
-			std::uint32_t pitch;
-			ObserverPtr<std::uint8_t[]> ptr;
-			std::vector<std::uint8_t> memory; //< TODO: Reuse memory
-		};
-
-		struct BodyIndexFrameData : FrameData
-		{
-		};
-
-		struct ColorFrameData : FrameData
-		{
-			gs_color_format format;
-		};
-
-		struct DepthFrameData : FrameData
-		{
-		};
-
-		struct InfraredFrameData : FrameData
-		{
-		};
-
-		struct KinectFrame
-		{
-			std::optional<BodyIndexFrameData> bodyIndexFrame;
-			std::optional<ColorFrameData> colorFrame;
-			std::optional<DepthFrameData> depthFrame;
-			std::optional<InfraredFrameData> infraredFrame;
-		};
-
 	private:
+		struct AccessData
+		{
+			EnabledSourceFlags enabledSources;
+			ProcessPriority servicePriority = ProcessPriority::Normal;
+		};
+
+		void ReleaseAccess(AccessData* access);
+		void UpdateEnabledSources();
+		void UpdateServicePriority();
+
 		BodyIndexFrameData RetrieveBodyIndexFrame(IMultiSourceFrame* multiSourceFrame);
 		ColorFrameData RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame);
 		DepthFrameData RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame);
+		DepthMappingFrameData RetrieveDepthMappingFrame(const ColorFrameData& colorFrame, const DepthFrameData& depthFrame);
+
 		InfraredFrameData RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame);
+
+		void SetEnabledSources(EnabledSourceFlags sourceFlags);
+		bool SetServicePriority(ProcessPriority priority);
 
 		void ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr);
 
+		EnabledSourceFlags m_deviceSources;
 		ReleasePtr<IKinectSensor> m_kinectSensor;
 		ReleasePtr<ICoordinateMapper> m_coordinateMapper;
 		KinectFramePtr m_lastFrame;
 		ProcessPriority m_servicePriority;
-		std::mutex m_lastFrameLock;
 		std::atomic_bool m_running;
+		std::mutex m_deviceSourceLock;
+		std::mutex m_lastFrameLock;
 		std::thread m_thread;
+		std::vector<std::unique_ptr<AccessData>> m_accesses;
+		bool m_deviceSourceUpdated;
 		bool m_hasRequestedPrivilege;
-		unsigned int m_captureCounter;
 };
 
 #endif

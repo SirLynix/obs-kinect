@@ -20,6 +20,7 @@
 #ifndef OBS_KINECT_PLUGIN_KINECTSOURCE
 #define OBS_KINECT_PLUGIN_KINECTSOURCE
 
+#include "Enums.hpp"
 #include "Helper.hpp"
 #include "AlphaMaskEffect.hpp"
 #include "BodyIndexFilterEffect.hpp"
@@ -27,6 +28,7 @@
 #include "DepthFilterEffect.hpp"
 #include "GaussianBlurEffect.hpp"
 #include "KinectDevice.hpp"
+#include "KinectDeviceAccess.hpp"
 #include <obs-module.h>
 #include <atomic>
 #include <condition_variable>
@@ -51,7 +53,7 @@ class KinectSource
 
 		void Render();
 
-		void SetServicePriority(KinectDevice::ProcessPriority servicePriority);
+		void SetServicePriority(ProcessPriority servicePriority);
 		void SetSourceType(SourceType sourceType);
 
 		void ShouldStopOnHide(bool shouldStop);
@@ -101,25 +103,17 @@ class KinectSource
 		};
 
 	private:
-		struct DepthMappingFrameData
-		{
-			std::uint32_t width;
-			std::uint32_t height;
-			std::uint32_t pitch;
-			ObserverPtr<std::uint8_t[]> ptr;
-			std::vector<std::uint8_t> memory; //< TODO: Reuse memory
-		};
-
 		struct DynamicValues
 		{
 			double average;
 			double standardDeviation;
 		};
 
-		DepthMappingFrameData RetrieveDepthMappingFrame(const KinectDevice::ColorFrameData& colorFrame, const KinectDevice::DepthFrameData& depthFrame);
+		EnabledSourceFlags ComputeEnabledSourceFlags() const;
 
 		static DynamicValues ComputeDynamicValues(const std::uint16_t* values, std::size_t valueCount);
 
+		std::optional<KinectDeviceAccess> m_deviceAccess;
 		std::vector<std::uint8_t> m_depthMappingMemory;
 		std::vector<std::uint8_t> m_depthMappingDirtyCounter;
 		AlphaMaskEffect m_alphaMaskFilter;
@@ -131,14 +125,15 @@ class KinectSource
 		DepthToColorSettings m_depthToColorSettings;
 		GreenScreenSettings m_greenScreenSettings;
 		InfraredToColorSettings m_infraredToColorSettings;
+		KinectDevice& m_device;
 		ObsTexturePtr m_bodyIndexTexture;
 		ObsTexturePtr m_colorTexture;
 		ObsTexturePtr m_depthMappingTexture;
 		ObsTexturePtr m_depthTexture;
 		ObsTexturePtr m_infraredTexture;
+		ProcessPriority m_servicePriority;
 		SourceType m_sourceType;
 		obs_source_t* m_source;
-		KinectDevice& m_device;
 		bool m_stopOnHide;
 };
 
