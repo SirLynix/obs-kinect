@@ -211,7 +211,7 @@ void RegisterKinectSource()
 	struct obs_source_info info = {};
 	info.id = "kinect_source";
 	info.type = OBS_SOURCE_TYPE_INPUT;
-	info.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_DO_NOT_DUPLICATE | OBS_SOURCE_CUSTOM_DRAW;
+	info.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_CUSTOM_DRAW;
 	info.get_name = [](void*) { return obs_module_text("KinectSource"); };
 	info.create = kinect_source_create;
 	info.destroy = kinect_source_destroy;
