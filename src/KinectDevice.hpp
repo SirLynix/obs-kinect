@@ -55,7 +55,7 @@ class KinectDevice
 		bool MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthCoordinates* depthCoordinatesOut);
 
 		void StartCapture();
-		void StopCapture();
+		void StopCapture(bool force = false);
 
 		struct DepthCoordinates
 		{
@@ -111,6 +111,7 @@ class KinectDevice
 		std::mutex m_lastFrameLock;
 		std::atomic_bool m_running;
 		std::thread m_thread;
+		unsigned int m_captureCounter;
 };
 
 #endif

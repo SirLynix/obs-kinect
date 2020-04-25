@@ -15,12 +15,23 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
+#include "KinectDevice.hpp"
 #include "KinectSource.hpp"
 #include <obs-module.h>
+#include <optional>
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_AUTHOR("SirLynix")
 OBS_MODULE_USE_DEFAULT_LOCALE("kinect_source", "en-US")
+
+#define blog(log_level, format, ...)                    \
+	blog(log_level, "[obs-kinect] " format, ##__VA_ARGS__)
+
+#define debug(format, ...) blog(LOG_DEBUG, format, ##__VA_ARGS__)
+#define info(format, ...) blog(LOG_INFO, format, ##__VA_ARGS__)
+#define warn(format, ...) blog(LOG_WARNING, format, ##__VA_ARGS__)
+
+static std::optional<KinectDevice> s_device;
 
 void set_property_visibility(obs_properties_t* props, const char* propertyName, bool visible)
 {
@@ -64,7 +75,7 @@ static void kinect_source_update(void* data, obs_data_t* settings)
 
 static void* kinect_source_create(obs_data_t* settings, obs_source_t* source)
 {
-	KinectSource* kinect = new KinectSource(source);
+	KinectSource* kinect = new KinectSource(s_device.value(), source);
 	kinect_source_update(kinect, settings);
 
 	kinect->OnVisibilityUpdate(obs_source_showing(source));
@@ -214,6 +225,19 @@ void RegisterKinectSource()
 MODULE_EXPORT
 bool obs_module_load()
 {
+	if (!s_device)
+	{
+		try
+		{
+			s_device.emplace();
+		}
+		catch (const std::exception& e)
+		{
+			warn("failed to init Kinect device, is a Kinect connected? (%s)", e.what());
+			return false;
+		}
+	}
+
 	RegisterKinectSource();
 	return true;
 }
@@ -221,4 +245,5 @@ bool obs_module_load()
 MODULE_EXPORT
 void obs_module_unload()
 {
+	s_device.reset();
 }

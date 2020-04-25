@@ -30,7 +30,8 @@
 #define warn(format, ...) blog(LOG_WARNING, format, ##__VA_ARGS__)
 
 KinectDevice::KinectDevice() :
-m_running(false)
+m_running(false),
+m_captureCounter(0)
 {
 	IKinectSensor* pKinectSensor;
 	if (FAILED(GetDefaultKinectSensor(&pKinectSensor)))
@@ -47,7 +48,7 @@ m_running(false)
 
 KinectDevice::~KinectDevice()
 {
-	StopCapture();
+	StopCapture(true);
 }
 
 auto KinectDevice::GetLastFrame() -> KinectFramePtr
@@ -277,6 +278,7 @@ auto KinectDevice::RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame) ->
 
 void KinectDevice::StartCapture()
 {
+	m_captureCounter++;
 	if (m_running)
 		return;
 
@@ -297,11 +299,16 @@ void KinectDevice::StartCapture()
 		std::rethrow_exception(exceptionPtr);
 }
 
-void KinectDevice::StopCapture()
+void KinectDevice::StopCapture(bool force)
 {
 	if (!m_running)
 		return;
 
+	assert(m_captureCounter > 0);
+	if (--m_captureCounter > 0 && !force)
+		return;
+
+	m_captureCounter = 0;
 	m_running = false;
 	m_thread.join();
 	m_lastFrame.reset();

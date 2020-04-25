@@ -44,7 +44,7 @@ class KinectSource
 		struct GreenScreenSettings;
 		struct InfraredToColorSettings;
 
-		KinectSource(obs_source_t* source);
+		KinectSource(KinectDevice& device, obs_source_t* source);
 		~KinectSource();
 
 		void OnVisibilityUpdate(bool isVisible);
@@ -137,7 +137,7 @@ class KinectSource
 		ObsTexturePtr m_infraredTexture;
 		SourceType m_sourceType;
 		obs_source_t* m_source;
-		KinectDevice m_device;
+		KinectDevice& m_device;
 		bool m_stopOnHide;
 };
 

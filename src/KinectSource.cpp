@@ -29,10 +29,11 @@
 #define info(format, ...) blog(LOG_INFO, format, ##__VA_ARGS__)
 #define warn(format, ...) blog(LOG_WARNING, format, ##__VA_ARGS__)
 
-KinectSource::KinectSource(obs_source_t* source) :
+KinectSource::KinectSource(KinectDevice& device, obs_source_t* source) :
 m_gaussianBlur(GS_RGBA),
 m_sourceType(SourceType::Color),
 m_source(source),
+m_device(device),
 m_stopOnHide(false)
 {
 }
