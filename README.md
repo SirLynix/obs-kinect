@@ -105,6 +105,8 @@ That's how Kinect depth map is, but I'm doing my best to improve it.
 Since version 0.2 you can use blur passes on the filter image to improve the result.
 You can also try to use the new body filter.
 
+Since version 0.3 you can allow some "depth-lag", which means the plugin is allowed to fetch a previous depth value (up to X frames in the past) if current depth isn't available.
+
 ## Why do closes object disappears before reaching the min distance?
 
 Kinect cannot read depth below 50cm in front of it and invalid depth are discarded.
@@ -137,6 +139,8 @@ Fork this project, improve it and make a [pull request](https://github.com/SirLy
 ## Why isn't my language available?
 
 Because I don't speak it, I could only do the english and french translations, but you can make it available by making a [pull request](https://github.com/SirLynix/obs-kinect/pulls) with your language file!
+
+Thanks to @pucgenie for the german translation.
 
 ## What's the "GPU depth mapping/Use GPU to fetch color-to-depth values" option?
 
