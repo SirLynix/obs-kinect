@@ -274,6 +274,9 @@ void KinectSource::Update(float /*seconds*/)
 
 				if (m_greenScreenSettings.gpuDepthMapping && m_greenScreenSettings.maxDirtyDepth == 0)
 				{
+					m_depthMappingMemory.clear();
+					m_depthMappingMemory.shrink_to_fit();
+
 					m_depthMappingDirtyCounter.clear();
 					m_depthMappingDirtyCounter.shrink_to_fit();
 
@@ -294,6 +297,7 @@ void KinectSource::Update(float /*seconds*/)
 					const std::uint16_t* depthPixels = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
 					const KinectDevice::DepthCoordinates* depthMapping = reinterpret_cast<const KinectDevice::DepthCoordinates*>(depthMappingFrame.ptr.get());
 
+					m_depthMappingMemory.resize(colorFrame.width* colorFrame.height * sizeof(std::uint16_t));
 					m_depthMappingDirtyCounter.resize(colorFrame.width * colorFrame.height);
 					std::uint16_t* depthOutput = reinterpret_cast<std::uint16_t*>(m_depthMappingMemory.data());
 
