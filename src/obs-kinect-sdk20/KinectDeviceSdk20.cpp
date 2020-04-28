@@ -20,7 +20,6 @@
 #include <tlhelp32.h>
 
 KinectDeviceSdk20::KinectDeviceSdk20() :
-KinectDevice("Default Kinect"),
 m_hasRequestedPrivilege(false)
 {
 	IKinectSensor* pKinectSensor;
@@ -34,6 +33,8 @@ m_hasRequestedPrivilege(false)
 		throw std::runtime_error("failed to retrieve coordinate mapper");
 
 	m_coordinateMapper.reset(pCoordinateMapper);
+
+	SetUniqueName("Default Kinect");
 }
 
 bool KinectDeviceSdk20::MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthCoordinates* depthCoordinatesOut) const

@@ -19,11 +19,10 @@
 #include "KinectDeviceAccess.hpp"
 #include <algorithm>
 
-KinectDevice::KinectDevice(std::string uniqueName) :
+KinectDevice::KinectDevice() :
 m_servicePriority(ProcessPriority::Normal),
 m_deviceSourceUpdated(true),
-m_running(false),
-m_uniqueName(std::move(uniqueName))
+m_running(false)
 {
 }
 
@@ -151,6 +150,12 @@ std::optional<EnabledSourceFlags> KinectDevice::GetSourceFlagsUpdate()
 bool KinectDevice::IsRunning() const
 {
 	return m_running;
+}
+
+void KinectDevice::SetUniqueName(std::string uniqueName)
+{
+	assert(m_uniqueName.empty());
+	m_uniqueName = std::move(uniqueName);
 }
 
 void KinectDevice::UpdateFrame(KinectFramePtr kinectFrame)

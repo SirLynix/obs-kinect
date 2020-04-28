@@ -40,7 +40,7 @@ class OBSKINECT_API KinectDevice
 	public:
 		struct DepthCoordinates;
 
-		KinectDevice(std::string uniqueName);
+		KinectDevice();
 		KinectDevice(const KinectDevice&) = delete;
 		KinectDevice(KinectDevice&&) = delete;
 		virtual ~KinectDevice();
@@ -69,6 +69,7 @@ class OBSKINECT_API KinectDevice
 		std::optional<EnabledSourceFlags> GetSourceFlagsUpdate();
 
 		bool IsRunning() const;
+		void SetUniqueName(std::string uniqueName);
 		void UpdateFrame(KinectFramePtr kinectFrame);
 
 		virtual void SetServicePriority(ProcessPriority priority) = 0;
