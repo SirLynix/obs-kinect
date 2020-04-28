@@ -23,10 +23,9 @@
 #include "Enums.hpp"
 #include "Helper.hpp"
 #include "AlphaMaskEffect.hpp"
-#include "BodyIndexFilterEffect.hpp"
 #include "ConvertDepthIRToColorEffect.hpp"
-#include "DepthFilterEffect.hpp"
 #include "GaussianBlurEffect.hpp"
+#include "GreenScreenFilterEffect.hpp"
 #include "KinectDeviceAccess.hpp"
 #include <obs-module.h>
 #include <atomic>
@@ -125,10 +124,9 @@ class KinectSource
 		std::vector<std::uint8_t> m_depthMappingMemory;
 		std::vector<std::uint8_t> m_depthMappingDirtyCounter;
 		AlphaMaskEffect m_alphaMaskFilter;
-		BodyIndexFilterEffect m_bodyIndexFilterEffect;
 		ConvertDepthIRToColorEffect m_depthIRConvertEffect;
-		DepthFilterEffect m_depthFilter;
 		GaussianBlurEffect m_gaussianBlur;
+		GreenScreenFilterEffect m_greenScreenFilterEffect;
 		ObserverPtr<gs_texture_t> m_finalTexture;
 		DepthToColorSettings m_depthToColorSettings;
 		GreenScreenSettings m_greenScreenSettings;

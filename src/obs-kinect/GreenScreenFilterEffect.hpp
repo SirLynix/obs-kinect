@@ -17,23 +17,31 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_DEPTHFILTEREFFECT
-#define OBS_KINECT_PLUGIN_DEPTHFILTEREFFECT
+#ifndef OBS_KINECT_PLUGIN_GREENSCREENFILTEREFFECT
+#define OBS_KINECT_PLUGIN_GREENSCREENFILTEREFFECT
 
 #include <obs-module.h>
 #include <cstdint>
 
-class DepthFilterEffect
+class GreenScreenFilterEffect
 {
 	public:
-		struct Params;
+		struct BodyFilterParams;
+		struct DepthFilterParams;
 
-		DepthFilterEffect();
-		~DepthFilterEffect();
+		GreenScreenFilterEffect();
+		~GreenScreenFilterEffect();
 
-		gs_texture_t* Filter(std::uint32_t width, std::uint32_t height, const Params& params);
+		gs_texture_t* Filter(std::uint32_t width, std::uint32_t height, const BodyFilterParams& params);
+		gs_texture_t* Filter(std::uint32_t width, std::uint32_t height, const DepthFilterParams& params);
 
-		struct Params
+		struct BodyFilterParams
+		{
+			gs_texture_t* bodyIndexTexture;
+			gs_texture_t* colorToDepthTexture;
+		};
+
+		struct DepthFilterParams
 		{
 			gs_texture_t* colorToDepthTexture;
 			gs_texture_t* depthTexture;
@@ -44,14 +52,17 @@ class DepthFilterEffect
 
 	private:
 		gs_effect_t* m_effect;
+		gs_eparam_t* m_params_BodyIndexImage;
 		gs_eparam_t* m_params_DepthImage;
 		gs_eparam_t* m_params_DepthMappingImage;
 		gs_eparam_t* m_params_InvDepthImageSize;
 		gs_eparam_t* m_params_InvDepthProgressive;
 		gs_eparam_t* m_params_MaxDepth;
 		gs_eparam_t* m_params_MinDepth;
-		gs_technique_t* m_tech_DepthCorrection;
-		gs_technique_t* m_tech_WithoutDepthCorrection;
+		gs_technique_t* m_tech_BodyOnlyWithDepthCorrection;
+		gs_technique_t* m_tech_BodyOnlyWithoutDepthCorrection;
+		gs_technique_t* m_tech_DepthOnlyWithDepthCorrection;
+		gs_technique_t* m_tech_DepthOnlyWithoutDepthCorrection;
 		gs_texrender_t* m_workTexture;
 };
 
