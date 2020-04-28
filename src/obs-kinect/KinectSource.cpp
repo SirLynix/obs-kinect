@@ -447,16 +447,21 @@ std::optional<KinectDeviceAccess> KinectSource::OpenAccess(KinectDevice& device)
 
 void KinectSource::RefreshDeviceAccess()
 {
+	auto Clear = [&] {
+		m_deviceAccess.reset();
+		m_finalTexture.reset();
+	};
+
 	if (m_isVisible)
 	{
 		KinectDevice* device = m_registry.GetDevice(m_deviceName);
 		if (device)
 			m_deviceAccess = OpenAccess(*device);
 		else
-			m_deviceAccess.reset();
+			Clear();
 	}
 	else
-		m_deviceAccess.reset();
+		Clear();
 }
 
 auto KinectSource::ComputeDynamicValues(const std::uint16_t* values, std::size_t valueCount) -> DynamicValues
