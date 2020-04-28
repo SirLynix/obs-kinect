@@ -255,6 +255,7 @@ void KinectSource::Update(float /*seconds*/)
 
 		if (m_greenScreenSettings.enabled)
 		{
+			// Handle CPU|GPU depth mapping + dirty depth values
 			gs_texture_t* depthMappingTexture;
 			gs_texture_t* depthValues;
 			if (m_sourceType == SourceType::Color)
@@ -336,38 +337,78 @@ void KinectSource::Update(float /*seconds*/)
 				depthValues = m_depthTexture.get();
 			}
 
-			gs_texture_t* filterTexture;
-			if (m_greenScreenSettings.type == GreenScreenType::Depth)
-			{
-				GreenScreenFilterEffect::DepthFilterParams filterParams;
-				filterParams.colorToDepthTexture = depthMappingTexture;
-				filterParams.depthTexture = depthValues;
-				filterParams.maxDepth = m_greenScreenSettings.depthMax;
-				filterParams.minDepth = m_greenScreenSettings.depthMin;
-				filterParams.progressiveDepth = m_greenScreenSettings.fadeDist;
-
-				std::uint32_t width = gs_texture_get_width(sourceTexture);
-				std::uint32_t height = gs_texture_get_height(sourceTexture);
-
-				filterTexture = m_greenScreenFilterEffect.Filter(width, height, filterParams);
-			}
-			else
+			// All green screen types (except depth) requires body index texture
+			if (m_greenScreenSettings.type != GreenScreenType::Depth)
 			{
 				if (!frameData->bodyIndexFrame.has_value())
 					return;
 
 				const BodyIndexFrameData& bodyIndexFrame = frameData->bodyIndexFrame.value();
 				UpdateTexture(m_bodyIndexTexture, GS_R8, bodyIndexFrame.width, bodyIndexFrame.height, bodyIndexFrame.pitch, bodyIndexFrame.ptr.get());
-
-				GreenScreenFilterEffect::BodyFilterParams filterParams;
-				filterParams.bodyIndexTexture = m_bodyIndexTexture.get();
-				filterParams.colorToDepthTexture = depthMappingTexture;
-
-				std::uint32_t width = gs_texture_get_width(sourceTexture);
-				std::uint32_t height = gs_texture_get_height(sourceTexture);
-
-				filterTexture = m_greenScreenFilterEffect.Filter(width, height, filterParams);
 			}
+
+			// Apply green screen filtering
+			std::uint32_t width = gs_texture_get_width(sourceTexture);
+			std::uint32_t height = gs_texture_get_height(sourceTexture);
+
+			gs_texture_t* filterTexture = nullptr;
+			switch (m_greenScreenSettings.type)
+			{
+				case GreenScreenType::Body:
+				{
+					GreenScreenFilterEffect::BodyFilterParams filterParams;
+					filterParams.bodyIndexTexture = m_bodyIndexTexture.get();
+					filterParams.colorToDepthTexture = depthMappingTexture;
+
+					filterTexture = m_greenScreenFilterEffect.Filter(width, height, filterParams);
+					break;
+				}
+
+				case GreenScreenType::BodyOrDepth:
+				{
+					GreenScreenFilterEffect::BodyOrDepthFilterParams filterParams;
+					filterParams.bodyIndexTexture = m_bodyIndexTexture.get();
+					filterParams.colorToDepthTexture = depthMappingTexture;
+					filterParams.depthTexture = depthValues;
+					filterParams.maxDepth = m_greenScreenSettings.depthMax;
+					filterParams.minDepth = m_greenScreenSettings.depthMin;
+					filterParams.progressiveDepth = m_greenScreenSettings.fadeDist;
+
+					filterTexture = m_greenScreenFilterEffect.Filter(width, height, filterParams);
+					break;
+				}
+
+				case GreenScreenType::BodyWithinDepth:
+				{
+					GreenScreenFilterEffect::BodyWithinDepthFilterParams filterParams;
+					filterParams.bodyIndexTexture = m_bodyIndexTexture.get();
+					filterParams.colorToDepthTexture = depthMappingTexture;
+					filterParams.depthTexture = depthValues;
+					filterParams.maxDepth = m_greenScreenSettings.depthMax;
+					filterParams.minDepth = m_greenScreenSettings.depthMin;
+					filterParams.progressiveDepth = m_greenScreenSettings.fadeDist;
+
+					filterTexture = m_greenScreenFilterEffect.Filter(width, height, filterParams);
+					break;
+				}
+
+				case GreenScreenType::Depth:
+				{
+					GreenScreenFilterEffect::DepthFilterParams filterParams;
+					filterParams.colorToDepthTexture = depthMappingTexture;
+					filterParams.depthTexture = depthValues;
+					filterParams.maxDepth = m_greenScreenSettings.depthMax;
+					filterParams.minDepth = m_greenScreenSettings.depthMin;
+					filterParams.progressiveDepth = m_greenScreenSettings.fadeDist;
+
+					filterTexture = m_greenScreenFilterEffect.Filter(width, height, filterParams);
+					break;
+				}
+
+			}
+
+			if (!filterTexture)
+				return;
 
 			if (m_greenScreenSettings.blurPassCount > 0)
 				filterTexture = m_gaussianBlur.Blur(filterTexture, m_greenScreenSettings.blurPassCount);

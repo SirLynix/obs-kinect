@@ -52,26 +52,114 @@ VertData VSDefault(VertData vert_in)
 	VertData vert_out;
 	vert_out.pos = mul(float4(vert_in.pos.xyz, 1.0), ViewProj);
 	vert_out.uv = vert_in.uv;
+
 	return vert_out;
 }
 
-float4 PSBodyOnlyDepthCorrection(VertData vert_in) : TARGET
+float ComputeBodyValue(float bodyIndex)
+{
+	bool check = (bodyIndex < 0.1);
+	return (check) ? 1.0 : 0.0;
+}
+
+float ComputeDepthValue(float depth)
+{
+	bool check = (depth > MinDepth && depth < MaxDepth);
+	return (check) ? saturate((MaxDepth - depth) * InvDepthProgressive) : 0.0;
+}
+
+float ComputeDepthValueMapped(float depth, float2 texCoords)
+{
+	bool check = (texCoords.x > 0.0 && texCoords.y > 0.0 && texCoords.x < 1.0 && texCoords.y < 1.0) &&
+	             (depth > MinDepth && depth < MaxDepth);
+
+	return (check) ? saturate((MaxDepth - depth) * InvDepthProgressive) : 0.0;
+}
+
+float4 PSBodyOnlyWithDepthCorrection(VertData vert_in) : TARGET
 {
 	float2 texCoords = DepthMappingImage.Sample(textureSampler, vert_in.uv).xy * InvDepthImageSize;
 	float bodyIndex = BodyIndexImage.Sample(depthSampler, texCoords).r;
 
-	bool check = (bodyIndex < 0.1);
-	float value = (check) ? 1.0 : 0.0;
+	float value = ComputeBodyValue(bodyIndex);
 
 	return float4(value, value, value, value);
 }
 
-float4 PSBodyOnlyNoDepthCorrection(VertData vert_in) : TARGET
+float4 PSBodyOnlyWithoutDepthCorrection(VertData vert_in) : TARGET
 {
 	float bodyIndex = BodyIndexImage.Sample(depthSampler, vert_in.uv).r;
 
-	bool check = (bodyIndex < 0.1);
-	float value = (check) ? 1.0 : 0.0;
+	float value = ComputeBodyValue(bodyIndex);
+
+	return float4(value, value, value, value);
+}
+
+float4 PSBodyOrDepthWithDepthCorrection(VertData vert_in) : TARGET
+{
+	float2 texCoords = DepthMappingImage.Sample(textureSampler, vert_in.uv).xy * InvDepthImageSize;
+	float bodyIndex = BodyIndexImage.Sample(depthSampler, texCoords).r;
+	float depth = DepthImage.Sample(depthSampler, texCoords).r;
+
+	float bodyValue = ComputeBodyValue(bodyIndex);
+	float depthValue = ComputeDepthValueMapped(depth, texCoords);
+	float value = max(bodyValue, depthValue);
+
+	return float4(value, value, value, value);
+}
+
+float4 PSBodyOrDepthWithoutDepthCorrection(VertData vert_in) : TARGET
+{
+	float bodyIndex = BodyIndexImage.Sample(depthSampler, vert_in.uv).r;
+	float depth = DepthImage.Sample(depthSampler, vert_in.uv).r;
+
+	float bodyValue = ComputeBodyValue(bodyIndex);
+	float depthValue = ComputeDepthValue(depth);
+	float value = max(bodyValue, depthValue);
+
+	return float4(value, value, value, value);
+}
+
+float4 PSBodyWithinDepthWithDepthCorrection(VertData vert_in) : TARGET
+{
+	float2 texCoords = DepthMappingImage.Sample(textureSampler, vert_in.uv).xy * InvDepthImageSize;
+	float bodyIndex = BodyIndexImage.Sample(depthSampler, texCoords).r;
+	float depth = DepthImage.Sample(depthSampler, texCoords).r;
+
+	float bodyValue = ComputeBodyValue(bodyIndex);
+	float depthValue = ComputeDepthValueMapped(depth, texCoords);
+	float value = min(bodyValue, depthValue);
+
+	return float4(value, value, value, value);
+}
+
+float4 PSBodyWithinDepthWithoutDepthCorrection(VertData vert_in) : TARGET
+{
+	float bodyIndex = BodyIndexImage.Sample(depthSampler, vert_in.uv).r;
+	float depth = DepthImage.Sample(depthSampler, vert_in.uv).r;
+
+	float bodyValue = ComputeBodyValue(bodyIndex);
+	float depthValue = ComputeDepthValue(depth);
+	float value = min(bodyValue, depthValue);
+
+	return float4(value, value, value, value);
+}
+
+float4 PSDepthOnlyWithDepthCorrection(VertData vert_in) : TARGET
+{
+	float2 texCoords = DepthMappingImage.Sample(textureSampler, vert_in.uv).xy * InvDepthImageSize;
+	float depth = DepthImage.Sample(depthSampler, texCoords).r;
+
+	float value = ComputeDepthValueMapped(depth, texCoords);
+
+	return float4(value, value, value, value);
+}
+
+float4 PSDepthOnlyWithoutDepthCorrection(VertData vert_in) : TARGET
+{
+	float depth = DepthImage.Sample(depthSampler, vert_in.uv).r;
+
+	float value = ComputeDepthValue(depth);
 
 	return float4(value, value, value, value);
 }
@@ -81,7 +169,7 @@ technique BodyOnlyWithDepthCorrection
 	pass
 	{
 		vertex_shader = VSDefault(vert_in);
-		pixel_shader = PSBodyOnlyDepthCorrection(vert_in);
+		pixel_shader = PSBodyOnlyWithDepthCorrection(vert_in);
 	}
 }
 
@@ -90,31 +178,44 @@ technique BodyOnlyWithoutDepthCorrection
 	pass
 	{
 		vertex_shader = VSDefault(vert_in);
-		pixel_shader = PSBodyOnlyNoDepthCorrection(vert_in);
+		pixel_shader = PSBodyOnlyWithoutDepthCorrection(vert_in);
 	}
 }
-float4 PSDepthOnlyDepthCorrection(VertData vert_in) : TARGET
+
+technique BodyOrDepthWithDepthCorrection
 {
-	float2 texCoords = DepthMappingImage.Sample(textureSampler, vert_in.uv).xy * InvDepthImageSize;
-	float depth = DepthImage.Sample(depthSampler, texCoords).r;
-
-	bool check = (texCoords.x > 0.0 && texCoords.y > 0.0 && texCoords.x < 1.0 && texCoords.y < 1.0) &&
-	             (depth > MinDepth && depth < MaxDepth);
-
-	float value = (check) ? saturate((MaxDepth - depth) * InvDepthProgressive) : 0.0;
-
-	return float4(value, value, value, value);
+	pass
+	{
+		vertex_shader = VSDefault(vert_in);
+		pixel_shader = PSBodyOrDepthWithDepthCorrection(vert_in);
+	}
 }
 
-float4 PSDepthOnlyWithoutDepthCorrection(VertData vert_in) : TARGET
+technique BodyOrDepthWithoutDepthCorrection
 {
-	float depth = DepthImage.Sample(depthSampler, vert_in.uv).r;
+	pass
+	{
+		vertex_shader = VSDefault(vert_in);
+		pixel_shader = PSBodyOrDepthWithoutDepthCorrection(vert_in);
+	}
+}
 
-	bool check = (depth > MinDepth && depth < MaxDepth);
+technique BodyWithinDepthWithDepthCorrection
+{
+	pass
+	{
+		vertex_shader = VSDefault(vert_in);
+		pixel_shader = PSBodyWithinDepthWithDepthCorrection(vert_in);
+	}
+}
 
-	float value = (check) ? saturate((MaxDepth - depth) * InvDepthProgressive) : 0.0;
-
-	return float4(value, value, value, value);
+technique BodyWithinDepthWithoutDepthCorrection
+{
+	pass
+	{
+		vertex_shader = VSDefault(vert_in);
+		pixel_shader = PSBodyWithinDepthWithoutDepthCorrection(vert_in);
+	}
 }
 
 technique DepthOnlyWithDepthCorrection
@@ -122,7 +223,7 @@ technique DepthOnlyWithDepthCorrection
 	pass
 	{
 		vertex_shader = VSDefault(vert_in);
-		pixel_shader = PSDepthOnlyDepthCorrection(vert_in);
+		pixel_shader = PSDepthOnlyWithDepthCorrection(vert_in);
 	}
 }
 
@@ -156,6 +257,12 @@ GreenScreenFilterEffect::GreenScreenFilterEffect()
 		m_tech_BodyOnlyWithDepthCorrection = gs_effect_get_technique(m_effect, "BodyOnlyWithDepthCorrection");
 		m_tech_BodyOnlyWithoutDepthCorrection = gs_effect_get_technique(m_effect, "BodyOnlyWithoutDepthCorrection");
 
+		m_tech_BodyOrDepthWithDepthCorrection = gs_effect_get_technique(m_effect, "BodyOrDepthWithDepthCorrection");
+		m_tech_BodyOrDepthWithoutDepthCorrection = gs_effect_get_technique(m_effect, "BodyOrDepthWithoutDepthCorrection");
+
+		m_tech_BodyWithinDepthWithDepthCorrection = gs_effect_get_technique(m_effect, "BodyWithinDepthWithDepthCorrection");
+		m_tech_BodyWithinDepthWithoutDepthCorrection = gs_effect_get_technique(m_effect, "BodyWithinDepthWithoutDepthCorrection");
+
 		m_tech_DepthOnlyWithDepthCorrection = gs_effect_get_technique(m_effect, "DepthOnlyWithDepthCorrection");
 		m_tech_DepthOnlyWithoutDepthCorrection = gs_effect_get_technique(m_effect, "DepthOnlyWithoutDepthCorrection");
 
@@ -181,66 +288,69 @@ GreenScreenFilterEffect::~GreenScreenFilterEffect()
 
 gs_texture_t* GreenScreenFilterEffect::Filter(std::uint32_t width, std::uint32_t height, const BodyFilterParams& params)
 {
-	std::uint32_t bodyIndexWidth = gs_texture_get_width(params.bodyIndexTexture);
-	std::uint32_t bodyIndexHeight = gs_texture_get_height(params.bodyIndexTexture);
-
-	gs_texrender_reset(m_workTexture);
-	if (!gs_texrender_begin(m_workTexture, width, height))
+	if (!Begin(width, height))
 		return nullptr;
 
-	vec4 black = { 0.f, 0.f, 0.f, 1.f };
-	gs_clear(GS_CLEAR_COLOR, &black, 0.f, 0);
-	gs_ortho(0.0f, float(width), 0.0f, float(height), -100.0f, 100.0f);
-
-	vec2 invDepthSize = { 1.f / bodyIndexWidth, 1.f / bodyIndexHeight };
-
-	constexpr float maxDepthValue = 0xFFFF;
-	constexpr float invMaxDepthValue = 1.f / maxDepthValue;
-
-	gs_effect_set_vec2(m_params_InvDepthImageSize, &invDepthSize);
-	gs_effect_set_texture(m_params_BodyIndexImage, params.bodyIndexTexture);
-	gs_effect_set_texture(m_params_DepthMappingImage, params.colorToDepthTexture);
+	SetBodyParams(params);
 
 	gs_technique_t* technique = (params.colorToDepthTexture) ? m_tech_BodyOnlyWithDepthCorrection : m_tech_BodyOnlyWithoutDepthCorrection;
 
-	gs_technique_begin(technique);
-	gs_technique_begin_pass(technique, 0);
-	gs_draw_sprite(nullptr, 0, width, height);
-	gs_technique_end_pass(technique);
-	gs_technique_end(technique);
+	return Process(width, height, technique);
+}
 
-	gs_texrender_end(m_workTexture);
+gs_texture_t* GreenScreenFilterEffect::Filter(std::uint32_t width, std::uint32_t height, const BodyOrDepthFilterParams& params)
+{
+	if (!Begin(width, height))
+		return nullptr;
 
-	return gs_texrender_get_texture(m_workTexture);
+	SetBodyParams(params);
+	SetDepthParams(params);
+
+	gs_technique_t* technique = (params.colorToDepthTexture) ? m_tech_BodyOrDepthWithDepthCorrection : m_tech_BodyOrDepthWithoutDepthCorrection;
+
+	return Process(width, height, technique);
+}
+
+gs_texture_t* GreenScreenFilterEffect::Filter(std::uint32_t width, std::uint32_t height, const BodyWithinDepthFilterParams& params)
+{
+	if (!Begin(width, height))
+		return nullptr;
+
+	SetBodyParams(params);
+	SetDepthParams(params);
+
+	gs_technique_t* technique = (params.colorToDepthTexture) ? m_tech_BodyWithinDepthWithDepthCorrection : m_tech_BodyWithinDepthWithoutDepthCorrection;
+
+	return Process(width, height, technique);
 }
 
 gs_texture_t* GreenScreenFilterEffect::Filter(std::uint32_t width, std::uint32_t height, const DepthFilterParams& params)
 {
-	std::uint32_t depthWidth = gs_texture_get_width(params.depthTexture);
-	std::uint32_t depthHeight = gs_texture_get_height(params.depthTexture);
+	if (!Begin(width, height))
+		return nullptr;
 
+	SetDepthParams(params);
+
+	gs_technique_t* technique = (params.colorToDepthTexture) ? m_tech_DepthOnlyWithDepthCorrection : m_tech_DepthOnlyWithoutDepthCorrection;
+
+	return Process(width, height, technique);
+}
+
+bool GreenScreenFilterEffect::Begin(std::uint32_t width, std::uint32_t height)
+{
 	gs_texrender_reset(m_workTexture);
 	if (!gs_texrender_begin(m_workTexture, width, height))
-		return nullptr;
+		return false;
 
 	vec4 black = { 0.f, 0.f, 0.f, 1.f };
 	gs_clear(GS_CLEAR_COLOR, &black, 0.f, 0);
 	gs_ortho(0.0f, float(width), 0.0f, float(height), -100.0f, 100.0f);
 
-	vec2 invDepthSize = { 1.f / depthWidth, 1.f / depthHeight };
+	return true;
+}
 
-	constexpr float maxDepthValue = 0xFFFF;
-	constexpr float invMaxDepthValue = 1.f / maxDepthValue;
-
-	gs_effect_set_vec2(m_params_InvDepthImageSize, &invDepthSize);
-	gs_effect_set_texture(m_params_DepthImage, params.depthTexture);
-	gs_effect_set_texture(m_params_DepthMappingImage, params.colorToDepthTexture);
-	gs_effect_set_float(m_params_InvDepthProgressive, maxDepthValue / params.progressiveDepth);
-	gs_effect_set_float(m_params_MaxDepth, params.maxDepth * invMaxDepthValue);
-	gs_effect_set_float(m_params_MinDepth, params.minDepth * invMaxDepthValue);
-
-	gs_technique_t* technique = (params.colorToDepthTexture) ? m_tech_DepthOnlyWithDepthCorrection : m_tech_DepthOnlyWithoutDepthCorrection;
-
+gs_texture* GreenScreenFilterEffect::Process(std::uint32_t width, std::uint32_t height, gs_technique_t* technique)
+{
 	gs_technique_begin(technique);
 	gs_technique_begin_pass(technique, 0);
 	gs_draw_sprite(nullptr, 0, width, height);

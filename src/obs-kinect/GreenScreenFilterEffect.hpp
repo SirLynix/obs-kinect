@@ -28,11 +28,15 @@ class GreenScreenFilterEffect
 	public:
 		struct BodyFilterParams;
 		struct DepthFilterParams;
+		struct BodyOrDepthFilterParams;
+		struct BodyWithinDepthFilterParams;
 
 		GreenScreenFilterEffect();
 		~GreenScreenFilterEffect();
 
 		gs_texture_t* Filter(std::uint32_t width, std::uint32_t height, const BodyFilterParams& params);
+		gs_texture_t* Filter(std::uint32_t width, std::uint32_t height, const BodyOrDepthFilterParams& params);
+		gs_texture_t* Filter(std::uint32_t width, std::uint32_t height, const BodyWithinDepthFilterParams& params);
 		gs_texture_t* Filter(std::uint32_t width, std::uint32_t height, const DepthFilterParams& params);
 
 		struct BodyFilterParams
@@ -50,7 +54,32 @@ class GreenScreenFilterEffect
 			float minDepth;
 		};
 
+		struct BodyOrDepthFilterParams
+		{
+			gs_texture_t* bodyIndexTexture;
+			gs_texture_t* colorToDepthTexture;
+			gs_texture_t* depthTexture;
+			float progressiveDepth;
+			float maxDepth;
+			float minDepth;
+		};
+
+		struct BodyWithinDepthFilterParams
+		{
+			gs_texture_t* bodyIndexTexture;
+			gs_texture_t* colorToDepthTexture;
+			gs_texture_t* depthTexture;
+			float progressiveDepth;
+			float maxDepth;
+			float minDepth;
+		};
+
 	private:
+		bool Begin(std::uint32_t width, std::uint32_t height);
+		gs_texture* Process(std::uint32_t width, std::uint32_t height, gs_technique_t* technique);
+		template<typename Params> void SetBodyParams(const Params& params);
+		template<typename Params> void SetDepthParams(const Params& params);
+
 		gs_effect_t* m_effect;
 		gs_eparam_t* m_params_BodyIndexImage;
 		gs_eparam_t* m_params_DepthImage;
@@ -61,9 +90,15 @@ class GreenScreenFilterEffect
 		gs_eparam_t* m_params_MinDepth;
 		gs_technique_t* m_tech_BodyOnlyWithDepthCorrection;
 		gs_technique_t* m_tech_BodyOnlyWithoutDepthCorrection;
+		gs_technique_t* m_tech_BodyOrDepthWithDepthCorrection;
+		gs_technique_t* m_tech_BodyOrDepthWithoutDepthCorrection;
+		gs_technique_t* m_tech_BodyWithinDepthWithDepthCorrection;
+		gs_technique_t* m_tech_BodyWithinDepthWithoutDepthCorrection;
 		gs_technique_t* m_tech_DepthOnlyWithDepthCorrection;
 		gs_technique_t* m_tech_DepthOnlyWithoutDepthCorrection;
 		gs_texrender_t* m_workTexture;
 };
+
+#include "GreenScreenFilterEffect.inl"
 
 #endif

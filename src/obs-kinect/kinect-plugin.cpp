@@ -162,7 +162,7 @@ static obs_properties_t* kinect_source_properties(void *unused)
 		set_property_visibility(props, "greenscreen_type", enabled);
 		set_property_visibility(props, "greenscreen_gpudepthmapping", enabled);
 
-		bool depthSettingsVisible = (enabled && type == KinectSource::GreenScreenType::Depth);
+		bool depthSettingsVisible = (enabled && type != KinectSource::GreenScreenType::Body);
 
 		set_property_visibility(props, "greenscreen_fadedist", depthSettingsVisible);
 		set_property_visibility(props, "greenscreen_maxdist", depthSettingsVisible);
@@ -178,7 +178,9 @@ static obs_properties_t* kinect_source_properties(void *unused)
 	p = obs_properties_add_list(props, "greenscreen_type", obs_module_text("KinectSource.GreenScreenType"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(p, obs_module_text("KinectSource.GreenScreenType_Body"), static_cast<int>(KinectSource::GreenScreenType::Body));
 	obs_property_list_add_int(p, obs_module_text("KinectSource.GreenScreenType_Depth"), static_cast<int>(KinectSource::GreenScreenType::Depth));
-	
+	obs_property_list_add_int(p, obs_module_text("KinectSource.GreenScreenType_BodyOrDepth"), static_cast<int>(KinectSource::GreenScreenType::BodyOrDepth));
+	obs_property_list_add_int(p, obs_module_text("KinectSource.GreenScreenType_BodyWithinDepth"), static_cast<int>(KinectSource::GreenScreenType::BodyWithinDepth));
+
 	obs_property_set_modified_callback(p, greenscreenVisibilityCallback);
 
 	obs_properties_add_int_slider(props, "greenscreen_maxdist", obs_module_text("KinectSource.GreenScreenMaxDist"), 0, 10000, 10);

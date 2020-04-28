@@ -69,8 +69,10 @@ class KinectSource
 
 		enum class GreenScreenType
 		{
-			Body,
-			Depth
+			Body = 0,
+			BodyOrDepth = 2,
+			BodyWithinDepth = 3,
+			Depth = 1
 		};
 
 		enum class SourceType
