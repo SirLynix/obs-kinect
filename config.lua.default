@@ -1,7 +1,8 @@
 -- Example config, copy to config.lua before building
 
--- You shouldn't have to change this ()
 libkinect = {
+-- You shouldn't have to change this
+kinectsdk20 = {
 	Include = "$(KINECTSDK20_DIR)/inc",
 	Lib32 = "$(KINECTSDK20_DIR)/lib/x86",
 	Lib64 = "$(KINECTSDK20_DIR)/lib/x64",

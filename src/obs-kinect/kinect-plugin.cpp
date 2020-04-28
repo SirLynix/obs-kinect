@@ -15,23 +15,19 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "KinectDevice.hpp"
+#include "KinectDeviceRegistry.hpp"
 #include "KinectSource.hpp"
 #include <obs-module.h>
+#include <cstring>
 #include <optional>
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_AUTHOR("SirLynix")
 OBS_MODULE_USE_DEFAULT_LOCALE("kinect_source", "en-US")
 
-#define blog(log_level, format, ...)                    \
-	blog(log_level, "[obs-kinect] " format, ##__VA_ARGS__)
+static std::optional<KinectDeviceRegistry> s_deviceRegistry;
 
-#define debug(format, ...) blog(LOG_DEBUG, format, ##__VA_ARGS__)
-#define info(format, ...) blog(LOG_INFO, format, ##__VA_ARGS__)
-#define warn(format, ...) blog(LOG_WARNING, format, ##__VA_ARGS__)
-
-static std::optional<KinectDevice> s_device;
+static const char* NoDevice = "none_none";
 
 void set_property_visibility(obs_properties_t* props, const char* propertyName, bool visible)
 {
@@ -43,6 +39,11 @@ void set_property_visibility(obs_properties_t* props, const char* propertyName, 
 static void kinect_source_update(void* data, obs_data_t* settings)
 {
 	KinectSource* kinectSource = static_cast<KinectSource*>(data);
+
+	const char* deviceName = obs_data_get_string(settings, "device");
+
+	kinectSource->UpdateDevice(deviceName);
+
 	kinectSource->SetServicePriority(static_cast<ProcessPriority>(obs_data_get_int(settings, "service_priority")));
 	kinectSource->SetSourceType(static_cast<KinectSource::SourceType>(obs_data_get_int(settings, "source")));
 	kinectSource->ShouldStopOnHide(obs_data_get_bool(settings, "invisible_shutdown"));
@@ -76,7 +77,7 @@ static void kinect_source_update(void* data, obs_data_t* settings)
 
 static void* kinect_source_create(obs_data_t* settings, obs_source_t* source)
 {
-	KinectSource* kinect = new KinectSource(s_device.value(), source);
+	KinectSource* kinect = new KinectSource(*s_deviceRegistry);
 	kinect_source_update(kinect, settings);
 
 	kinect->OnVisibilityUpdate(obs_source_showing(source));
@@ -96,6 +97,23 @@ static obs_properties_t* kinect_source_properties(void *unused)
 
 	obs_properties_t* props = obs_properties_create();
 	obs_property_t* p;
+
+	p = obs_properties_add_list(props, "device", obs_module_text("KinectSource.Device"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+
+	obs_property_list_add_string(p, obs_module_text("KinectSource.NoDevice"), NoDevice);
+	s_deviceRegistry->ForEachDevice([p](const std::string& pluginName, const std::string& uniqueName, const KinectDevice& device)
+	{
+		std::string label = pluginName + " - " + device.GetUniqueName();
+		obs_property_list_add_string(p, label.c_str(), uniqueName.c_str());
+
+		return true;
+	});
+
+	obs_properties_add_button(props, "device_refresh", "Refresh Kinect Devices", [](obs_properties_t* props, obs_property_t* property, void* data)
+	{
+		s_deviceRegistry->Refresh();
+		return true;
+	});
 
 	p = obs_properties_add_list(props, "service_priority", obs_module_text("KinectSource.Priority"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(p, obs_module_text("KinectSource.Priority_High"), static_cast<int>(ProcessPriority::High));
@@ -175,6 +193,13 @@ static obs_properties_t* kinect_source_properties(void *unused)
 
 static void kinect_source_defaults(obs_data_t *settings)
 {
+	obs_data_set_default_string(settings, "device", NoDevice);
+	s_deviceRegistry->ForEachDevice([=](const std::string& pluginName, const std::string& uniqueName, const KinectDevice& device)
+	{
+		obs_data_set_default_string(settings, "device", uniqueName.c_str());
+		return false; //< Stop at first device
+	});
+
 	obs_data_set_default_int(settings, "service_priority", static_cast<int>(ProcessPriority::Normal));
 	obs_data_set_default_int(settings, "source", static_cast<int>(KinectSource::SourceType::Color));
 	obs_data_set_default_bool(settings, "invisible_shutdown", false);
@@ -232,18 +257,10 @@ void RegisterKinectSource()
 MODULE_EXPORT
 bool obs_module_load()
 {
-	if (!s_device)
-	{
-		try
-		{
-			s_device.emplace();
-		}
-		catch (const std::exception& e)
-		{
-			warn("failed to init Kinect device, is a Kinect connected? (%s)", e.what());
-			return false;
-		}
-	}
+	s_deviceRegistry.emplace();
+	s_deviceRegistry->RegisterPlugin("obs-kinect-sdk20");
+
+	s_deviceRegistry->Refresh();
 
 	RegisterKinectSource();
 	return true;
@@ -252,5 +269,5 @@ bool obs_module_load()
 MODULE_EXPORT
 void obs_module_unload()
 {
-	s_device.reset();
+	s_deviceRegistry.reset();
 }

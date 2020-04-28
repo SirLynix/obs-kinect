@@ -20,38 +20,30 @@
 #ifndef OBS_KINECT_PLUGIN_HELPER
 #define OBS_KINECT_PLUGIN_HELPER
 
+#ifdef _WIN32
+	#define OBSKINECT_EXPORT __declspec(dllexport)
+	#define OBSKINECT_IMPORT __declspec(dllimport)
+#else
+	#define OBSKINECT_EXPORT __attribute__((visibility ("default")))
+	#define OBSKINECT_IMPORT __attribute__((visibility ("default")))
+#endif
+
+#ifdef OBS_KINECT_CORE_EXPORT
+	#define OBSKINECT_API OBSKINECT_EXPORT
+#else
+	#define OBSKINECT_API OBSKINECT_IMPORT
+#endif
+
 #include <obs-module.h>
+#include <util/platform.h>
 #include <memory>
-#include <type_traits>
 
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
+#define blog(log_level, format, ...)                    \
+	blog(log_level, "[obs-kinect] " format, ##__VA_ARGS__)
 
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-
-#include <windows.h>
-
-struct CloseHandleDeleter
-{
-	void operator()(HANDLE handle) const
-	{
-		CloseHandle(handle);
-	}
-};
-
-using HandlePtr = std::unique_ptr<std::remove_pointer_t<HANDLE>, CloseHandleDeleter>;
-
-template<typename Interface>
-struct CloseDeleter
-{
-	void operator()(Interface* handle) const
-	{
-		handle->Close();
-	}
-};
+#define debug(format, ...) blog(LOG_DEBUG, format, ##__VA_ARGS__)
+#define info(format, ...) blog(LOG_INFO, format, ##__VA_ARGS__)
+#define warn(format, ...) blog(LOG_WARNING, format, ##__VA_ARGS__)
 
 template<typename T>
 struct DummyDeleter
@@ -62,24 +54,23 @@ struct DummyDeleter
 	}
 };
 
-template<typename Interface>
-struct ReleaseDeleter
-{
-	void operator()(Interface* handle) const
-	{
-		handle->Release();
-	}
-};
-
-template<typename T> using ClosePtr = std::unique_ptr<T, CloseDeleter<T>>;
 template<typename T> using ObserverPtr = std::unique_ptr<T, DummyDeleter<T>>;
-template<typename T> using ReleasePtr = std::unique_ptr<T, ReleaseDeleter<T>>;
 
 struct ObsGraphics
 {
 	ObsGraphics() { obs_enter_graphics(); }
 	~ObsGraphics() { obs_leave_graphics(); }
 };
+
+struct ObsLibDeleter
+{
+	void operator()(void* lib) const
+	{
+		os_dlclose(lib);
+	}
+};
+
+using ObsLibPtr = std::unique_ptr<void, ObsLibDeleter>;
 
 struct ObsTextureDeleter
 {

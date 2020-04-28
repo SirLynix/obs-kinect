@@ -17,27 +17,52 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_ENUMS
-#define OBS_KINECT_PLUGIN_ENUMS
+#ifndef OBS_KINECT_PLUGIN_WIN32HELPER
+#define OBS_KINECT_PLUGIN_WIN32HELPER
 
-#include <cstdint>
+#include <memory>
+#include <type_traits>
 
-enum EnabledSources
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#include <windows.h>
+
+struct CloseHandleDeleter
 {
-	Source_Body                = 1 << 0,
-	Source_Color               = 1 << 1,
-	Source_ColorToDepthMapping = 1 << 2,
-	Source_Depth               = 1 << 3,
-	Source_Infrared            = 1 << 4
+	void operator()(HANDLE handle) const
+	{
+		if (handle != INVALID_HANDLE_VALUE)
+			CloseHandle(handle);
+	}
 };
 
-using EnabledSourceFlags = std::uint32_t;
+using HandlePtr = std::unique_ptr<std::remove_pointer_t<HANDLE>, CloseHandleDeleter>;
 
-enum class ProcessPriority
+template<typename Interface>
+struct CloseDeleter
 {
-	Normal = 0,
-	AboveNormal = 1,
-	High = 2
+	void operator()(Interface* handle) const
+	{
+		handle->Close();
+	}
 };
+
+template<typename Interface>
+struct ReleaseDeleter
+{
+	void operator()(Interface* handle) const
+	{
+		handle->Release();
+	}
+};
+
+template<typename T> using ClosePtr = std::unique_ptr<T, CloseDeleter<T>>;
+template<typename T> using ReleasePtr = std::unique_ptr<T, ReleaseDeleter<T>>;
 
 #endif

@@ -16,50 +16,37 @@
 ******************************************************************************/
 
 #include "KinectSource.hpp"
+#include "KinectDevice.hpp"
+#include "KinectDeviceRegistry.hpp"
 #include <util/platform.h>
 #include <algorithm>
 #include <array>
 #include <numeric>
 #include <optional>
 
-#define blog(log_level, format, ...)                    \
-	blog(log_level, "[obs-kinect] " format, ##__VA_ARGS__)
-
-#define debug(format, ...) blog(LOG_DEBUG, format, ##__VA_ARGS__)
-#define info(format, ...) blog(LOG_INFO, format, ##__VA_ARGS__)
-#define warn(format, ...) blog(LOG_WARNING, format, ##__VA_ARGS__)
-
-KinectSource::KinectSource(KinectDevice& device, obs_source_t* source) :
+KinectSource::KinectSource(KinectDeviceRegistry& registry) :
 m_gaussianBlur(GS_RGBA),
-m_device(device),
+m_registry(registry),
 m_servicePriority(ProcessPriority::Normal),
 m_sourceType(SourceType::Color),
-m_source(source),
+m_isVisible(false),
 m_stopOnHide(false)
 {
+	m_registry.RegisterSource(this);
 }
 
-KinectSource::~KinectSource() = default;
+KinectSource::~KinectSource()
+{
+	m_registry.UnregisterSource(this);
+}
 
 void KinectSource::OnVisibilityUpdate(bool isVisible)
 {
-	if (isVisible)
-	{
-		try
-		{
-			m_deviceAccess = m_device.AcquireAccess(ComputeEnabledSourceFlags());
-			m_deviceAccess->SetServicePriority(m_servicePriority);
-		}
-		catch (const std::exception& e)
-		{
-			warn("failed to start capture: %s", e.what());
-		}
-	}
-	else if (m_stopOnHide)
-	{
-		m_deviceAccess.reset();
-		m_finalTexture.reset();
-	}
+	m_isVisible = isVisible || !m_stopOnHide;
+	RefreshDeviceAccess();
+
+	if (!m_isVisible)
+		m_finalTexture.reset(); //< Free some memory
 }
 
 void KinectSource::SetServicePriority(ProcessPriority servicePriority)
@@ -105,6 +92,8 @@ void KinectSource::UpdateInfraredToColor(InfraredToColorSettings infraredToColor
 void KinectSource::ShouldStopOnHide(bool shouldStop)
 {
 	m_stopOnHide = shouldStop;
+	if (!m_stopOnHide && !m_deviceAccess)
+		RefreshDeviceAccess();
 }
 
 void KinectSource::Render()
@@ -173,7 +162,10 @@ void KinectSource::Update(float /*seconds*/)
 
 	try
 	{
-		auto frameData = m_device.GetLastFrame();
+		if (!m_deviceAccess)
+			return;
+
+		auto frameData = m_deviceAccess->GetLastFrame();
 		if (!frameData)
 			return;
 
@@ -393,6 +385,20 @@ void KinectSource::Update(float /*seconds*/)
 	}
 }
 
+void KinectSource::UpdateDevice(std::string deviceName)
+{
+	if (m_deviceName == deviceName)
+		return;
+
+	m_deviceName = std::move(deviceName);
+	RefreshDeviceAccess();
+}
+
+void KinectSource::ClearDeviceAccess()
+{
+	m_deviceAccess.reset();
+}
+
 EnabledSourceFlags KinectSource::ComputeEnabledSourceFlags() const
 {
 	EnabledSourceFlags flags = 0;
@@ -421,6 +427,36 @@ EnabledSourceFlags KinectSource::ComputeEnabledSourceFlags() const
 	}
 
 	return flags;
+}
+
+std::optional<KinectDeviceAccess> KinectSource::OpenAccess(KinectDevice& device)
+{
+	try
+	{
+		KinectDeviceAccess deviceAccess = device.AcquireAccess(ComputeEnabledSourceFlags());
+		deviceAccess.SetServicePriority(m_servicePriority);
+
+		return deviceAccess;
+	}
+	catch (const std::exception& e)
+	{
+		warn("failed to access kinect device: %s", e.what());
+		return {};
+	}
+}
+
+void KinectSource::RefreshDeviceAccess()
+{
+	if (m_isVisible)
+	{
+		KinectDevice* device = m_registry.GetDevice(m_deviceName);
+		if (device)
+			m_deviceAccess = OpenAccess(*device);
+		else
+			m_deviceAccess.reset();
+	}
+	else
+		m_deviceAccess.reset();
 }
 
 auto KinectSource::ComputeDynamicValues(const std::uint16_t* values, std::size_t valueCount) -> DynamicValues

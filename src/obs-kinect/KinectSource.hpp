@@ -27,7 +27,6 @@
 #include "ConvertDepthIRToColorEffect.hpp"
 #include "DepthFilterEffect.hpp"
 #include "GaussianBlurEffect.hpp"
-#include "KinectDevice.hpp"
 #include "KinectDeviceAccess.hpp"
 #include <obs-module.h>
 #include <atomic>
@@ -37,8 +36,13 @@
 #include <thread>
 #include <vector>
 
+class KinectDevice;
+class KinectDeviceRegistry;
+
 class KinectSource
 {
+	friend KinectDeviceRegistry;
+
 	public:
 		enum class GreenScreenType;
 		enum class SourceType;
@@ -46,7 +50,7 @@ class KinectSource
 		struct GreenScreenSettings;
 		struct InfraredToColorSettings;
 
-		KinectSource(KinectDevice& device, obs_source_t* source);
+		KinectSource(KinectDeviceRegistry& registry);
 		~KinectSource();
 
 		void OnVisibilityUpdate(bool isVisible);
@@ -59,6 +63,7 @@ class KinectSource
 		void ShouldStopOnHide(bool shouldStop);
 
 		void Update(float seconds);
+		void UpdateDevice(std::string deviceName);
 		void UpdateDepthToColor(DepthToColorSettings depthToColor);
 		void UpdateGreenScreen(GreenScreenSettings greenScreen);
 		void UpdateInfraredToColor(InfraredToColorSettings infraredToColor);
@@ -109,7 +114,10 @@ class KinectSource
 			double standardDeviation;
 		};
 
+		void ClearDeviceAccess();
 		EnabledSourceFlags ComputeEnabledSourceFlags() const;
+		std::optional<KinectDeviceAccess> OpenAccess(KinectDevice& device);
+		void RefreshDeviceAccess();
 
 		static DynamicValues ComputeDynamicValues(const std::uint16_t* values, std::size_t valueCount);
 
@@ -125,7 +133,7 @@ class KinectSource
 		DepthToColorSettings m_depthToColorSettings;
 		GreenScreenSettings m_greenScreenSettings;
 		InfraredToColorSettings m_infraredToColorSettings;
-		KinectDevice& m_device;
+		KinectDeviceRegistry& m_registry;
 		ObsTexturePtr m_bodyIndexTexture;
 		ObsTexturePtr m_colorTexture;
 		ObsTexturePtr m_depthMappingTexture;
@@ -133,7 +141,8 @@ class KinectSource
 		ObsTexturePtr m_infraredTexture;
 		ProcessPriority m_servicePriority;
 		SourceType m_sourceType;
-		obs_source_t* m_source;
+		std::string m_deviceName;
+		bool m_isVisible;
 		bool m_stopOnHide;
 };
 

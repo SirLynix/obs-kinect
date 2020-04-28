@@ -25,8 +25,6 @@
 #include "KinectDevice.hpp"
 #include <memory>
 
-class KinectDevice;
-
 class KinectDeviceAccess
 {
 	friend KinectDevice;

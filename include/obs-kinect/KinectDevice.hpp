@@ -31,34 +31,27 @@
 #include <thread>
 #include <vector>
 
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-
-#include <Kinect.h>
-#include <windows.h>
-
 class KinectDeviceAccess;
 
-class KinectDevice
+class OBSKINECT_API KinectDevice
 {
 	friend KinectDeviceAccess;
 
 	public:
 		struct DepthCoordinates;
 
-		KinectDevice();
-		~KinectDevice();
+		KinectDevice(std::string uniqueName);
+		KinectDevice(const KinectDevice&) = delete;
+		KinectDevice(KinectDevice&&) = delete;
+		virtual ~KinectDevice();
 
 		KinectDeviceAccess AcquireAccess(EnabledSourceFlags enabledSources);
 
 		KinectFrameConstPtr GetLastFrame();
 
-		bool MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthCoordinates* depthCoordinatesOut);
+		virtual bool MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthCoordinates* depthCoordinatesOut) const = 0;
+
+		const std::string& GetUniqueName() const;
 
 		void StartCapture();
 		void StopCapture();
@@ -68,6 +61,18 @@ class KinectDevice
 			float x;
 			float y;
 		};
+
+		KinectDevice& operator=(const KinectDevice&) = delete;
+		KinectDevice& operator=(KinectDevice&&) = delete;
+
+	protected:
+		std::optional<EnabledSourceFlags> GetSourceFlagsUpdate();
+
+		bool IsRunning() const;
+		void UpdateFrame(KinectFramePtr kinectFrame);
+
+		virtual void SetServicePriority(ProcessPriority priority) = 0;
+		virtual void ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr) = 0;
 
 	private:
 		struct AccessData
@@ -80,30 +85,18 @@ class KinectDevice
 		void UpdateEnabledSources();
 		void UpdateServicePriority();
 
-		BodyIndexFrameData RetrieveBodyIndexFrame(IMultiSourceFrame* multiSourceFrame);
-		ColorFrameData RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame);
-		DepthFrameData RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame);
-		DepthMappingFrameData RetrieveDepthMappingFrame(const ColorFrameData& colorFrame, const DepthFrameData& depthFrame);
-
-		InfraredFrameData RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame);
-
 		void SetEnabledSources(EnabledSourceFlags sourceFlags);
-		bool SetServicePriority(ProcessPriority priority);
-
-		void ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr);
 
 		EnabledSourceFlags m_deviceSources;
-		ReleasePtr<IKinectSensor> m_kinectSensor;
-		ReleasePtr<ICoordinateMapper> m_coordinateMapper;
 		KinectFramePtr m_lastFrame;
 		ProcessPriority m_servicePriority;
 		std::atomic_bool m_running;
 		std::mutex m_deviceSourceLock;
 		std::mutex m_lastFrameLock;
+		std::string m_uniqueName;
 		std::thread m_thread;
 		std::vector<std::unique_ptr<AccessData>> m_accesses;
 		bool m_deviceSourceUpdated;
-		bool m_hasRequestedPrivilege;
 };
 
 #endif
