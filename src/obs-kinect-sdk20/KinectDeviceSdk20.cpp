@@ -211,7 +211,6 @@ DepthMappingFrameData KinectDeviceSdk20::RetrieveDepthMappingFrame(const KinectD
 	DepthMappingFrameData outputFrameData;
 	outputFrameData.width = colorFrame.width;
 	outputFrameData.height = colorFrame.height;
-	outputFrameData.pitch = colorFrame.pitch;
 
 	std::size_t colorPixelCount = outputFrameData.width * outputFrameData.height;
 
@@ -226,6 +225,7 @@ DepthMappingFrameData KinectDeviceSdk20::RetrieveDepthMappingFrame(const KinectD
 		throw std::runtime_error("failed to map color to depth");
 
 	outputFrameData.ptr.reset(reinterpret_cast<std::uint8_t*>(coordinatePtr));
+	outputFrameData.pitch = colorFrame.width * sizeof(KinectDeviceSdk20::DepthCoordinates);
 
 	return outputFrameData;
 }
