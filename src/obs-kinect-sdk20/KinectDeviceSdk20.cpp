@@ -217,15 +217,15 @@ DepthMappingFrameData KinectDeviceSdk20::RetrieveDepthMappingFrame(const KinectD
 	const std::uint16_t* depthPtr = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
 	std::size_t depthPixelCount = depthFrame.width * depthFrame.height;
 
-	outputFrameData.memory.resize(colorPixelCount * sizeof(KinectDeviceSdk20::DepthCoordinates));
+	outputFrameData.memory.resize(colorPixelCount * sizeof(DepthCoordinates));
 
-	KinectDeviceSdk20::DepthCoordinates* coordinatePtr = reinterpret_cast<KinectDeviceSdk20::DepthCoordinates*>(outputFrameData.memory.data());
+	DepthCoordinates* coordinatePtr = reinterpret_cast<DepthCoordinates*>(outputFrameData.memory.data());
 
 	if (!device.MapColorToDepth(depthPtr, depthPixelCount, colorPixelCount, coordinatePtr))
 		throw std::runtime_error("failed to map color to depth");
 
 	outputFrameData.ptr.reset(reinterpret_cast<std::uint8_t*>(coordinatePtr));
-	outputFrameData.pitch = colorFrame.width * sizeof(KinectDeviceSdk20::DepthCoordinates);
+	outputFrameData.pitch = colorFrame.width * sizeof(DepthCoordinates);
 
 	return outputFrameData;
 }
@@ -439,8 +439,10 @@ void KinectDeviceSdk20::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 	if (error)
 		return;
 
+	constexpr std::uint64_t MaxKinectFPS = 30;
+
 	uint64_t now = os_gettime_ns();
-	uint64_t delay = 1'000'000'000ULL / 30; // Target 30 FPS (Kinect doesn't run higher afaik)
+	uint64_t delay = 1'000'000'000ULL / MaxKinectFPS;
 
 	while (IsRunning())
 	{

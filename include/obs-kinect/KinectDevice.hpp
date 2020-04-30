@@ -49,8 +49,6 @@ class OBSKINECT_API KinectDevice
 
 		KinectFrameConstPtr GetLastFrame();
 
-		virtual bool MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthCoordinates* depthCoordinatesOut) const = 0;
-
 		const std::string& GetUniqueName() const;
 
 		void StartCapture();
