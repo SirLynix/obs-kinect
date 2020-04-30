@@ -29,6 +29,7 @@ m_running(false)
 KinectDevice::~KinectDevice()
 {
 	m_accesses.clear();
+	StopCapture(); //< Just in case
 }
 
 KinectDeviceAccess KinectDevice::AcquireAccess(EnabledSourceFlags enabledSources)
