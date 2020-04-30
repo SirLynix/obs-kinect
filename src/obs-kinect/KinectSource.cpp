@@ -29,6 +29,8 @@ m_gaussianBlur(GS_RGBA),
 m_registry(registry),
 m_servicePriority(ProcessPriority::Normal),
 m_sourceType(SourceType::Color),
+m_height(0),
+m_width(0),
 m_isVisible(false),
 m_stopOnHide(false)
 {
@@ -38,6 +40,16 @@ m_stopOnHide(false)
 KinectSource::~KinectSource()
 {
 	m_registry.UnregisterSource(this);
+}
+
+std::uint32_t KinectSource::GetHeight() const
+{
+	return m_height;
+}
+
+std::uint32_t KinectSource::GetWidth() const
+{
+	return m_width;
 }
 
 void KinectSource::OnVisibilityUpdate(bool isVisible)
@@ -160,6 +172,9 @@ void KinectSource::Update(float /*seconds*/)
 		}
 	};
 
+	m_height = 0;
+	m_width = 0;
+
 	try
 	{
 		if (!m_deviceAccess)
@@ -197,12 +212,12 @@ void KinectSource::Update(float /*seconds*/)
 
 			case SourceType::Depth:
 			{
+				const DepthFrameData& depthFrame = frameData->depthFrame.value();
+
 				float averageValue;
 				float standardDeviation;
 				if (m_depthToColorSettings.dynamic)
 				{
-					const DepthFrameData& depthFrame = frameData->depthFrame.value();
-
 					const std::uint16_t* depthValues = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
 					std::size_t depthValueCount = depthFrame.width * depthFrame.height;
 
@@ -216,7 +231,7 @@ void KinectSource::Update(float /*seconds*/)
 					standardDeviation = m_depthToColorSettings.standardDeviation;
 				}
 
-				sourceTexture = m_depthIRConvertEffect.Convert(1920, 1080, m_depthTexture.get(), averageValue, standardDeviation);
+				sourceTexture = m_depthIRConvertEffect.Convert(depthFrame.width, depthFrame.height, m_depthTexture.get(), averageValue, standardDeviation);
 				break;
 			}
 
@@ -245,13 +260,16 @@ void KinectSource::Update(float /*seconds*/)
 				}
 
 				UpdateTexture(m_infraredTexture, GS_R16, irFrame.width, irFrame.height, irFrame.pitch, irFrame.ptr.get());
-				sourceTexture = m_depthIRConvertEffect.Convert(1920, 1080, m_infraredTexture.get(), averageValue, standardDeviation);
+				sourceTexture = m_depthIRConvertEffect.Convert(irFrame.width, irFrame.height, m_infraredTexture.get(), averageValue, standardDeviation);
 				break;
 			}
 
 			default:
 				break;
 		}
+
+		m_width = gs_texture_get_width(sourceTexture);
+		m_height = gs_texture_get_height(sourceTexture);
 
 		if (m_greenScreenSettings.enabled)
 		{
@@ -348,9 +366,6 @@ void KinectSource::Update(float /*seconds*/)
 			}
 
 			// Apply green screen filtering
-			std::uint32_t width = gs_texture_get_width(sourceTexture);
-			std::uint32_t height = gs_texture_get_height(sourceTexture);
-
 			gs_texture_t* filterTexture = nullptr;
 			switch (m_greenScreenSettings.type)
 			{
@@ -360,7 +375,7 @@ void KinectSource::Update(float /*seconds*/)
 					filterParams.bodyIndexTexture = m_bodyIndexTexture.get();
 					filterParams.colorToDepthTexture = depthMappingTexture;
 
-					filterTexture = m_greenScreenFilterEffect.Filter(width, height, filterParams);
+					filterTexture = m_greenScreenFilterEffect.Filter(m_width, m_height, filterParams);
 					break;
 				}
 
@@ -374,7 +389,7 @@ void KinectSource::Update(float /*seconds*/)
 					filterParams.minDepth = m_greenScreenSettings.depthMin;
 					filterParams.progressiveDepth = m_greenScreenSettings.fadeDist;
 
-					filterTexture = m_greenScreenFilterEffect.Filter(width, height, filterParams);
+					filterTexture = m_greenScreenFilterEffect.Filter(m_width, m_height, filterParams);
 					break;
 				}
 
@@ -388,7 +403,7 @@ void KinectSource::Update(float /*seconds*/)
 					filterParams.minDepth = m_greenScreenSettings.depthMin;
 					filterParams.progressiveDepth = m_greenScreenSettings.fadeDist;
 
-					filterTexture = m_greenScreenFilterEffect.Filter(width, height, filterParams);
+					filterTexture = m_greenScreenFilterEffect.Filter(m_width, m_height, filterParams);
 					break;
 				}
 
@@ -401,7 +416,7 @@ void KinectSource::Update(float /*seconds*/)
 					filterParams.minDepth = m_greenScreenSettings.depthMin;
 					filterParams.progressiveDepth = m_greenScreenSettings.fadeDist;
 
-					filterTexture = m_greenScreenFilterEffect.Filter(width, height, filterParams);
+					filterTexture = m_greenScreenFilterEffect.Filter(m_width, m_height, filterParams);
 					break;
 				}
 

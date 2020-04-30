@@ -52,6 +52,9 @@ class KinectSource
 		KinectSource(KinectDeviceRegistry& registry);
 		~KinectSource();
 
+		std::uint32_t GetHeight() const;
+		std::uint32_t GetWidth() const;
+
 		void OnVisibilityUpdate(bool isVisible);
 
 		void Render();
@@ -142,6 +145,8 @@ class KinectSource
 		ProcessPriority m_servicePriority;
 		SourceType m_sourceType;
 		std::string m_deviceName;
+		std::uint32_t m_height;
+		std::uint32_t m_width;
 		bool m_isVisible;
 		bool m_stopOnHide;
 };

@@ -245,8 +245,8 @@ void RegisterKinectSource()
 	info.update = kinect_source_update;
 	info.get_defaults = kinect_source_defaults;
 	info.get_properties = kinect_source_properties;
-	info.get_width = [](void*) -> uint32_t { return 1920; };
-	info.get_height = [](void*) -> uint32_t { return 1080; };
+	info.get_width = [](void* data) { return static_cast<KinectSource*>(data)->GetWidth(); };
+	info.get_height = [](void* data) { return static_cast<KinectSource*>(data)->GetHeight(); };
 	info.video_render = kinect_video_render;
 	info.video_tick = kinect_video_tick;
 	info.show = [](void* data) { static_cast<KinectSource*>(data)->OnVisibilityUpdate(true); };
