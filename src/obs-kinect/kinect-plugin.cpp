@@ -270,6 +270,7 @@ MODULE_EXPORT
 bool obs_module_load()
 {
 	s_deviceRegistry.emplace();
+	s_deviceRegistry->RegisterPlugin("obs-kinect-sdk10");
 	s_deviceRegistry->RegisterPlugin("obs-kinect-sdk20");
 
 	s_deviceRegistry->Refresh();

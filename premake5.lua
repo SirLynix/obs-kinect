@@ -37,6 +37,42 @@ table.insert(projects, {
 })
 
 if (os.istarget("windows")) then
+	if (Config.kinectsdk10) then
+		table.insert(projects, {
+			Name = "obs-kinect-sdk10",
+			Defines = {"WIN32", "_WINDOWS"},
+			Files = { 
+				"src/obs-kinect-sdk10/**.hpp", 
+				"src/obs-kinect-sdk10/**.inl", 
+				"src/obs-kinect-sdk10/**.cpp"
+			},
+			Include = {
+				obsinclude,
+				"include/obs-kinect",
+				assert(Config.kinectsdk10.Include, "Missing kinectsdk10 include dir")
+			},
+			LibDir32 = {
+				obslib32,
+				assert(Config.kinectsdk10.Lib32, "Missing kinectsdk10 lib dir (x86)")
+			},
+			LibDir64 = {
+				obslib64,
+				assert(Config.kinectsdk10.Lib64, "Missing kinectsdk10 lib dir (x86_64)")
+			},
+			Links = {
+				"obs-kinect",
+				"obs",
+				"Kinect10"
+			}
+		})
+	else
+		print("Ignored kinectsdk10 project (missing configuration)")
+	end
+else
+	print("Ignored kinectsdk10 project (host isn't windows)")
+end
+
+if (os.istarget("windows")) then
 	if (Config.kinectsdk20) then
 		table.insert(projects, {
 			Name = "obs-kinect-sdk20",
