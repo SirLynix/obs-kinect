@@ -16,6 +16,7 @@
 ******************************************************************************/
 
 #include "KinectDeviceSdk20.hpp"
+#include <util/threading.h>
 #include <array>
 #include <tlhelp32.h>
 
@@ -375,6 +376,8 @@ void KinectDeviceSdk20::SetServicePriority(ProcessPriority priority)
 
 void KinectDeviceSdk20::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& error)
 {
+	os_set_thread_name("KinectDeviceSdk20");
+
 	ReleasePtr<IMultiSourceFrameReader> multiSourceFrameReader;
 	ClosePtr<IKinectSensor> openedKinectSensor;
 

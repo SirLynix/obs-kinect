@@ -16,8 +16,8 @@
 ******************************************************************************/
 
 #include "KinectDeviceSdk10.hpp"
+#include <util/threading.h>
 #include <array>
-#include <tlhelp32.h>
 
 namespace
 {
@@ -102,6 +102,8 @@ void KinectDeviceSdk10::SetServicePriority(ProcessPriority priority)
 
 void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr)
 {
+	os_set_thread_name("KinectDeviceSdk10");
+
 	HandlePtr colorEvent(CreateEvent(nullptr, TRUE, FALSE, nullptr));
 	HandlePtr depthEvent(CreateEvent(nullptr, TRUE, FALSE, nullptr));
 
