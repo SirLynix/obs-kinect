@@ -34,7 +34,21 @@ void set_property_visibility(obs_properties_t* props, const char* propertyName, 
 	obs_property_t* property = obs_properties_get(props, propertyName);
 	if (property)
 		obs_property_set_visible(property, visible);
-};
+}
+
+void update_device_list(obs_property_t* deviceList)
+{
+	obs_property_list_clear(deviceList);
+	obs_property_list_add_string(deviceList, obs_module_text("KinectSource.NoDevice"), NoDevice);
+
+	s_deviceRegistry->ForEachDevice([deviceList](const std::string& pluginName, const std::string& uniqueName, const KinectDevice& device)
+	{
+		std::string label = pluginName + " - " + device.GetUniqueName();
+		obs_property_list_add_string(deviceList, label.c_str(), uniqueName.c_str());
+
+		return true;
+	});
+}
 
 static void kinect_source_update(void* data, obs_data_t* settings)
 {
@@ -100,18 +114,14 @@ static obs_properties_t* kinect_source_properties(void *unused)
 
 	p = obs_properties_add_list(props, "device", obs_module_text("KinectSource.Device"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 
-	obs_property_list_add_string(p, obs_module_text("KinectSource.NoDevice"), NoDevice);
-	s_deviceRegistry->ForEachDevice([p](const std::string& pluginName, const std::string& uniqueName, const KinectDevice& device)
-	{
-		std::string label = pluginName + " - " + device.GetUniqueName();
-		obs_property_list_add_string(p, label.c_str(), uniqueName.c_str());
-
-		return true;
-	});
+	update_device_list(p);
 
 	obs_properties_add_button(props, "device_refresh", "Refresh Kinect Devices", [](obs_properties_t* props, obs_property_t* property, void* data)
 	{
 		s_deviceRegistry->Refresh();
+
+		obs_property_t* deviceList = obs_properties_get(props, "device");
+		update_device_list(deviceList);
 		return true;
 	});
 
