@@ -153,9 +153,16 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 				colorTimestamp = 0;
 			}
 
-			if (newFrameSourcesTypes & NUI_INITIALIZE_FLAG_USES_DEPTH)
+			if (newFrameSourcesTypes & NUI_INITIALIZE_FLAG_USES_DEPTH_AND_PLAYER_INDEX)
 			{
-				if (FAILED(m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_DEPTH, NUI_IMAGE_RESOLUTION_640x480, NUI_IMAGE_STREAM_FLAG_ENABLE_NEAR_MODE, 2, depthEvent.get(), &depthStream)))
+				if (FAILED(m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_DEPTH_AND_PLAYER_INDEX, NUI_IMAGE_RESOLUTION_320x240, NUI_IMAGE_STREAM_FLAG_ENABLE_NEAR_MODE, 2, depthEvent.get(), &depthStream)))
+					throw std::runtime_error("failed to open color stream");
+
+				depthTimestamp = 0;
+			}
+			else if (newFrameSourcesTypes & NUI_INITIALIZE_FLAG_USES_DEPTH)
+			{
+				if (FAILED(m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_DEPTH, NUI_IMAGE_RESOLUTION_320x240, NUI_IMAGE_STREAM_FLAG_ENABLE_NEAR_MODE, 2, depthEvent.get(), &depthStream)))
 					throw std::runtime_error("failed to open color stream");
 
 				depthTimestamp = 0;
@@ -240,7 +247,7 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 			bool canUpdateFrame = true;
 			if ((enabledSourceFlags & Source_Color) &&
-			    (enabledSourceFlags & (Source_Depth | Source_ColorToDepthMapping)))
+			    (enabledSourceFlags & (Source_Body | Source_Depth | Source_ColorToDepthMapping)))
 			{
 				// Ensure color and depth frames belongs to the same time frame
 				if (colorTimestamp != 0 && depthTimestamp != 0)
@@ -259,6 +266,9 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 				if (nextFramePtr->depthFrame)
 				{
 					DepthFrameData& depthFrame = *nextFramePtr->depthFrame;
+
+					if (enabledSourceFlags & Source_Body)
+						nextFramePtr->bodyIndexFrame = BuildBodyFrame(depthFrame);
 
 					if (enabledSourceFlags & Source_ColorToDepthMapping)
 						nextFramePtr->depthMappingFrame = BuildDepthMappingFrame(openedSensor.get(), *nextFramePtr->colorFrame, depthFrame, tempMemory);
@@ -312,7 +322,7 @@ DepthMappingFrameData KinectDeviceSdk10::BuildDepthMappingFrame(INuiSensor* sens
 		{
 			std::size_t depthIndex = y * depthFrame.width + x;
 			depthImagePixels[depthIndex].depth = NuiDepthPixelToDepth(depthPixels[depthIndex]);
-			depthImagePixels[depthIndex].playerIndex = 0; //< Not required, I suppose
+			depthImagePixels[depthIndex].playerIndex = NuiDepthPixelToPlayerIndex(depthPixels[depthIndex]); //< Not a big deal if not available
 		}
 	}
 
@@ -343,6 +353,36 @@ DepthMappingFrameData KinectDeviceSdk10::BuildDepthMappingFrame(INuiSensor* sens
 	}
 
 	return outputFrameData;
+}
+
+BodyIndexFrameData KinectDeviceSdk10::BuildBodyFrame(const DepthFrameData& depthFrame)
+{
+	BodyIndexFrameData frameData;
+	frameData.width = depthFrame.width;
+	frameData.height = depthFrame.height;
+	
+	constexpr std::size_t bpp = 1; //< Body index is stored as R8
+
+	frameData.pitch = frameData.width * bpp;
+	frameData.memory.resize(frameData.width * frameData.height * bpp);
+
+	std::uint8_t* memPtr = reinterpret_cast<std::uint8_t*>(frameData.memory.data());
+	frameData.ptr.reset(memPtr);
+
+	for (std::size_t y = 0; y < depthFrame.height; ++y)
+	{
+		for (std::size_t x = 0; x < depthFrame.width; ++x)
+		{
+			const std::uint16_t& ptr = *reinterpret_cast<const std::uint16_t*>(&depthFrame.ptr[y * depthFrame.pitch + x * 2]);
+
+			// Extract body index from depth and body combination
+			std::uint8_t bodyIndex = static_cast<std::uint8_t>(NuiDepthPixelToPlayerIndex(ptr));
+
+			*memPtr++ = (bodyIndex > 0) ? bodyIndex - 1 : 0xFF; //< Convert to Kinect v2 player index logic
+		}
+	}
+
+	return frameData;
 }
 
 ColorFrameData KinectDeviceSdk10::RetrieveColorFrame(INuiSensor* sensor, HANDLE colorStream, std::int64_t* timestamp)

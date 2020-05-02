@@ -37,6 +37,7 @@ class KinectDeviceSdk10 : public KinectDevice
 
 		DepthMappingFrameData BuildDepthMappingFrame(INuiSensor* sensor, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, std::vector<std::uint8_t>& tempMemory);
 
+		static BodyIndexFrameData BuildBodyFrame(const DepthFrameData& depthFrame);
 		static ColorFrameData RetrieveColorFrame(INuiSensor* sensor, HANDLE colorStream, std::int64_t* timestamp);
 		static DepthFrameData RetrieveDepthFrame(INuiSensor* sensor, HANDLE depthStream, std::int64_t* timestamp);
 		static void ExtractDepth(DepthFrameData& depthFrame);
