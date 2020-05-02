@@ -87,6 +87,12 @@ m_hasRequestedPrivilege(false)
 
 	m_kinectSensor.reset(kinectSensor);
 
+	INuiCoordinateMapper* coordinateMapper;
+	if (FAILED(m_kinectSensor->NuiGetCoordinateMapper(&coordinateMapper)))
+		throw std::runtime_error("failed to get coordinate mapper");
+
+	m_coordinateMapper.reset(coordinateMapper);
+
 	BSTR uniqueId = m_kinectSensor->NuiUniqueId();
 	std::size_t length = std::wcslen(uniqueId);
 
@@ -176,7 +182,7 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 	KinectFramePtr nextFramePtr = std::make_shared<KinectFrame>();
 
-	std::vector<LONG> tempMemory;
+	std::vector<std::uint8_t> tempMemory;
 
 	while (IsRunning())
 	{
@@ -254,8 +260,8 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 				{
 					DepthFrameData& depthFrame = *nextFramePtr->depthFrame;
 
-					if (enabledSourceFlags & Source_ColorToDepthMapping && nextFramePtr->colorFrame)
-						nextFramePtr->depthMappingFrame = RetrieveDepthMappingFrame(openedSensor.get(), *nextFramePtr->colorFrame, depthFrame, tempMemory);
+					if (enabledSourceFlags & Source_ColorToDepthMapping)
+						nextFramePtr->depthMappingFrame = BuildDepthMappingFrame(openedSensor.get(), *nextFramePtr->colorFrame, depthFrame, tempMemory);
 					
 					// "Fix" depth frame
 					ExtractDepth(depthFrame);
@@ -277,6 +283,66 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 	}
 
 	blog(LOG_INFO, "exiting thread");
+}
+
+DepthMappingFrameData KinectDeviceSdk10::BuildDepthMappingFrame(INuiSensor* sensor, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, std::vector<std::uint8_t>& tempMemory)
+{
+	DepthMappingFrameData outputFrameData;
+	outputFrameData.width = colorFrame.width;
+	outputFrameData.height = colorFrame.height;
+	outputFrameData.pitch = colorFrame.width * sizeof(DepthCoordinates);
+
+	std::size_t colorPixelCount = outputFrameData.width * outputFrameData.height;
+
+	outputFrameData.memory.resize(colorPixelCount * sizeof(DepthCoordinates));
+	outputFrameData.ptr.reset(outputFrameData.memory.data());
+
+	std::size_t depthPixelCount = depthFrame.width * depthFrame.height;
+	const std::uint16_t* depthPixels = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
+
+	std::size_t depthImagePointSize = colorPixelCount * sizeof(NUI_DEPTH_IMAGE_POINT);
+	tempMemory.resize(depthImagePointSize + depthPixelCount * sizeof(NUI_DEPTH_IMAGE_PIXEL));
+
+	NUI_DEPTH_IMAGE_POINT* depthImagePoints = reinterpret_cast<NUI_DEPTH_IMAGE_POINT*>(&tempMemory[0]);
+	NUI_DEPTH_IMAGE_PIXEL* depthImagePixels = reinterpret_cast<NUI_DEPTH_IMAGE_PIXEL*>(&tempMemory[depthImagePointSize]);
+
+	for (std::size_t y = 0; y < depthFrame.height; ++y)
+	{
+		for (std::size_t x = 0; x < depthFrame.width; ++x)
+		{
+			std::size_t depthIndex = y * depthFrame.width + x;
+			depthImagePixels[depthIndex].depth = NuiDepthPixelToDepth(depthPixels[depthIndex]);
+			depthImagePixels[depthIndex].playerIndex = 0; //< Not required, I suppose
+		}
+	}
+
+	if (FAILED(m_coordinateMapper->MapColorFrameToDepthFrame(
+		NUI_IMAGE_TYPE_COLOR,
+		ConvertResolutionToSize(colorFrame),
+		ConvertResolutionToSize(depthFrame),
+		DWORD(depthPixelCount),
+		depthImagePixels,
+		DWORD(colorPixelCount),
+		depthImagePoints
+	)))
+		throw std::runtime_error("failed to map from depth to color");
+
+	DepthCoordinates* outputPtr = reinterpret_cast<DepthCoordinates*>(outputFrameData.ptr.get());
+	for (std::size_t y = 0; y < outputFrameData.height; ++y)
+	{
+		for (std::size_t x = 0; x < outputFrameData.width; ++x)
+		{
+			std::size_t colorIndex = y * outputFrameData.width + x;
+
+			const NUI_DEPTH_IMAGE_POINT& depthImagePoint = depthImagePoints[colorIndex];
+
+			outputPtr->x = float(depthImagePoint.x);
+			outputPtr->y = float(depthImagePoint.y);
+			outputPtr++;
+		}
+	}
+
+	return outputFrameData;
 }
 
 ColorFrameData KinectDeviceSdk10::RetrieveColorFrame(INuiSensor* sensor, HANDLE colorStream, std::int64_t* timestamp)
@@ -394,43 +460,6 @@ DepthFrameData KinectDeviceSdk10::RetrieveDepthFrame(INuiSensor* sensor, HANDLE 
 		*timestamp = depthFrame.liTimeStamp.QuadPart;
 
 	return frameData;
-}
-
-DepthMappingFrameData KinectDeviceSdk10::RetrieveDepthMappingFrame(INuiSensor* sensor, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, std::vector<LONG>& tempMemory)
-{
-	DepthMappingFrameData outputFrameData;
-	outputFrameData.width = colorFrame.width;
-	outputFrameData.height = colorFrame.height;
-	outputFrameData.pitch = colorFrame.width * sizeof(DepthCoordinates);
-
-	std::size_t colorPixelCount = outputFrameData.width * outputFrameData.height;
-
-	const std::uint16_t* depthPtr = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
-	std::size_t depthPixelCount = depthFrame.width * depthFrame.height;
-
-	outputFrameData.memory.resize(colorPixelCount * sizeof(DepthCoordinates));
-	outputFrameData.ptr.reset(outputFrameData.memory.data());
-
-	tempMemory.resize(depthFrame.width * depthFrame.height * 2);
-	if (FAILED(sensor->NuiImageGetColorPixelCoordinateFrameFromDepthPixelFrameAtResolution(
-		ConvertResolutionToSize(colorFrame),
-		ConvertResolutionToSize(depthFrame),
-		depthFrame.width * depthFrame.height,
-		reinterpret_cast<USHORT*>(depthFrame.ptr.get()),
-		DWORD(tempMemory.size()),
-		tempMemory.data()
-	)))
-		throw std::runtime_error("failed to map from depth to color");
-
-	DepthCoordinates* outputPtr = reinterpret_cast<DepthCoordinates*>(outputFrameData.ptr.get());
-	for (std::size_t i = 0; i < tempMemory.size(); i += 2)
-	{
-		outputPtr->x = static_cast<float>(tempMemory[i]);
-		outputPtr->y = static_cast<float>(tempMemory[i + 1]);
-		outputPtr++;
-	}
-
-	return outputFrameData;
 }
 
 void KinectDeviceSdk10::ExtractDepth(DepthFrameData& depthFrame)

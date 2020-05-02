@@ -35,11 +35,13 @@ class KinectDeviceSdk10 : public KinectDevice
 		void SetServicePriority(ProcessPriority priority) override;
 		void ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr) override;
 
+		DepthMappingFrameData BuildDepthMappingFrame(INuiSensor* sensor, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, std::vector<std::uint8_t>& tempMemory);
+
 		static ColorFrameData RetrieveColorFrame(INuiSensor* sensor, HANDLE colorStream, std::int64_t* timestamp);
 		static DepthFrameData RetrieveDepthFrame(INuiSensor* sensor, HANDLE depthStream, std::int64_t* timestamp);
-		static DepthMappingFrameData RetrieveDepthMappingFrame(INuiSensor* sensor, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, std::vector<LONG>& tempMemory);
 		static void ExtractDepth(DepthFrameData& depthFrame);
 
+		ReleasePtr<INuiCoordinateMapper> m_coordinateMapper;
 		ReleasePtr<INuiSensor> m_kinectSensor;
 		bool m_hasRequestedPrivilege;
 };
