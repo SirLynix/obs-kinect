@@ -153,9 +153,11 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 	HandlePtr colorEvent(CreateEvent(nullptr, TRUE, FALSE, nullptr));
 	HandlePtr depthEvent(CreateEvent(nullptr, TRUE, FALSE, nullptr));
+	HandlePtr irEvent(CreateEvent(nullptr, TRUE, FALSE, nullptr));
 
 	HANDLE colorStream;
 	HANDLE depthStream;
+	HANDLE irStream;
 
 	EnabledSourceFlags enabledSourceFlags = 0;
 	DWORD enabledFrameSourceTypes = 0;
@@ -164,6 +166,7 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 	std::int64_t colorTimestamp = 0;
 	std::int64_t depthTimestamp = 0;
+	std::int64_t irTimestamp = 0;
 
 	auto UpdateMultiSourceFrameReader = [&](EnabledSourceFlags enabledSources)
 	{
@@ -173,7 +176,7 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 		else if (enabledSources & (Source_Depth | Source_ColorToDepthMapping))
 			newFrameSourcesTypes |= NUI_INITIALIZE_FLAG_USES_DEPTH;
 
-		if (enabledSources & (Source_Color | Source_ColorToDepthMapping))
+		if (enabledSources & (Source_Color | Source_ColorToDepthMapping | Source_Infrared)) //< Yup, IR requires color
 			newFrameSourcesTypes |= NUI_INITIALIZE_FLAG_USES_COLOR;
 
 		if (!openedSensor || newFrameSourcesTypes != enabledFrameSourceTypes)
@@ -213,6 +216,15 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 					throw std::runtime_error("failed to open color stream: " + ErrToString(hr));
 
 				depthTimestamp = 0;
+			}
+
+			if (enabledSources & Source_Infrared)
+			{
+				hr = m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_COLOR_INFRARED, NUI_IMAGE_RESOLUTION_640x480, 0, 2, irEvent.get(), &irStream);
+				if (FAILED(hr))
+					throw std::runtime_error("failed to open infrared stream: " + ErrToString(hr));
+
+				irTimestamp = 0;
 			}
 
 			openedSensor.reset(m_kinectSensor.get());
@@ -293,6 +305,19 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 				}
 			}
 
+			if ((enabledSourceFlags & Source_Infrared) && 
+			    WaitForSingleObject(irEvent.get(), 0) == WAIT_OBJECT_0)
+			{
+				try
+				{
+					nextFramePtr->infraredFrame = RetrieveInfraredFrame(openedSensor.get(), irStream, &irTimestamp);
+				}
+				catch (const std::exception& e)
+				{
+					warn("failed to retrieve infrared frame: %s", e.what());
+				}
+			}
+
 			bool canUpdateFrame = true;
 
 			// Check all timestamp belongs to the same timeframe
@@ -304,6 +329,9 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 			if (enabledSourceFlags & (Source_Body | Source_Depth | Source_ColorToDepthMapping))
 				timestamps[timestampCount++] = depthTimestamp;
+
+			if (enabledSourceFlags & Source_Infrared)
+				timestamps[timestampCount++] = irTimestamp;
 
 			std::int64_t refTimestamp = timestamps.front();
 			for (std::size_t i = 0; i < timestampCount; ++i)
@@ -344,6 +372,7 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 				nextFramePtr = std::make_shared<KinectFrame>();
 				colorTimestamp = 0;
 				depthTimestamp = 0;
+				irTimestamp = 0;
 			}
 
 			os_sleepto_ns(now += delay);
@@ -577,6 +606,65 @@ DepthFrameData KinectDeviceSdk10::RetrieveDepthFrame(INuiSensor* sensor, HANDLE 
 
 	if (timestamp)
 		*timestamp = depthFrame.liTimeStamp.QuadPart;
+
+	return frameData;
+}
+
+InfraredFrameData KinectDeviceSdk10::RetrieveInfraredFrame(INuiSensor* sensor, HANDLE irStream, std::int64_t* timestamp)
+{
+	HRESULT hr;
+
+	NUI_IMAGE_FRAME irFrame;
+
+	hr = sensor->NuiImageStreamGetNextFrame(irStream, 1, &irFrame);
+	if (FAILED(hr))
+		throw std::runtime_error("failed to access next frame: " + ErrToString(hr));
+
+	auto ReleaseColorFrame = [&](NUI_IMAGE_FRAME* frame) { sensor->NuiImageStreamReleaseFrame(irStream, frame); };
+	std::unique_ptr<NUI_IMAGE_FRAME, decltype(ReleaseColorFrame)> releaseColor(&irFrame, ReleaseColorFrame);
+
+	INuiFrameTexture* texture = irFrame.pFrameTexture;
+
+	NUI_LOCKED_RECT lockedRect;
+
+	hr = texture->LockRect(0, &lockedRect, nullptr, 0);
+	if (FAILED(hr))
+		throw std::runtime_error("failed to lock texture: " + ErrToString(hr));
+
+	auto UnlockRect = [](INuiFrameTexture* texture) { texture->UnlockRect(0); };
+	std::unique_ptr<INuiFrameTexture, decltype(UnlockRect)> unlockRect(texture, UnlockRect);
+
+	if (lockedRect.Pitch <= 0)
+		throw std::runtime_error("texture pitch is zero");
+
+	InfraredFrameData frameData;
+	ConvertResolutionToSize(irFrame.eResolution, frameData);
+
+	constexpr std::size_t bpp = 2; //< Infrared is stored as RG16
+
+	std::size_t memSize = frameData.width * frameData.height * bpp;
+	frameData.memory.resize(memSize);
+	std::uint8_t* memPtr = frameData.memory.data();
+
+	frameData.ptr.reset(memPtr);
+	frameData.pitch = frameData.width * bpp;
+
+	if (frameData.pitch == lockedRect.Pitch)
+		std::memcpy(memPtr, lockedRect.pBits, frameData.pitch * frameData.height);
+	else
+	{
+		std::uint32_t bestPitch = std::min<std::uint32_t>(frameData.pitch, lockedRect.Pitch);
+		for (std::size_t y = 0; y < frameData.height; ++y)
+		{
+			const std::uint8_t* input = &lockedRect.pBits[y * lockedRect.Pitch];
+			std::uint8_t* output = memPtr + y * frameData.pitch;
+
+			std::memcpy(output, input, bestPitch);
+		}
+	}
+
+	if (timestamp)
+		*timestamp = irFrame.liTimeStamp.QuadPart;
 
 	return frameData;
 }
