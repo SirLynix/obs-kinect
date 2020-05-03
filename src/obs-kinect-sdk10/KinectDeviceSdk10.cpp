@@ -76,30 +76,71 @@ namespace
 		throw std::runtime_error("invalid image resolution");
 	}
 
+	std::string ErrToString(HRESULT hr)
+	{
+		switch (hr)
+		{
+			case S_OK: return "No error";
+			case E_FAIL: return "Unspecified failure";
+			case E_NUI_ALREADY_INITIALIZED: return "Already initialized";
+			case E_NUI_BADINDEX: return "Bad device index";
+			case E_NUI_DATABASE_NOT_FOUND: return "Database not found";
+			case E_NUI_DATABASE_VERSION_MISMATCH: return "Database version mismatch.";
+			case E_NUI_DEVICE_NOT_CONNECTED: return "Device not connected";
+			case E_NUI_DEVICE_NOT_READY: return "Device not ready";
+			case E_NUI_NO_MORE_ITEMS: return "No more items";
+			case E_NUI_FRAME_NO_DATA: return "No data in frame";
+			case E_NUI_STREAM_NOT_ENABLED: return "Stream not enabled";
+			case E_NUI_IMAGE_STREAM_IN_USE: return "Image stream is in use";
+			case E_NUI_FRAME_LIMIT_EXCEEDED: return "Exceeded frame limit";
+			case E_NUI_FEATURE_NOT_INITIALIZED: return "Feature is not initialized";
+			case E_NUI_NOTGENUINE: return "Device is not genuine";
+			case E_NUI_INSUFFICIENTBANDWIDTH: return "Insufficient USB bandwidth";
+			case E_NUI_NOTSUPPORTED: return "Not supported";
+			case E_NUI_DEVICE_IN_USE: return "Device is already in use";
+			case E_NUI_HARDWARE_FEATURE_UNAVAILABLE: return "The requested feateure is not available on this version of the hardware";
+			case E_NUI_NOTCONNECTED: return "The hub is no longer connected to the machine";
+			case E_NUI_NOTREADY: return "Some part of the device is not connected";
+			case E_NUI_SKELETAL_ENGINE_BUSY: return "Skeletal engine is already in use";
+			case E_NUI_NOTPOWERED: return "The hub and motor are connected, but the camera is not";
+			default: return "Unknown error";
+		}
+	}
 }
 
 KinectDeviceSdk10::KinectDeviceSdk10(int sensorId) :
 m_hasRequestedPrivilege(false)
 {
+	HRESULT hr;
+
 	INuiSensor* kinectSensor;
-	if (FAILED(NuiCreateSensorByIndex(sensorId, &kinectSensor)))
-		throw std::runtime_error("failed to get Kinect sensor");
+	
+	hr = NuiCreateSensorByIndex(sensorId, &kinectSensor);
+	if (FAILED(hr))
+		throw std::runtime_error("failed to get Kinect sensor: " + ErrToString(hr));
 
 	m_kinectSensor.reset(kinectSensor);
 
 	INuiCoordinateMapper* coordinateMapper;
-	if (FAILED(m_kinectSensor->NuiGetCoordinateMapper(&coordinateMapper)))
-		throw std::runtime_error("failed to get coordinate mapper");
+
+	hr = m_kinectSensor->NuiGetCoordinateMapper(&coordinateMapper);
+	if (FAILED(hr))
+		throw std::runtime_error("failed to get coordinate mapper: " + ErrToString(hr));
 
 	m_coordinateMapper.reset(coordinateMapper);
 
 	BSTR uniqueId = m_kinectSensor->NuiUniqueId();
-	std::size_t length = std::wcslen(uniqueId);
+	if (uniqueId) //< null unique id can happen with replaced usb drivers
+	{
+		std::size_t length = std::wcslen(uniqueId);
 
-	std::array<char, 128> u8UniqueId;
-	os_wcs_to_utf8(uniqueId, length, u8UniqueId.data(), u8UniqueId.size());
+		std::array<char, 128> u8UniqueId;
+		os_wcs_to_utf8(uniqueId, length, u8UniqueId.data(), u8UniqueId.size());
 
-	SetUniqueName(u8UniqueId.data());
+		SetUniqueName(u8UniqueId.data());
+	}
+	else
+		SetUniqueName("Kinect #" + std::to_string(sensorId));
 }
 
 void KinectDeviceSdk10::SetServicePriority(ProcessPriority priority)
@@ -139,31 +180,37 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 		{
 			openedSensor.reset(); //< Close sensor first
 
-			if (FAILED(m_kinectSensor->NuiInitialize(newFrameSourcesTypes)))
-				throw std::runtime_error("failed to initialize Kinect");
+			HRESULT hr;
+
+			hr = m_kinectSensor->NuiInitialize(newFrameSourcesTypes);
+			if (FAILED(hr))
+				throw std::runtime_error("failed to initialize Kinect: " + ErrToString(hr));
 
 			ResetEvent(colorEvent.get());
 			ResetEvent(depthEvent.get());
 
 			if (newFrameSourcesTypes & NUI_INITIALIZE_FLAG_USES_COLOR)
 			{
-				if (FAILED(m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_COLOR, NUI_IMAGE_RESOLUTION_640x480, 0, 2, colorEvent.get(), &colorStream)))
-					throw std::runtime_error("failed to open color stream");
+				hr = m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_COLOR, NUI_IMAGE_RESOLUTION_640x480, 0, 2, colorEvent.get(), &colorStream);
+				if (FAILED(hr))
+					throw std::runtime_error("failed to open color stream: " + ErrToString(hr));
 
 				colorTimestamp = 0;
 			}
 
 			if (newFrameSourcesTypes & NUI_INITIALIZE_FLAG_USES_DEPTH_AND_PLAYER_INDEX)
 			{
-				if (FAILED(m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_DEPTH_AND_PLAYER_INDEX, NUI_IMAGE_RESOLUTION_320x240, NUI_IMAGE_STREAM_FLAG_ENABLE_NEAR_MODE, 2, depthEvent.get(), &depthStream)))
-					throw std::runtime_error("failed to open color stream");
+				hr = m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_DEPTH_AND_PLAYER_INDEX, NUI_IMAGE_RESOLUTION_640x480, NUI_IMAGE_STREAM_FLAG_ENABLE_NEAR_MODE, 2, depthEvent.get(), &depthStream);
+				if (FAILED(hr))
+					throw std::runtime_error("failed to open color stream: " + ErrToString(hr));
 
 				depthTimestamp = 0;
 			}
 			else if (newFrameSourcesTypes & NUI_INITIALIZE_FLAG_USES_DEPTH)
 			{
-				if (FAILED(m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_DEPTH, NUI_IMAGE_RESOLUTION_320x240, NUI_IMAGE_STREAM_FLAG_ENABLE_NEAR_MODE, 2, depthEvent.get(), &depthStream)))
-					throw std::runtime_error("failed to open color stream");
+				hr = m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_DEPTH, NUI_IMAGE_RESOLUTION_320x240, NUI_IMAGE_STREAM_FLAG_ENABLE_NEAR_MODE, 2, depthEvent.get(), &depthStream);
+				if (FAILED(hr))
+					throw std::runtime_error("failed to open color stream: " + ErrToString(hr));
 
 				depthTimestamp = 0;
 			}
@@ -326,7 +373,7 @@ DepthMappingFrameData KinectDeviceSdk10::BuildDepthMappingFrame(INuiSensor* sens
 		}
 	}
 
-	if (FAILED(m_coordinateMapper->MapColorFrameToDepthFrame(
+	HRESULT hr = m_coordinateMapper->MapColorFrameToDepthFrame(
 		NUI_IMAGE_TYPE_COLOR,
 		ConvertResolutionToSize(colorFrame),
 		ConvertResolutionToSize(depthFrame),
@@ -334,8 +381,10 @@ DepthMappingFrameData KinectDeviceSdk10::BuildDepthMappingFrame(INuiSensor* sens
 		depthImagePixels,
 		DWORD(colorPixelCount),
 		depthImagePoints
-	)))
-		throw std::runtime_error("failed to map from depth to color");
+	);
+
+	if (FAILED(hr))
+		throw std::runtime_error("failed to map from depth to color: " + ErrToString(hr));
 
 	DepthCoordinates* outputPtr = reinterpret_cast<DepthCoordinates*>(outputFrameData.ptr.get());
 	for (std::size_t y = 0; y < outputFrameData.height; ++y)
@@ -387,9 +436,13 @@ BodyIndexFrameData KinectDeviceSdk10::BuildBodyFrame(const DepthFrameData& depth
 
 ColorFrameData KinectDeviceSdk10::RetrieveColorFrame(INuiSensor* sensor, HANDLE colorStream, std::int64_t* timestamp)
 {
+	HRESULT hr;
+
 	NUI_IMAGE_FRAME colorFrame;
-	if (FAILED(sensor->NuiImageStreamGetNextFrame(colorStream, 1, &colorFrame)))
-		throw std::runtime_error("failed to access next frame");
+
+	hr = sensor->NuiImageStreamGetNextFrame(colorStream, 1, &colorFrame);
+	if (FAILED(hr))
+		throw std::runtime_error("failed to access next frame: " + ErrToString(hr));
 
 	auto ReleaseColorFrame = [&](NUI_IMAGE_FRAME* frame) { sensor->NuiImageStreamReleaseFrame(colorStream, frame); };
 	std::unique_ptr<NUI_IMAGE_FRAME, decltype(ReleaseColorFrame)> releaseColor(&colorFrame, ReleaseColorFrame);
@@ -397,8 +450,10 @@ ColorFrameData KinectDeviceSdk10::RetrieveColorFrame(INuiSensor* sensor, HANDLE 
 	INuiFrameTexture* texture = colorFrame.pFrameTexture;
 
 	NUI_LOCKED_RECT lockedRect;
-	if (FAILED(texture->LockRect(0, &lockedRect, nullptr, 0)))
-		throw std::runtime_error("failed to lock texture");
+	
+	hr = texture->LockRect(0, &lockedRect, nullptr, 0);
+	if (FAILED(hr))
+		throw std::runtime_error("failed to lock texture: " + ErrToString(hr));
 
 	auto UnlockRect = [](INuiFrameTexture* texture) { texture->UnlockRect(0); };
 	std::unique_ptr<INuiFrameTexture, decltype(UnlockRect)> unlockRect(texture, UnlockRect);
@@ -451,9 +506,13 @@ ColorFrameData KinectDeviceSdk10::RetrieveColorFrame(INuiSensor* sensor, HANDLE 
 
 DepthFrameData KinectDeviceSdk10::RetrieveDepthFrame(INuiSensor* sensor, HANDLE depthStream, std::int64_t* timestamp)
 {
+	HRESULT hr;
+
 	NUI_IMAGE_FRAME depthFrame;
-	if (FAILED(sensor->NuiImageStreamGetNextFrame(depthStream, 1, &depthFrame)))
-		throw std::runtime_error("failed to access next frame");
+
+	hr = sensor->NuiImageStreamGetNextFrame(depthStream, 1, &depthFrame);
+	if (FAILED(hr))
+		throw std::runtime_error("failed to access next frame: " + ErrToString(hr));
 
 	auto ReleaseColorFrame = [&](NUI_IMAGE_FRAME* frame) { sensor->NuiImageStreamReleaseFrame(depthStream, frame); };
 	std::unique_ptr<NUI_IMAGE_FRAME, decltype(ReleaseColorFrame)> releaseColor(&depthFrame, ReleaseColorFrame);
@@ -461,8 +520,10 @@ DepthFrameData KinectDeviceSdk10::RetrieveDepthFrame(INuiSensor* sensor, HANDLE 
 	INuiFrameTexture* texture = depthFrame.pFrameTexture;
 
 	NUI_LOCKED_RECT lockedRect;
-	if (FAILED(texture->LockRect(0, &lockedRect, nullptr, 0)))
-		throw std::runtime_error("failed to lock texture");
+
+	hr = texture->LockRect(0, &lockedRect, nullptr, 0);
+	if (FAILED(hr))
+		throw std::runtime_error("failed to lock texture: " + ErrToString(hr));
 
 	auto UnlockRect = [](INuiFrameTexture* texture) { texture->UnlockRect(0); };
 	std::unique_ptr<INuiFrameTexture, decltype(UnlockRect)> unlockRect(texture, UnlockRect);
