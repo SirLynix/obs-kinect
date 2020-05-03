@@ -480,6 +480,8 @@ EnabledSourceFlags KinectSource::ComputeEnabledSourceFlags() const
 
 		if (m_greenScreenSettings.type != GreenScreenType::Depth)
 			flags |= Source_Body;
+		else
+			flags |= Source_Depth;
 	}
 
 	return flags;
