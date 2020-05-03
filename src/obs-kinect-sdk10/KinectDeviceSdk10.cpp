@@ -229,10 +229,11 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 		cv.notify_all();
 	} // m & cv no longer exists from here
 
-	constexpr std::uint64_t MaxKinectFPS = 30;
+	constexpr std::uint64_t KinectMaxFramerate = 30;
+	constexpr std::uint64_t PollingRate = KinectMaxFramerate * 2; //< Poll at twice the highest framerate of Kinect, to be sure (TODO: Use events)
 
 	std::uint64_t now = os_gettime_ns();
-	std::uint64_t delay = 1'000'000'000ULL / MaxKinectFPS;
+	std::uint64_t delay = 1'000'000'000ULL / PollingRate;
 
 	KinectFramePtr nextFramePtr = std::make_shared<KinectFrame>();
 
@@ -293,18 +294,33 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 			}
 
 			bool canUpdateFrame = true;
-			if ((enabledSourceFlags & Source_Color) &&
-			    (enabledSourceFlags & (Source_Body | Source_Depth | Source_ColorToDepthMapping)))
+
+			// Check all timestamp belongs to the same timeframe
+			std::array<std::int64_t, 3> timestamps;
+			std::size_t timestampCount = 0;
+
+			if (enabledSourceFlags & Source_Color)
+				timestamps[timestampCount++] = colorTimestamp;
+
+			if (enabledSourceFlags & (Source_Body | Source_Depth | Source_ColorToDepthMapping))
+				timestamps[timestampCount++] = depthTimestamp;
+
+			std::int64_t refTimestamp = timestamps.front();
+			for (std::size_t i = 0; i < timestampCount; ++i)
 			{
-				// Ensure color and depth frames belongs to the same time frame
-				if (colorTimestamp != 0 && depthTimestamp != 0)
+				// 0 means we have no frame right now, skip it
+				if (timestamps[i] == 0)
 				{
-					constexpr std::int64_t MaxAllowedElapsedTime = (1000 / MaxKinectFPS) / 2;
-					if ((colorTimestamp - depthTimestamp) > MaxAllowedElapsedTime)
-						canUpdateFrame = false;
-				}
-				else
 					canUpdateFrame = false;
+					break;
+				}
+
+				constexpr std::int64_t MaxAllowedElapsedTime = (1000 / KinectMaxFramerate) / 2;
+				if (refTimestamp - timestamps[i] > MaxAllowedElapsedTime)
+				{
+					canUpdateFrame = false;
+					break;
+				}
 			}
 
 			if (canUpdateFrame)
@@ -326,6 +342,8 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 				UpdateFrame(std::move(nextFramePtr));
 				nextFramePtr = std::make_shared<KinectFrame>();
+				colorTimestamp = 0;
+				depthTimestamp = 0;
 			}
 
 			os_sleepto_ns(now += delay);
