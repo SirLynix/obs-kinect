@@ -192,8 +192,218 @@ void KinectSource::Update(float /*seconds*/)
 			if (!frameData->depthFrame)
 				return;
 
-			const DepthFrameData& depthFrame = frameData->depthFrame.value();
-			UpdateTexture(m_depthTexture, GS_R16, depthFrame.width, depthFrame.height, depthFrame.pitch, depthFrame.ptr.get());
+			std::shared_ptr<DepthFrameData> depthFrame = frameData->depthFrame;
+
+			if (m_depthProcessingSettings.filteringEnabled)
+			{
+				assert(depthFrame->pitch == depthFrame->width * sizeof(std::uint16_t));
+				std::shared_ptr<DepthFrameData> newDepthFrame = std::make_shared<DepthFrameData>();
+				newDepthFrame->height = depthFrame->height;
+				newDepthFrame->pitch = depthFrame->pitch;
+				newDepthFrame->width = depthFrame->width;
+				newDepthFrame->memory.resize(newDepthFrame->width * newDepthFrame->height * sizeof(std::uint16_t));
+				newDepthFrame->ptr.reset(reinterpret_cast<std::uint16_t*>(newDepthFrame->memory.data()));
+
+				const std::uint16_t* inputDepth = reinterpret_cast<std::uint16_t*>(depthFrame->ptr.get());
+				std::uint16_t* outputDepth = reinterpret_cast<std::uint16_t*>(newDepthFrame->ptr.get());
+
+				std::uint8_t innerBandThreshold = m_depthProcessingSettings.innerBandThreshold;
+				std::uint8_t outerBandThreshold = m_depthProcessingSettings.outerBandThreshold;
+
+				int widthBound = int(depthFrame->width) - 1;
+				int heightBound = int(depthFrame->height) - 1;
+
+				struct Offset
+				{
+					int x;
+					int y;
+				};
+
+				constexpr std::array<Offset, 24> offsets = {
+					{
+						{ -2, -2 }, { -1, -2 }, { 0, -2 }, { 1, -2 }, { 2, -2 },
+						{ -2, -1 }, { -1, -1 }, { 0, -1 }, { 1, -1 }, { 2, -1 },
+						{ -2,  0 }, { -1,  0 },            { 1,  0 }, { 2,  0 },
+						{ -2,  1 }, { -1,  1 }, { 0,  1 }, { 1,  1 }, { 2,  1 },
+						{ -2,  2 }, { -1,  2 }, { 0,  2 }, { 1,  2 }, { 2,  2 }
+					}
+				};
+
+				constexpr std::array<std::uint8_t, 24> innerBandIncr = {
+					{
+						0, 0, 0, 0, 0,
+						0, 1, 1, 1, 0,
+						0, 1,    1, 0,
+						0, 1, 1, 1, 0,
+						0, 0, 0, 0, 0
+					}
+				};
+
+				constexpr std::array<std::uint8_t, 24> outerBandIncr = {
+					{
+						1, 1, 1, 1, 1,
+						1, 0, 0, 0, 1,
+						1, 0,    0, 1,
+						1, 0, 0, 0, 1,
+						1, 1, 1, 1, 1
+					}
+				};
+
+				for (std::size_t y = 0; y < depthFrame->height; ++y)
+				{
+					for (std::size_t x = 0; x < depthFrame->width; ++x)
+					{
+						std::size_t depthIndex = y * depthFrame->width + x;
+
+						std::uint16_t depthValue = inputDepth[depthIndex];
+						if (depthValue == 0)
+						{
+							struct DepthData
+							{
+								std::uint16_t depth = 0;
+								std::uint16_t frequency = 0;
+							};
+
+							std::array<DepthData, offsets.size()> filterCollection;
+
+							std::uint8_t innerBandCount = 0;
+							std::uint8_t outerBandCount = 0;
+
+							for (std::size_t i = 0; i < offsets.size(); ++i)
+							{
+								const Offset& offset = offsets[i];
+
+								// We then create our modified coordinates for each pass
+								int xSearch = int(x) + offset.x;
+								int ySearch = int(y) + offset.y;
+
+								// While the modified coordinates may in fact calculate out to an actual index, it 
+								// might not be the one we want.  Be sure to check to make sure that the modified coordinates
+								// match up with our image bounds.
+								if (xSearch >= 0 && xSearch <= widthBound && ySearch >= 0 && ySearch <= heightBound)
+								{
+									std::size_t index = xSearch + (ySearch * depthFrame->width);
+									// We only want to look for non-0 values
+									if (inputDepth[index] != 0)
+									{
+										// We want to find count the frequency of each depth
+										for (DepthData& depthData : filterCollection)
+										{
+											if (depthData.depth == inputDepth[index])
+											{
+												// When the depth is already in the filter collection
+												// we will just increment the frequency.
+												depthData.frequency++;
+												break;
+											}
+											else if (depthData.depth == 0)
+											{
+												// When we encounter a 0 depth in the filter collection
+												// this means we have reached the end of values already counted.
+												// We will then add the new depth and start it's frequency at 1.
+												depthData.depth = inputDepth[index];
+												depthData.frequency++;
+												break;
+											}
+										}
+
+										// We will then determine which band the non-0 pixel
+										// was found in, and increment the band counters.
+										innerBandCount += innerBandIncr[i];
+										outerBandCount += outerBandIncr[i];
+									}
+								}
+							}
+
+							// Once we have determined our inner and outer band non-zero counts, and accumulated all of those values,
+							// we can compare it against the threshold to determine if our candidate pixel will be changed to the
+							// statistical mode of the non-zero surrounding pixels.
+							if (innerBandCount >= innerBandThreshold || outerBandCount >= outerBandThreshold)
+							{
+								std::uint16_t frequency = 0;
+								std::uint16_t depth = 0;
+								// This loop will determine the statistical mode
+								// of the surrounding pixels for assignment to
+								// the candidate.
+								for (std::size_t i = 0; i < 24; i++)
+								{
+									// This means we have reached the end of our
+									// frequency distribution and can break out of the
+									// loop to save time.
+									if (filterCollection[i].depth == 0)
+										break;
+									if (filterCollection[i].frequency > frequency)
+									{
+										depth = filterCollection[i].depth;
+										frequency = filterCollection[i].frequency;
+									}
+								}
+
+								depthValue = depth;
+							}
+						}
+
+						outputDepth[depthIndex] = depthValue;
+					}
+				}
+
+				depthFrame = std::move(newDepthFrame);
+			}
+
+			if (m_depthProcessingSettings.averageDepthFrameCount > 1)
+			{
+				m_previousDepthFrames.push_back(depthFrame);
+				while (m_previousDepthFrames.size() > m_depthProcessingSettings.averageDepthFrameCount)
+					m_previousDepthFrames.erase(m_previousDepthFrames.begin());
+
+				assert(depthFrame->pitch == depthFrame->width * sizeof(std::uint16_t));
+				m_depthAccumulationMemory.resize(depthFrame->width * depthFrame->height);
+
+				std::fill(m_depthAccumulationMemory.begin(), m_depthAccumulationMemory.end(), 0);
+
+				std::size_t denominator = 0;
+				std::uint32_t count = 1;
+
+				for (const auto& depthFrame : m_previousDepthFrames)
+				{
+					for (std::size_t y = 0; y < depthFrame->height; ++y)
+					{
+						for (std::size_t x = 0; x < depthFrame->width; ++x)
+						{
+							std::size_t depthIndex = depthFrame->width * y + x;
+							m_depthAccumulationMemory[depthIndex] += depthFrame->ptr[depthIndex] * count;
+						}
+					}
+
+					denominator += count;
+					count++;
+				}
+
+				m_depthAverageMemory.resize(depthFrame->width* depthFrame->height);
+				for (std::size_t y = 0; y < depthFrame->height; ++y)
+				{
+					for (std::size_t x = 0; x < depthFrame->width; ++x)
+					{
+						std::size_t depthIndex = depthFrame->width * y + x;
+						m_depthAverageMemory[depthIndex] = static_cast<std::uint16_t>(m_depthAccumulationMemory[depthIndex] / denominator);
+					}
+				}
+
+				UpdateTexture(m_depthTexture, GS_R16, depthFrame->width, depthFrame->height, depthFrame->pitch, m_depthAverageMemory.data());
+			}
+			else
+			{
+				UpdateTexture(m_depthTexture, GS_R16, depthFrame->width, depthFrame->height, depthFrame->pitch, depthFrame->ptr.get());
+
+				// Free some memory
+				m_previousDepthFrames.clear();
+
+				m_depthAccumulationMemory.clear();
+				m_depthAccumulationMemory.shrink_to_fit();
+
+				m_depthAverageMemory.clear();
+				m_depthAverageMemory.shrink_to_fit();
+			}
 		}
 
 		gs_texture_t* sourceTexture;
@@ -450,6 +660,11 @@ void KinectSource::UpdateDevice(std::string deviceName)
 
 	m_deviceName = std::move(deviceName);
 	RefreshDeviceAccess();
+}
+
+void KinectSource::UpdateDepthProcessing(DepthProcessing depthProcessing)
+{
+	m_depthProcessingSettings = depthProcessing;
 }
 
 void KinectSource::ClearDeviceAccess()

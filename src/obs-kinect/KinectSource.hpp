@@ -45,6 +45,7 @@ class KinectSource
 	public:
 		enum class GreenScreenType;
 		enum class SourceType;
+		struct DepthProcessing;
 		struct DepthToColorSettings;
 		struct GreenScreenSettings;
 		struct InfraredToColorSettings;
@@ -66,6 +67,7 @@ class KinectSource
 
 		void Update(float seconds);
 		void UpdateDevice(std::string deviceName);
+		void UpdateDepthProcessing(DepthProcessing depthProcessing);
 		void UpdateDepthToColor(DepthToColorSettings depthToColor);
 		void UpdateGreenScreen(GreenScreenSettings greenScreen);
 		void UpdateInfraredToColor(InfraredToColorSettings infraredToColor);
@@ -83,6 +85,14 @@ class KinectSource
 			Color = 0,
 			Depth = 1,
 			Infrared = 2
+		};
+
+		struct DepthProcessing
+		{
+			bool filteringEnabled;
+			std::uint8_t innerBandThreshold = 2;
+			std::uint8_t outerBandThreshold = 5;
+			std::uint8_t averageDepthFrameCount = 1;
 		};
 
 		struct DepthToColorSettings
@@ -126,10 +136,14 @@ class KinectSource
 		static DynamicValues ComputeDynamicValues(const std::uint16_t* values, std::size_t valueCount);
 
 		std::optional<KinectDeviceAccess> m_deviceAccess;
+		std::vector<std::shared_ptr<DepthFrameData>> m_previousDepthFrames;
 		std::vector<std::uint8_t> m_depthMappingMemory;
 		std::vector<std::uint8_t> m_depthMappingDirtyCounter;
+		std::vector<std::uint64_t> m_depthAccumulationMemory;
+		std::vector<std::uint16_t> m_depthAverageMemory;
 		AlphaMaskEffect m_alphaMaskFilter;
 		ConvertDepthIRToColorEffect m_depthIRConvertEffect;
+		DepthProcessing m_depthProcessingSettings;
 		GaussianBlurEffect m_gaussianBlur;
 		GreenScreenFilterEffect m_greenScreenFilterEffect;
 		ObserverPtr<gs_texture_t> m_finalTexture;

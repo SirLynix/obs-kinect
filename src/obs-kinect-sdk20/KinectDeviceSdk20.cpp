@@ -490,19 +490,19 @@ void KinectDeviceSdk20::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 		{
 			KinectFramePtr framePtr = std::make_shared<KinectFrame>();
 			if (enabledSourceFlags & Source_Body)
-				framePtr->bodyIndexFrame = RetrieveBodyIndexFrame(multiSourceFrame.get());
+				framePtr->bodyIndexFrame = std::make_shared<BodyIndexFrameData>(RetrieveBodyIndexFrame(multiSourceFrame.get()));
 
 			if (enabledSourceFlags & (Source_Color | Source_ColorToDepthMapping))
-				framePtr->colorFrame = RetrieveColorFrame(multiSourceFrame.get());
+				framePtr->colorFrame = std::make_shared<ColorFrameData>(RetrieveColorFrame(multiSourceFrame.get()));
 
 			if (enabledSourceFlags & (Source_Depth | Source_ColorToDepthMapping))
-				framePtr->depthFrame = RetrieveDepthFrame(multiSourceFrame.get());
+				framePtr->depthFrame = std::make_shared<DepthFrameData>(RetrieveDepthFrame(multiSourceFrame.get()));
 
 			if (enabledSourceFlags & Source_Infrared)
-				framePtr->infraredFrame = RetrieveInfraredFrame(multiSourceFrame.get());
+				framePtr->infraredFrame = std::make_shared<InfraredFrameData>(RetrieveInfraredFrame(multiSourceFrame.get()));
 
 			if (enabledSourceFlags & Source_ColorToDepthMapping)
-				framePtr->depthMappingFrame = RetrieveDepthMappingFrame(*this, *framePtr->colorFrame, *framePtr->depthFrame);
+				framePtr->depthMappingFrame = std::make_shared<DepthMappingFrameData>(RetrieveDepthMappingFrame(*this, *framePtr->colorFrame, *framePtr->depthFrame));
 
 			UpdateFrame(std::move(framePtr));
 			os_sleepto_ns(now += delay);

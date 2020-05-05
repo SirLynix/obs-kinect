@@ -68,11 +68,11 @@ struct DepthMappingFrameData : FrameData
 
 struct KinectFrame
 {
-	std::optional<BodyIndexFrameData> bodyIndexFrame;
-	std::optional<ColorFrameData> colorFrame;
-	std::optional<DepthFrameData> depthFrame;
-	std::optional<DepthMappingFrameData> depthMappingFrame;
-	std::optional<InfraredFrameData> infraredFrame;
+	std::shared_ptr<BodyIndexFrameData> bodyIndexFrame;
+	std::shared_ptr<ColorFrameData> colorFrame;
+	std::shared_ptr<DepthFrameData> depthFrame;
+	std::shared_ptr<DepthMappingFrameData> depthMappingFrame;
+	std::shared_ptr<InfraredFrameData> infraredFrame;
 };
 
 using KinectFramePtr = std::shared_ptr<KinectFrame>;

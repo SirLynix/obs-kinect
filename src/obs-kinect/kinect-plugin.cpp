@@ -62,6 +62,18 @@ static void kinect_source_update(void* data, obs_data_t* settings)
 	kinectSource->SetSourceType(static_cast<KinectSource::SourceType>(obs_data_get_int(settings, "source")));
 	kinectSource->ShouldStopOnHide(obs_data_get_bool(settings, "invisible_shutdown"));
 
+	KinectSource::DepthProcessing depthProcessing;
+	depthProcessing.filteringEnabled = obs_data_get_bool(settings, "depthfiltering_enabled");
+	depthProcessing.innerBandThreshold = static_cast<std::uint8_t>(obs_data_get_int(settings, "depthfiltering_innerbandthreshold"));
+	depthProcessing.outerBandThreshold = static_cast<std::uint8_t>(obs_data_get_int(settings, "depthfiltering_outerbandthreshold"));
+
+	if (obs_data_get_bool(settings, "depthsmoothing_enabled"))
+		depthProcessing.averageDepthFrameCount = static_cast<std::uint8_t>(obs_data_get_int(settings, "depthsmoothing_averagedepthframecount"));
+	else
+		depthProcessing.averageDepthFrameCount = 1;
+
+	kinectSource->UpdateDepthProcessing(depthProcessing);
+
 	KinectSource::DepthToColorSettings depthToColor;
 	depthToColor.averageValue = float(obs_data_get_double(settings, "depth_average"));
 	depthToColor.dynamic = obs_data_get_bool(settings, "depth_dynamic");
@@ -131,6 +143,35 @@ static obs_properties_t* kinect_source_properties(void *unused)
 	obs_property_list_add_int(p, obs_module_text("KinectSource.Priority_Normal"), static_cast<int>(ProcessPriority::Normal));
 
 	obs_properties_add_bool(props, "invisible_shutdown", obs_module_text("KinectSource.InvisibleShutdown"));
+	auto depthFilteringCallback = [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
+	{
+		bool enabled = obs_data_get_bool(s, "depthfiltering_enabled");
+
+		set_property_visibility(props, "depthfiltering_innerbandthreshold", enabled);
+		set_property_visibility(props, "depthfiltering_outerbandthreshold", enabled);
+
+		return true;
+	};
+
+	p = obs_properties_add_bool(props, "depthfiltering_enabled", obs_module_text("ObsKinect.DepthFilteringEnabled"));
+	obs_property_set_modified_callback(p, depthFilteringCallback);
+
+	obs_properties_add_int_slider(props, "depthfiltering_innerbandthreshold", obs_module_text("ObsKinect.DepthFiltering_InnerBandThreshold"), 0, 20, 1);
+	obs_properties_add_int_slider(props, "depthfiltering_outerbandthreshold", obs_module_text("ObsKinect.DepthFiltering_OuterBandThreshold"), 0, 20, 1);
+	
+	auto depthSmoothCallback = [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
+	{
+		bool enabled = obs_data_get_bool(s, "depthsmoothing_enabled");
+
+		set_property_visibility(props, "depthsmoothing_averagedepthframecount", enabled);
+
+		return true;
+	};
+	
+	p = obs_properties_add_bool(props, "depthsmoothing_enabled", obs_module_text("ObsKinect.DepthSmoothingEnabled"));
+	obs_property_set_modified_callback(p, depthSmoothCallback);
+
+	obs_properties_add_int_slider(props, "depthsmoothing_averagedepthframecount", obs_module_text("ObsKinect.DepthSmoothing_AverageDepthFrameCount"), 1, 30, 1);
 
 	p = obs_properties_add_list(props, "source", obs_module_text("KinectSource.Source"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(p, obs_module_text("KinectSource.Source_Color"), static_cast<int>(KinectSource::SourceType::Color));
@@ -211,6 +252,13 @@ static void kinect_source_defaults(obs_data_t *settings)
 		obs_data_set_default_string(settings, "device", uniqueName.c_str());
 		return false; //< Stop at first device
 	});
+
+	obs_data_set_default_bool(settings, "depthfiltering_enabled", true);
+	obs_data_set_default_int(settings, "depthfiltering_innerbandthreshold", 2);
+	obs_data_set_default_int(settings, "depthfiltering_outerbandthreshold", 5);
+
+	obs_data_set_default_bool(settings, "depthsmoothing_enabled", true);
+	obs_data_set_default_int(settings, "depthsmoothing_averagedepthframecount", 1);
 
 	obs_data_set_default_int(settings, "service_priority", static_cast<int>(ProcessPriority::Normal));
 	obs_data_set_default_int(settings, "source", static_cast<int>(KinectSource::SourceType::Color));
