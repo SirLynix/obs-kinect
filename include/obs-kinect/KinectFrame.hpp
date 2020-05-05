@@ -31,29 +31,39 @@ struct FrameData
 	std::uint32_t width;
 	std::uint32_t height;
 	std::uint32_t pitch;
-	ObserverPtr<std::uint8_t[]> ptr;
 	std::vector<std::uint8_t> memory; //< TODO: Reuse memory
 };
 
 struct BodyIndexFrameData : FrameData
 {
+	ObserverPtr<std::uint8_t[]> ptr;
 };
 
 struct ColorFrameData : FrameData
 {
 	gs_color_format format;
+	ObserverPtr<std::uint8_t[]> ptr;
 };
 
 struct DepthFrameData : FrameData
 {
+	ObserverPtr<std::uint16_t[]> ptr;
 };
 
 struct InfraredFrameData : FrameData
 {
+	ObserverPtr<std::uint8_t[]> ptr;
 };
 
 struct DepthMappingFrameData : FrameData
 {
+	struct DepthCoordinates
+	{
+		float x;
+		float y;
+	};
+
+	ObserverPtr<DepthCoordinates[]> ptr;
 };
 
 struct KinectFrame

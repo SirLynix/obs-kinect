@@ -38,8 +38,6 @@ class OBSKINECT_API KinectDevice
 	friend KinectDeviceAccess;
 
 	public:
-		struct DepthCoordinates;
-
 		KinectDevice();
 		KinectDevice(const KinectDevice&) = delete;
 		KinectDevice(KinectDevice&&) = delete;
@@ -53,12 +51,6 @@ class OBSKINECT_API KinectDevice
 
 		void StartCapture();
 		void StopCapture();
-
-		struct DepthCoordinates
-		{
-			float x;
-			float y;
-		};
 
 		KinectDevice& operator=(const KinectDevice&) = delete;
 		KinectDevice& operator=(KinectDevice&&) = delete;

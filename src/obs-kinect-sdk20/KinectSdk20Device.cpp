@@ -38,10 +38,10 @@ m_hasRequestedPrivilege(false)
 	SetUniqueName("Default Kinect");
 }
 
-bool KinectSdk20Device::MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthCoordinates* depthCoordinatesOut) const
+bool KinectSdk20Device::MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthMappingFrameData::DepthCoordinates* depthCoordinatesOut) const
 {
 	static_assert(sizeof(UINT16) == sizeof(std::uint16_t));
-	static_assert(sizeof(DepthCoordinates) == sizeof(DepthSpacePoint));
+	static_assert(sizeof(DepthMappingFrameData::DepthCoordinates) == sizeof(DepthSpacePoint));
 
 	const UINT16* depthPtr = reinterpret_cast<const UINT16*>(depthValues);
 	DepthSpacePoint* coordinatePtr = reinterpret_cast<DepthSpacePoint*>(depthCoordinatesOut);
@@ -202,7 +202,7 @@ auto KinectSdk20Device::RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame) 
 	frameData.width = width;
 	frameData.height = height;
 	frameData.pitch = width * bytePerPixel;
-	frameData.ptr.reset(frameData.memory.data());
+	frameData.ptr.reset(reinterpret_cast<std::uint16_t*>(frameData.memory.data()));
 
 	return frameData;
 }
@@ -218,15 +218,15 @@ DepthMappingFrameData KinectSdk20Device::RetrieveDepthMappingFrame(const KinectS
 	const std::uint16_t* depthPtr = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
 	std::size_t depthPixelCount = depthFrame.width * depthFrame.height;
 
-	outputFrameData.memory.resize(colorPixelCount * sizeof(DepthCoordinates));
+	outputFrameData.memory.resize(colorPixelCount * sizeof(DepthMappingFrameData::DepthCoordinates));
 
-	DepthCoordinates* coordinatePtr = reinterpret_cast<DepthCoordinates*>(outputFrameData.memory.data());
+	DepthMappingFrameData::DepthCoordinates* coordinatePtr = reinterpret_cast<DepthMappingFrameData::DepthCoordinates*>(outputFrameData.memory.data());
 
 	if (!device.MapColorToDepth(depthPtr, depthPixelCount, colorPixelCount, coordinatePtr))
 		throw std::runtime_error("failed to map color to depth");
 
-	outputFrameData.ptr.reset(reinterpret_cast<std::uint8_t*>(coordinatePtr));
-	outputFrameData.pitch = colorFrame.width * sizeof(DepthCoordinates);
+	outputFrameData.ptr.reset(coordinatePtr);
+	outputFrameData.pitch = colorFrame.width * sizeof(DepthMappingFrameData::DepthCoordinates);
 
 	return outputFrameData;
 }

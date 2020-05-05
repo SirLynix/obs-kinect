@@ -31,7 +31,7 @@ class KinectSdk20Device : public KinectDevice
 		KinectSdk20Device();
 		~KinectSdk20Device() = default;
 
-		bool MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthCoordinates* depthCoordinatesOut) const;
+		bool MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthMappingFrameData::DepthCoordinates* depthCoordinatesOut) const;
 
 	private:
 		void SetServicePriority(ProcessPriority priority) override;
