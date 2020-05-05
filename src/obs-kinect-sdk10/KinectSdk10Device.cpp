@@ -182,7 +182,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 			newFrameSourcesTypes |= NUI_INITIALIZE_FLAG_USES_COLOR;
 		
 			/*
-			Kinect v1 don't like to output both color and infrared at the same time, we have to force reset the device when switching
+			Kinect v1 doesn't like to output both color and infrared at the same time, we have to force reset the device when switching
 			from color to infrared or vice-versa to prevent frame corruption/frame without data
 			*/
 			if ((enabledSourceFlags & (Source_Color | Source_Infrared)) != (enabledSources & (Source_Color | Source_Infrared)))
@@ -404,12 +404,12 @@ DepthMappingFrameData KinectSdk10Device::BuildDepthMappingFrame(INuiSensor* sens
 	DepthMappingFrameData outputFrameData;
 	outputFrameData.width = colorFrame.width;
 	outputFrameData.height = colorFrame.height;
-	outputFrameData.pitch = colorFrame.width * sizeof(DepthCoordinates);
+	outputFrameData.pitch = colorFrame.width * sizeof(DepthMappingFrameData::DepthCoordinates);
 
 	std::size_t colorPixelCount = outputFrameData.width * outputFrameData.height;
 
-	outputFrameData.memory.resize(colorPixelCount * sizeof(DepthCoordinates));
-	outputFrameData.ptr.reset(outputFrameData.memory.data());
+	outputFrameData.memory.resize(colorPixelCount * sizeof(DepthMappingFrameData::DepthCoordinates));
+	outputFrameData.ptr.reset(reinterpret_cast<DepthMappingFrameData::DepthCoordinates*>(outputFrameData.memory.data()));
 
 	std::size_t depthPixelCount = depthFrame.width * depthFrame.height;
 	const std::uint16_t* depthPixels = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
@@ -443,7 +443,7 @@ DepthMappingFrameData KinectSdk10Device::BuildDepthMappingFrame(INuiSensor* sens
 	if (FAILED(hr))
 		throw std::runtime_error("failed to map from depth to color: " + ErrToString(hr));
 
-	DepthCoordinates* outputPtr = reinterpret_cast<DepthCoordinates*>(outputFrameData.ptr.get());
+	DepthMappingFrameData::DepthCoordinates* outputPtr = outputFrameData.ptr.get();
 	for (std::size_t y = 0; y < outputFrameData.height; ++y)
 	{
 		for (std::size_t x = 0; x < outputFrameData.width; ++x)
@@ -479,7 +479,7 @@ BodyIndexFrameData KinectSdk10Device::BuildBodyFrame(const DepthFrameData& depth
 	{
 		for (std::size_t x = 0; x < depthFrame.width; ++x)
 		{
-			const std::uint16_t& ptr = *reinterpret_cast<const std::uint16_t*>(&depthFrame.ptr[y * depthFrame.pitch + x * 2]);
+			std::uint16_t ptr = depthFrame.ptr[y * depthFrame.width + x];
 
 			// Extract body index from depth and body combination
 			std::uint8_t bodyIndex = static_cast<std::uint8_t>(NuiDepthPixelToPlayerIndex(ptr));
@@ -597,7 +597,7 @@ DepthFrameData KinectSdk10Device::RetrieveDepthFrame(INuiSensor* sensor, HANDLE 
 	frameData.memory.resize(memSize);
 	std::uint8_t* memPtr = frameData.memory.data();
 
-	frameData.ptr.reset(memPtr);
+	frameData.ptr.reset(reinterpret_cast<std::uint16_t*>(memPtr));
 	frameData.pitch = frameData.width * bpp;
 
 	if (frameData.pitch == lockedRect.Pitch)
@@ -685,9 +685,8 @@ void KinectSdk10Device::ExtractDepth(DepthFrameData& depthFrame)
 	{
 		for (std::size_t x = 0; x < depthFrame.width; ++x)
 		{
-			std::uint16_t& ptr = *reinterpret_cast<std::uint16_t*>(&depthFrame.ptr[y * depthFrame.pitch + x * 2]);
+			std::uint16_t& ptr = depthFrame.ptr[y * depthFrame.width + x];
 			ptr = NuiDepthPixelToDepth(ptr); //< Extract depth from depth and body combination
 		}
 	}
 }
-
