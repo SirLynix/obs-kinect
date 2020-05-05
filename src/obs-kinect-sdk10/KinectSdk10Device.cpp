@@ -170,6 +170,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 	auto UpdateMultiSourceFrameReader = [&](EnabledSourceFlags enabledSources)
 	{
+		bool forceReset = (openedSensor == nullptr);
 		DWORD newFrameSourcesTypes = 0;
 		if (enabledSources & Source_Body)
 			newFrameSourcesTypes |= NUI_INITIALIZE_FLAG_USES_DEPTH_AND_PLAYER_INDEX;
@@ -177,11 +178,20 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 			newFrameSourcesTypes |= NUI_INITIALIZE_FLAG_USES_DEPTH;
 
 		if (enabledSources & (Source_Color | Source_ColorToDepthMapping | Source_Infrared)) //< Yup, IR requires color
-			newFrameSourcesTypes |= NUI_INITIALIZE_FLAG_USES_COLOR;
-
-		if (!openedSensor || newFrameSourcesTypes != enabledFrameSourceTypes)
 		{
-			openedSensor.reset(); //< Close sensor first
+			newFrameSourcesTypes |= NUI_INITIALIZE_FLAG_USES_COLOR;
+		
+			/*
+			Kinect v1 don't like to output both color and infrared at the same time, we have to force reset the device when switching
+			from color to infrared or vice-versa to prevent frame corruption/frame without data
+			*/
+			if ((enabledSourceFlags & (Source_Color | Source_Infrared)) != (enabledSources & (Source_Color | Source_Infrared)))
+				forceReset = true;
+		}
+
+		if (forceReset || newFrameSourcesTypes != enabledFrameSourceTypes)
+		{
+			openedSensor.reset(); //< Close sensor first (Kinectv1 doesn't support multiple NuiInitialize)
 
 			HRESULT hr;
 
