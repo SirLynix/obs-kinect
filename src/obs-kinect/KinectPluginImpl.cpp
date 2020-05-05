@@ -15,19 +15,6 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "Helper.hpp"
-#include "KinectSdk10Plugin.hpp"
+#include "KinectPluginImpl.hpp"
 
-extern "C"
-{
-	OBSKINECT_EXPORT KinectPluginImpl* ObsKinect_CreatePlugin(std::uint32_t version)
-	{
-		if (version != OBSKINECT_VERSION)
-		{
-			warn("Kinect plugin incompatibilities (obs-kinect version: %d, plugin version: %d)", OBSKINECT_VERSION, version);
-			return nullptr;
-		}
-
-		return new KinectSdk10Plugin;
-	}
-}
+KinectPluginImpl::~KinectPluginImpl() = default;

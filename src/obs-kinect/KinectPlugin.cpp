@@ -16,13 +16,13 @@
 ******************************************************************************/
 
 #include "KinectPlugin.hpp"
+#include "KinectPluginImpl.hpp"
 #include "KinectDevice.hpp"
 
 void KinectPlugin::Close()
 {
+	m_impl.reset();
 	m_lib.reset();
-	m_getUniqueNameFunc = nullptr;
-	m_refreshFunc = nullptr;
 }
 
 const std::string& KinectPlugin::GetUniqueName() const
@@ -32,7 +32,7 @@ const std::string& KinectPlugin::GetUniqueName() const
 
 bool KinectPlugin::IsOpen() const
 {
-	return m_lib != nullptr;
+	return m_impl != nullptr;
 }
 
 bool KinectPlugin::Open(const char* path)
@@ -41,33 +41,31 @@ bool KinectPlugin::Open(const char* path)
 	if (!lib)
 		return false;
 
-	m_getUniqueNameFunc = static_cast<GetUniqueNameFunc>(os_dlsym(lib.get(), "ObsKinect_GetUniqueName"));
-	if (!m_getUniqueNameFunc)
+	using CreatePlugin = KinectPluginImpl * (*)(std::uint32_t version);
+
+	CreatePlugin createImpl = static_cast<CreatePlugin>(os_dlsym(lib.get(), "ObsKinect_CreatePlugin"));
+	if (!createImpl)
 	{
-		warn("failed to get ObsKinect_GetUniqueName symbol, dismissing %s", path);
+		warn("failed to get ObsKinect_CreatePlugin symbol, dismissing %s", path);
 		return false;
 	}
 
-	m_refreshFunc = static_cast<RefreshFunc>(os_dlsym(lib.get(), "ObsKinect_Refresh"));
-	if (!m_refreshFunc)
+	m_impl.reset(createImpl(OBSKINECT_VERSION));
+	if (!m_impl)
 	{
-		warn("failed to get ObsKinect_Refresh symbol, dismissing %s", path);
+		warn("failed to get plugin implementation for %s, dismissing", path);
 		return false;
 	}
-
-	m_uniqueName = m_getUniqueNameFunc();
 
 	m_lib = std::move(lib);
+	m_uniqueName = m_impl->GetUniqueName();
+
 	return true;
 }
 
-std::vector<std::unique_ptr<KinectDevice>> KinectPlugin::Refresh()
+std::vector<std::unique_ptr<KinectDevice>> KinectPlugin::Refresh() const
 {
-	assert(m_lib);
+	assert(IsOpen());
 
-	KinectPluginRefresh refreshData;
-	m_refreshFunc(&refreshData);
-
-	std::vector<std::unique_ptr<KinectDevice>> deviceList = std::move(refreshData.devices);
-	return deviceList;
+	return m_impl->Refresh();
 }

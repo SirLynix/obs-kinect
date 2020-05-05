@@ -15,12 +15,12 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "KinectDeviceSdk20.hpp"
+#include "KinectSdk20Device.hpp"
 #include <util/threading.h>
 #include <array>
 #include <tlhelp32.h>
 
-KinectDeviceSdk20::KinectDeviceSdk20() :
+KinectSdk20Device::KinectSdk20Device() :
 m_hasRequestedPrivilege(false)
 {
 	IKinectSensor* pKinectSensor;
@@ -38,7 +38,7 @@ m_hasRequestedPrivilege(false)
 	SetUniqueName("Default Kinect");
 }
 
-bool KinectDeviceSdk20::MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthCoordinates* depthCoordinatesOut) const
+bool KinectSdk20Device::MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthCoordinates* depthCoordinatesOut) const
 {
 	static_assert(sizeof(UINT16) == sizeof(std::uint16_t));
 	static_assert(sizeof(DepthCoordinates) == sizeof(DepthSpacePoint));
@@ -53,7 +53,7 @@ bool KinectDeviceSdk20::MapColorToDepth(const std::uint16_t* depthValues, std::s
 	return true;
 }
 
-auto KinectDeviceSdk20::RetrieveBodyIndexFrame(IMultiSourceFrame* multiSourceFrame) -> BodyIndexFrameData
+auto KinectSdk20Device::RetrieveBodyIndexFrame(IMultiSourceFrame* multiSourceFrame) -> BodyIndexFrameData
 {
 	IBodyIndexFrameReference* pBodyIndexFrameReference;
 	if (FAILED(multiSourceFrame->get_BodyIndexFrameReference(&pBodyIndexFrameReference)))
@@ -103,7 +103,7 @@ auto KinectDeviceSdk20::RetrieveBodyIndexFrame(IMultiSourceFrame* multiSourceFra
 	return frameData;
 }
 
-auto KinectDeviceSdk20::RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame) -> ColorFrameData
+auto KinectSdk20Device::RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame) -> ColorFrameData
 {
 	ColorFrameData frameData;
 
@@ -157,7 +157,7 @@ auto KinectDeviceSdk20::RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame) 
 	return frameData;
 }
 
-auto KinectDeviceSdk20::RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame) -> DepthFrameData
+auto KinectSdk20Device::RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame) -> DepthFrameData
 {
 	IDepthFrameReference* pDepthFrameReference;
 	if (FAILED(multiSourceFrame->get_DepthFrameReference(&pDepthFrameReference)))
@@ -207,7 +207,7 @@ auto KinectDeviceSdk20::RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame) 
 	return frameData;
 }
 
-DepthMappingFrameData KinectDeviceSdk20::RetrieveDepthMappingFrame(const KinectDeviceSdk20& device, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame)
+DepthMappingFrameData KinectSdk20Device::RetrieveDepthMappingFrame(const KinectSdk20Device& device, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame)
 {
 	DepthMappingFrameData outputFrameData;
 	outputFrameData.width = colorFrame.width;
@@ -231,7 +231,7 @@ DepthMappingFrameData KinectDeviceSdk20::RetrieveDepthMappingFrame(const KinectD
 	return outputFrameData;
 }
 
-auto KinectDeviceSdk20::RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame) -> InfraredFrameData
+auto KinectSdk20Device::RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame) -> InfraredFrameData
 {
 	IInfraredFrameReference* pInfraredFrameReference;
 	if (FAILED(multiSourceFrame->get_InfraredFrameReference(&pInfraredFrameReference)))
@@ -281,7 +281,7 @@ auto KinectDeviceSdk20::RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFram
 	return frameData;
 }
 
-void KinectDeviceSdk20::SetServicePriority(ProcessPriority priority)
+void KinectSdk20Device::SetServicePriority(ProcessPriority priority)
 {
 	DWORD priorityClass;
 	switch (priority)
@@ -374,7 +374,7 @@ void KinectDeviceSdk20::SetServicePriority(ProcessPriority priority)
 	warn("KinectService.exe not found");
 }
 
-void KinectDeviceSdk20::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& error)
+void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& error)
 {
 	os_set_thread_name("KinectDeviceSdk20");
 

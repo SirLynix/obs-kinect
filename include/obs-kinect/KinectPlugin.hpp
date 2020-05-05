@@ -21,16 +21,12 @@
 #define OBS_KINECT_PLUGIN_KINECTPLUGIN
 
 #include "Helper.hpp"
+#include "KinectPluginImpl.hpp"
 #include <util/platform.h>
 #include <string>
 #include <vector>
 
 class KinectDevice;
-
-struct KinectPluginRefresh
-{
-	std::vector<std::unique_ptr<KinectDevice>> devices;
-};
 
 class KinectPlugin
 {
@@ -48,17 +44,13 @@ class KinectPlugin
 
 		bool Open(const char* path);
 
-		std::vector<std::unique_ptr<KinectDevice>> Refresh();
+		std::vector<std::unique_ptr<KinectDevice>> Refresh() const;
 
 		KinectPlugin& operator=(const KinectPlugin&) = delete;
 		KinectPlugin& operator=(KinectPlugin&&) noexcept = default;
 
 	private:
-		using GetUniqueNameFunc = const char* (*)();
-		using RefreshFunc = void (*)(KinectPluginRefresh*);
-
-		GetUniqueNameFunc m_getUniqueNameFunc;
-		RefreshFunc m_refreshFunc;
+		std::unique_ptr<KinectPluginImpl> m_impl;
 		std::string m_uniqueName;
 		ObsLibPtr m_lib;
 };

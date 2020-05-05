@@ -15,7 +15,7 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "KinectDeviceSdk10.hpp"
+#include "KinectSdk10Device.hpp"
 #include <util/threading.h>
 #include <array>
 
@@ -108,7 +108,7 @@ namespace
 	}
 }
 
-KinectDeviceSdk10::KinectDeviceSdk10(int sensorId) :
+KinectSdk10Device::KinectSdk10Device(int sensorId) :
 m_hasRequestedPrivilege(false)
 {
 	HRESULT hr;
@@ -143,11 +143,11 @@ m_hasRequestedPrivilege(false)
 		SetUniqueName("Kinect #" + std::to_string(sensorId));
 }
 
-void KinectDeviceSdk10::SetServicePriority(ProcessPriority priority)
+void KinectSdk10Device::SetServicePriority(ProcessPriority priority)
 {
 }
 
-void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr)
+void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr)
 {
 	os_set_thread_name("KinectDeviceSdk10");
 
@@ -389,7 +389,7 @@ void KinectDeviceSdk10::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 	blog(LOG_INFO, "exiting thread");
 }
 
-DepthMappingFrameData KinectDeviceSdk10::BuildDepthMappingFrame(INuiSensor* sensor, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, std::vector<std::uint8_t>& tempMemory)
+DepthMappingFrameData KinectSdk10Device::BuildDepthMappingFrame(INuiSensor* sensor, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, std::vector<std::uint8_t>& tempMemory)
 {
 	DepthMappingFrameData outputFrameData;
 	outputFrameData.width = colorFrame.width;
@@ -451,7 +451,7 @@ DepthMappingFrameData KinectDeviceSdk10::BuildDepthMappingFrame(INuiSensor* sens
 	return outputFrameData;
 }
 
-BodyIndexFrameData KinectDeviceSdk10::BuildBodyFrame(const DepthFrameData& depthFrame)
+BodyIndexFrameData KinectSdk10Device::BuildBodyFrame(const DepthFrameData& depthFrame)
 {
 	BodyIndexFrameData frameData;
 	frameData.width = depthFrame.width;
@@ -481,7 +481,7 @@ BodyIndexFrameData KinectDeviceSdk10::BuildBodyFrame(const DepthFrameData& depth
 	return frameData;
 }
 
-ColorFrameData KinectDeviceSdk10::RetrieveColorFrame(INuiSensor* sensor, HANDLE colorStream, std::int64_t* timestamp)
+ColorFrameData KinectSdk10Device::RetrieveColorFrame(INuiSensor* sensor, HANDLE colorStream, std::int64_t* timestamp)
 {
 	HRESULT hr;
 
@@ -551,7 +551,7 @@ ColorFrameData KinectDeviceSdk10::RetrieveColorFrame(INuiSensor* sensor, HANDLE 
 	return frameData;
 }
 
-DepthFrameData KinectDeviceSdk10::RetrieveDepthFrame(INuiSensor* sensor, HANDLE depthStream, std::int64_t* timestamp)
+DepthFrameData KinectSdk10Device::RetrieveDepthFrame(INuiSensor* sensor, HANDLE depthStream, std::int64_t* timestamp)
 {
 	HRESULT hr;
 
@@ -610,7 +610,7 @@ DepthFrameData KinectDeviceSdk10::RetrieveDepthFrame(INuiSensor* sensor, HANDLE 
 	return frameData;
 }
 
-InfraredFrameData KinectDeviceSdk10::RetrieveInfraredFrame(INuiSensor* sensor, HANDLE irStream, std::int64_t* timestamp)
+InfraredFrameData KinectSdk10Device::RetrieveInfraredFrame(INuiSensor* sensor, HANDLE irStream, std::int64_t* timestamp)
 {
 	HRESULT hr;
 
@@ -669,7 +669,7 @@ InfraredFrameData KinectDeviceSdk10::RetrieveInfraredFrame(INuiSensor* sensor, H
 	return frameData;
 }
 
-void KinectDeviceSdk10::ExtractDepth(DepthFrameData& depthFrame)
+void KinectSdk10Device::ExtractDepth(DepthFrameData& depthFrame)
 {
 	for (std::size_t y = 0; y < depthFrame.height; ++y)
 	{

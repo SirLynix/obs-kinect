@@ -34,6 +34,10 @@
 	#define OBSKINECT_API OBSKINECT_IMPORT
 #endif
 
+#define OBSKINECT_VERSION_MAJOR 0
+#define OBSKINECT_VERSION_MINOR 3
+#define OBSKINECT_VERSION ((OBSKINECT_VERSION_MAJOR << 8) | OBSKINECT_VERSION_MINOR)
+
 #include <obs-module.h>
 #include <util/platform.h>
 #include <memory>

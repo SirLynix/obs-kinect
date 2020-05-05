@@ -15,19 +15,27 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "Helper.hpp"
-#include "KinectSdk10Plugin.hpp"
+#pragma once
 
-extern "C"
+#ifndef OBS_KINECT_PLUGIN_KINECTSDK20PLUGIN
+#define OBS_KINECT_PLUGIN_KINECTSDK20PLUGIN
+
+#include "KinectPluginImpl.hpp"
+
+class KinectSdk20Plugin : public KinectPluginImpl
 {
-	OBSKINECT_EXPORT KinectPluginImpl* ObsKinect_CreatePlugin(std::uint32_t version)
-	{
-		if (version != OBSKINECT_VERSION)
-		{
-			warn("Kinect plugin incompatibilities (obs-kinect version: %d, plugin version: %d)", OBSKINECT_VERSION, version);
-			return nullptr;
-		}
+	public:
+		KinectSdk20Plugin() = default;
+		KinectSdk20Plugin(const KinectSdk20Plugin&) = delete;
+		KinectSdk20Plugin(KinectSdk20Plugin&&) = delete;
+		~KinectSdk20Plugin() = default;
 
-		return new KinectSdk10Plugin;
-	}
-}
+		std::string GetUniqueName() const override;
+
+		std::vector<std::unique_ptr<KinectDevice>> Refresh() const override;
+
+		KinectSdk20Plugin& operator=(const KinectSdk20Plugin&) = delete;
+		KinectSdk20Plugin& operator=(KinectSdk20Plugin&&) = delete;
+};
+
+#endif

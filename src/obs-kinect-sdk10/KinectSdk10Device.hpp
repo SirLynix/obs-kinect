@@ -17,34 +17,34 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_KINECTDEVICESDK20
-#define OBS_KINECT_PLUGIN_KINECTDEVICESDK20
+#ifndef OBS_KINECT_PLUGIN_KINECTDEVICESDK10
+#define OBS_KINECT_PLUGIN_KINECTDEVICESDK10
 
 #include "KinectDevice.hpp"
 #include "Win32Helper.hpp"
+#include <combaseapi.h>
+#include <NuiApi.h>
 
-#include <Kinect.h>
-
-class KinectDeviceSdk20 : public KinectDevice
+class KinectSdk10Device : public KinectDevice
 {
 	public:
-		KinectDeviceSdk20();
-		~KinectDeviceSdk20() = default;
-
-		bool MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthCoordinates* depthCoordinatesOut) const;
+		KinectSdk10Device(int sensorId);
+		~KinectSdk10Device() = default;
 
 	private:
 		void SetServicePriority(ProcessPriority priority) override;
 		void ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr) override;
 
-		static BodyIndexFrameData RetrieveBodyIndexFrame(IMultiSourceFrame* multiSourceFrame);
-		static ColorFrameData RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame);
-		static DepthFrameData RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame);
-		static DepthMappingFrameData RetrieveDepthMappingFrame(const KinectDeviceSdk20& device, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame);
-		static InfraredFrameData RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame);
+		DepthMappingFrameData BuildDepthMappingFrame(INuiSensor* sensor, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, std::vector<std::uint8_t>& tempMemory);
 
-		ReleasePtr<IKinectSensor> m_kinectSensor;
-		ReleasePtr<ICoordinateMapper> m_coordinateMapper;
+		static BodyIndexFrameData BuildBodyFrame(const DepthFrameData& depthFrame);
+		static ColorFrameData RetrieveColorFrame(INuiSensor* sensor, HANDLE colorStream, std::int64_t* timestamp);
+		static DepthFrameData RetrieveDepthFrame(INuiSensor* sensor, HANDLE depthStream, std::int64_t* timestamp);
+		static InfraredFrameData RetrieveInfraredFrame(INuiSensor* sensor, HANDLE irStream, std::int64_t* timestamp);
+		static void ExtractDepth(DepthFrameData& depthFrame);
+
+		ReleasePtr<INuiCoordinateMapper> m_coordinateMapper;
+		ReleasePtr<INuiSensor> m_kinectSensor;
 		bool m_hasRequestedPrivilege;
 };
 

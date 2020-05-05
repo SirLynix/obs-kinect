@@ -16,28 +16,18 @@
 ******************************************************************************/
 
 #include "Helper.hpp"
-#include "KinectPlugin.hpp"
-#include "KinectDeviceSdk20.hpp"
-#include <memory>
-#include <vector>
+#include "KinectSdk20Plugin.hpp"
 
 extern "C"
 {
-	OBSKINECT_EXPORT const char* ObsKinect_GetUniqueName()
+	OBSKINECT_EXPORT KinectPluginImpl* ObsKinect_CreatePlugin(std::uint32_t version)
 	{
-		return "KinectSDK2.0";
-	}
+		if (version != OBSKINECT_VERSION)
+		{
+			warn("Kinect plugin incompatibilities (obs-kinect version: %d, plugin version: %d)", OBSKINECT_VERSION, version);
+			return nullptr;
+		}
 
-	OBSKINECT_EXPORT void ObsKinect_Refresh(KinectPluginRefresh* refreshData)
-	{
-		try
-		{
-			// We have only one device: the default one
-			refreshData->devices.emplace_back(std::make_unique<KinectDeviceSdk20>());
-		}
-		catch (const std::exception& e)
-		{
-			warn("%s", e.what());
-		}
+		return new KinectSdk20Plugin;
 	}
 }
