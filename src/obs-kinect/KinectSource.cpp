@@ -187,6 +187,8 @@ void KinectSource::Update(float /*seconds*/)
 
 		ObsGraphics obsGfx;
 
+		const std::uint16_t* depthPixels = (frameData->depthFrame) ? frameData->depthFrame->ptr.get() : nullptr;
+
 		if ((m_greenScreenSettings.enabled && m_greenScreenSettings.gpuDepthMapping) || m_sourceType == SourceType::Depth)
 		{
 			if (!frameData->depthFrame)
@@ -358,11 +360,12 @@ void KinectSource::Update(float /*seconds*/)
 
 				assert(depthFrame->pitch == depthFrame->width * sizeof(std::uint16_t));
 				m_depthAccumulationMemory.resize(depthFrame->width * depthFrame->height);
+				m_depthAccumulationMemoryCount.resize(depthFrame->width * depthFrame->height);
+				m_depthAccumulationMemoryDenominator.resize(depthFrame->width * depthFrame->height);
 
 				std::fill(m_depthAccumulationMemory.begin(), m_depthAccumulationMemory.end(), 0);
-
-				std::size_t denominator = 0;
-				std::uint32_t count = 1;
+				std::fill(m_depthAccumulationMemoryCount.begin(), m_depthAccumulationMemoryCount.end(), 1);
+				std::fill(m_depthAccumulationMemoryDenominator.begin(), m_depthAccumulationMemoryDenominator.end(), 0);
 
 				for (const auto& depthFrame : m_previousDepthFrames)
 				{
@@ -371,12 +374,14 @@ void KinectSource::Update(float /*seconds*/)
 						for (std::size_t x = 0; x < depthFrame->width; ++x)
 						{
 							std::size_t depthIndex = depthFrame->width * y + x;
-							m_depthAccumulationMemory[depthIndex] += depthFrame->ptr[depthIndex] * count;
+							if (depthFrame->ptr[depthIndex] == 0)
+								continue;
+
+							m_depthAccumulationMemory[depthIndex] += depthFrame->ptr[depthIndex] * m_depthAccumulationMemoryCount[depthIndex];
+							m_depthAccumulationMemoryDenominator[depthIndex] += m_depthAccumulationMemoryCount[depthIndex];
+							m_depthAccumulationMemoryCount[depthIndex]++;
 						}
 					}
-
-					denominator += count;
-					count++;
 				}
 
 				m_depthAverageMemory.resize(depthFrame->width * depthFrame->height);
@@ -385,11 +390,15 @@ void KinectSource::Update(float /*seconds*/)
 					for (std::size_t x = 0; x < depthFrame->width; ++x)
 					{
 						std::size_t depthIndex = depthFrame->width * y + x;
-						m_depthAverageMemory[depthIndex] = static_cast<std::uint16_t>(m_depthAccumulationMemory[depthIndex] / denominator);
+						if (m_depthAccumulationMemoryDenominator[depthIndex] > 0)
+							m_depthAverageMemory[depthIndex] = static_cast<std::uint16_t>(m_depthAccumulationMemory[depthIndex] / m_depthAccumulationMemoryDenominator[depthIndex]);
+						else
+							m_depthAverageMemory[depthIndex] = 0;
 					}
 				}
 
 				UpdateTexture(m_depthTexture, GS_R16, depthFrame->width, depthFrame->height, depthFrame->pitch, m_depthAverageMemory.data());
+				depthPixels = m_depthAverageMemory.data();
 			}
 			else
 			{
@@ -430,10 +439,10 @@ void KinectSource::Update(float /*seconds*/)
 				float standardDeviation;
 				if (m_depthToColorSettings.dynamic)
 				{
-					const std::uint16_t* depthValues = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
 					std::size_t depthValueCount = depthFrame.width * depthFrame.height;
 
-					DynamicValues dynValues = ComputeDynamicValues(depthValues, depthValueCount);
+					assert(depthPixels);
+					DynamicValues dynValues = ComputeDynamicValues(depthPixels, depthValueCount);
 					averageValue = float(dynValues.average);
 					standardDeviation = float(dynValues.standardDeviation);
 				}
@@ -517,7 +526,7 @@ void KinectSource::Update(float /*seconds*/)
 
 					constexpr float InvalidDepth = -std::numeric_limits<float>::infinity();
 
-					const std::uint16_t* depthPixels = reinterpret_cast<const std::uint16_t*>(depthFrame.ptr.get());
+					assert(depthPixels);
 					const DepthMappingFrameData::DepthCoordinates* depthMapping = reinterpret_cast<const DepthMappingFrameData::DepthCoordinates*>(depthMappingFrame.ptr.get());
 
 					m_depthMappingMemory.resize(colorFrame.width* colorFrame.height * sizeof(std::uint16_t));
