@@ -139,7 +139,7 @@ class KinectSource
 		std::vector<std::shared_ptr<DepthFrameData>> m_previousDepthFrames;
 		std::vector<std::uint8_t> m_depthMappingMemory;
 		std::vector<std::uint8_t> m_depthMappingDirtyCounter;
-		std::vector<std::uint64_t> m_depthAccumulationMemory;
+		std::vector<std::uint32_t> m_depthAccumulationMemory;
 		std::vector<std::uint16_t> m_depthAverageMemory;
 		AlphaMaskEffect m_alphaMaskFilter;
 		ConvertDepthIRToColorEffect m_depthIRConvertEffect;

@@ -379,7 +379,7 @@ void KinectSource::Update(float /*seconds*/)
 					count++;
 				}
 
-				m_depthAverageMemory.resize(depthFrame->width* depthFrame->height);
+				m_depthAverageMemory.resize(depthFrame->width * depthFrame->height);
 				for (std::size_t y = 0; y < depthFrame->height; ++y)
 				{
 					for (std::size_t x = 0; x < depthFrame->width; ++x)
