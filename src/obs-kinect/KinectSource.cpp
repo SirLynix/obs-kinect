@@ -31,6 +31,7 @@ m_servicePriority(ProcessPriority::Normal),
 m_sourceType(SourceType::Color),
 m_height(0),
 m_width(0),
+m_lastFrameIndex(KinectDevice::InvalidFrameIndex),
 m_isVisible(false),
 m_stopOnHide(false)
 {
@@ -182,8 +183,10 @@ void KinectSource::Update(float /*seconds*/)
 			return;
 
 		auto frameData = m_deviceAccess->GetLastFrame();
-		if (!frameData)
+		if (!frameData || frameData->frameIndex == m_lastFrameIndex)
 			return;
+
+		m_lastFrameIndex = frameData->frameIndex;
 
 		ObsGraphics obsGfx;
 
@@ -510,6 +513,7 @@ void KinectSource::RefreshDeviceAccess()
 	auto Clear = [&] {
 		m_deviceAccess.reset();
 		m_finalTexture.reset();
+		m_lastFrameIndex = KinectDevice::InvalidFrameIndex;
 	};
 
 	if (m_isVisible)

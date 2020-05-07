@@ -73,6 +73,7 @@ struct KinectFrame
 	std::optional<DepthFrameData> depthFrame;
 	std::optional<DepthMappingFrameData> depthMappingFrame;
 	std::optional<InfraredFrameData> infraredFrame;
+	std::uint64_t frameIndex;
 };
 
 using KinectFramePtr = std::shared_ptr<KinectFrame>;

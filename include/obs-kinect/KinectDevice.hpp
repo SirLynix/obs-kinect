@@ -55,6 +55,8 @@ class OBSKINECT_API KinectDevice
 		KinectDevice& operator=(const KinectDevice&) = delete;
 		KinectDevice& operator=(KinectDevice&&) = delete;
 
+		static constexpr std::uint64_t InvalidFrameIndex = std::numeric_limits<std::uint64_t>::max();
+
 	protected:
 		std::optional<EnabledSourceFlags> GetSourceFlagsUpdate();
 
@@ -87,6 +89,7 @@ class OBSKINECT_API KinectDevice
 		std::string m_uniqueName;
 		std::thread m_thread;
 		std::vector<std::unique_ptr<AccessData>> m_accesses;
+		std::uint64_t m_frameIndex;
 		bool m_deviceSourceUpdated;
 };
 

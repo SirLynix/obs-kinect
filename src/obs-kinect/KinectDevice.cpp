@@ -21,8 +21,9 @@
 
 KinectDevice::KinectDevice() :
 m_servicePriority(ProcessPriority::Normal),
-m_deviceSourceUpdated(true),
-m_running(false)
+m_running(false),
+m_frameIndex(0),
+m_deviceSourceUpdated(true)
 {
 }
 
@@ -163,4 +164,5 @@ void KinectDevice::UpdateFrame(KinectFramePtr kinectFrame)
 {
 	std::lock_guard<std::mutex> lock(m_lastFrameLock);
 	m_lastFrame = std::move(kinectFrame);
+	m_lastFrame->frameIndex = m_frameIndex++;
 }
