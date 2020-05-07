@@ -37,7 +37,7 @@ m_hasRequestedPrivilege(false)
 	SetUniqueName("Default Kinect");
 }
 
-bool KinectSdk20Device::MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthMappingFrameData::DepthCoordinates* depthCoordinatesOut) const
+bool KinectDeviceSdk20::MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthMappingFrameData::DepthCoordinates* depthCoordinatesOut) const
 {
 	static_assert(sizeof(UINT16) == sizeof(std::uint16_t));
 	static_assert(sizeof(DepthMappingFrameData::DepthCoordinates) == sizeof(DepthSpacePoint));
