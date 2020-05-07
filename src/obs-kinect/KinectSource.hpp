@@ -32,6 +32,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <optional>
+#include <queue>
 #include <thread>
 #include <vector>
 
@@ -120,6 +121,7 @@ class KinectSource
 
 		void ClearDeviceAccess();
 		EnabledSourceFlags ComputeEnabledSourceFlags() const;
+		void DumpThread();
 		std::optional<KinectDeviceAccess> OpenAccess(KinectDevice& device);
 		void RefreshDeviceAccess();
 
@@ -144,6 +146,10 @@ class KinectSource
 		ObsTexturePtr m_infraredTexture;
 		ProcessPriority m_servicePriority;
 		SourceType m_sourceType;
+		std::atomic_bool m_dumpRunning;
+		std::mutex m_dumpMutex;
+		std::queue<KinectFrameConstPtr> m_dumpImages;
+		std::thread m_dumpThread;
 		std::string m_deviceName;
 		std::uint32_t m_height;
 		std::uint32_t m_width;

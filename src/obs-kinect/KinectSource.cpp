@@ -22,7 +22,11 @@
 #include <algorithm>
 #include <array>
 #include <numeric>
+#include <fstream>
 #include <optional>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 KinectSource::KinectSource(KinectDeviceRegistry& registry) :
 m_gaussianBlur(GS_RGBA),
@@ -187,6 +191,34 @@ void KinectSource::Update(float /*seconds*/)
 			return;
 
 		m_lastFrameIndex = frameData->frameIndex;
+
+
+		if (frameData->colorFrame && frameData->depthFrame && frameData->depthMappingFrame)
+		{
+			constexpr std::size_t StartAfter = 5; //< 5s
+			constexpr std::size_t EndAfter = 10; //< 10s
+			constexpr std::size_t FrameRate = 30;
+
+			static std::size_t counter = 0;
+			counter++;
+			if (counter >= StartAfter * FrameRate && counter < (StartAfter + EndAfter) * FrameRate)
+			{
+				if (counter == StartAfter * FrameRate)
+				{
+					info("Starting frame dump...");
+					m_dumpRunning = true;
+					m_dumpThread = std::thread(&KinectSource::DumpThread, this);
+				}
+				else if (counter == (StartAfter + EndAfter) * FrameRate - 1)
+				{
+					info("Frame dump finished");
+					m_dumpRunning = false;
+				}
+
+				std::lock_guard<std::mutex> lock(m_dumpMutex);
+				m_dumpImages.push(frameData);
+			}
+		}
 
 		ObsGraphics obsGfx;
 
@@ -490,6 +522,113 @@ EnabledSourceFlags KinectSource::ComputeEnabledSourceFlags() const
 	}
 
 	return flags;
+}
+
+void KinectSource::DumpThread()
+{
+	std::size_t frameIndex = 0;
+	while (m_dumpRunning)
+	{
+		KinectFramePtr framePtr;
+		{
+			std::unique_lock<std::mutex> lock(m_dumpMutex);
+			if (m_dumpImages.empty())
+			{
+				lock.unlock();
+
+				os_sleep_ms(1);
+				continue;
+			}
+
+			while (!m_dumpImages.empty())
+			{
+				KinectFrameConstPtr frameData = std::move(m_dumpImages.front());
+				m_dumpImages.pop();
+				lock.unlock();
+				{
+					std::string frameIndexStr = std::to_string(frameIndex++);
+
+					// Store color
+					{
+						const std::uint8_t* input = frameData->colorFrame->ptr.get();
+
+						std::size_t width = frameData->colorFrame->width;
+						std::size_t height = frameData->colorFrame->height;
+						std::size_t pitch = frameData->colorFrame->pitch;
+
+						std::vector<std::uint8_t> rgb(width * height * 3);
+
+						std::uint8_t* ptr = rgb.data();
+						for (std::size_t y = 0; y < height; ++y)
+						{
+							for (std::size_t x = 0; x < width; ++x)
+							{
+								const std::uint8_t* rgbValues = &input[y * pitch + x * 4];
+
+								*ptr++ = rgbValues[0];
+								*ptr++ = rgbValues[1];
+								*ptr++ = 2[rgbValues];
+							}
+						}
+
+						stbi_write_png(("frames/frame_" + frameIndexStr + "_color.png").c_str(), width, height, 3, rgb.data(), 0);
+					}
+
+					// Store color-to-depth mapping
+					{
+						const DepthMappingFrameData::DepthCoordinates* depthCoordinates = frameData->depthMappingFrame->ptr.get();
+
+						std::size_t width = frameData->depthMappingFrame->width;
+						std::size_t height = frameData->depthMappingFrame->height;
+
+						std::fstream f("frames/frame_" + frameIndexStr + "_depthmapping.bin", std::ios_base::binary | std::ios_base::trunc | std::ios_base::out);
+
+						std::uint32_t w(width);
+						std::uint32_t h(height);
+
+						f.write(reinterpret_cast<const char*>(&w), sizeof(w));
+						f.write(reinterpret_cast<const char*>(&h), sizeof(h));
+
+						for (std::size_t y = 0; y < height; ++y)
+						{
+							for (std::size_t x = 0; x < width; ++x)
+							{
+								f.write(reinterpret_cast<const char*>(&depthCoordinates->x), sizeof(depthCoordinates->x));
+								f.write(reinterpret_cast<const char*>(&depthCoordinates->y), sizeof(depthCoordinates->y));
+								depthCoordinates++;
+							}
+						}
+					}
+
+					// Store depth
+					{
+						const std::uint16_t* input = frameData->depthFrame->ptr.get();
+
+						std::size_t width = frameData->depthFrame->width;
+						std::size_t height = frameData->depthFrame->height;
+
+						std::vector<std::uint8_t> rgb(width * height * 3);
+
+						std::uint8_t* ptr = rgb.data();
+						for (std::size_t y = 0; y < height; ++y)
+						{
+							for (std::size_t x = 0; x < width; ++x)
+							{
+								std::uint16_t depthValue = input[y * width + x];
+
+								*ptr++ = depthValue / 256;
+								*ptr++ = depthValue % 256;
+								*ptr++ = 0;
+							}
+						}
+
+						stbi_write_png(("frames/frame_" + frameIndexStr + "_depth.png").c_str(), width, height, 3, rgb.data(), 0);
+					}
+				}
+				lock.lock();
+			}
+		}
+	}
 }
 
 std::optional<KinectDeviceAccess> KinectSource::OpenAccess(KinectDevice& device)
