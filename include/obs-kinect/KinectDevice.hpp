@@ -84,19 +84,16 @@ class OBSKINECT_API KinectDevice
 			std::unordered_map<std::string, ParameterValue> parameters;
 		};
 
-		struct BoolParameter
+		template<typename T>
+		struct DataParameter
 		{
-			bool defaultValue;
-			bool value;
-			std::function<bool(bool, bool)> combinator;
+			T defaultValue;
+			T value;
+			std::function<T (T, T)> combinator;
 		};
 
-		struct IntegerParameter
-		{
-			long long defaultValue;
-			long long value;
-			std::function<long long(long long, long long)> combinator;
-		};
+		using BoolParameter = DataParameter<bool>;
+		using IntegerParameter = DataParameter<long long>;
 
 		using ParameterData = std::variant<BoolParameter, IntegerParameter>;
 
