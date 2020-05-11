@@ -42,6 +42,8 @@ class KinectDeviceAccess
 		void SetEnabledSourceFlags(EnabledSourceFlags enabledSources);
 		void SetServicePriority(ProcessPriority priority);
 
+		void UpdateDeviceParameters(obs_data_t* settings);
+
 		KinectDeviceAccess& operator=(const KinectDeviceAccess&) = delete;
 		KinectDeviceAccess& operator=(KinectDeviceAccess&& access) noexcept;
 

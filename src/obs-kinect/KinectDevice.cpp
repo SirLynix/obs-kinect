@@ -18,6 +18,10 @@
 #include "KinectDevice.hpp"
 #include "KinectDeviceAccess.hpp"
 #include <algorithm>
+#include <type_traits>
+
+template<typename T>
+struct AlwaysFalse : std::false_type {};
 
 KinectDevice::KinectDevice() :
 m_servicePriority(ProcessPriority::Normal),
@@ -40,9 +44,24 @@ KinectDeviceAccess KinectDevice::AcquireAccess(EnabledSourceFlags enabledSources
 	auto& accessDataPtr = m_accesses.emplace_back(std::make_unique<AccessData>());
 	accessDataPtr->enabledSources = enabledSources;
 
+	for (auto&& [parameterName, parameterData] : m_parameters)
+	{
+		const std::string& name = parameterName; //< structured binding cannot be captured directly
+
+		std::visit([&](auto&& arg)
+		{
+			accessDataPtr->parameters[name] = arg.defaultValue;
+		}, parameterData);
+	}
+
 	UpdateEnabledSources();
 
 	return KinectDeviceAccess(*this, accessDataPtr.get());
+}
+
+obs_properties_t* KinectDevice::CreateProperties() const
+{
+	return nullptr;
 }
 
 auto KinectDevice::GetLastFrame() -> KinectFrameConstPtr
@@ -64,6 +83,32 @@ void KinectDevice::ReleaseAccess(AccessData* accessData)
 		StopCapture();
 }
 
+void KinectDevice::UpdateDeviceParameters(AccessData* access, obs_data_t* settings)
+{
+	for (auto&& [parameterName, parameterData] : m_parameters)
+	{
+		const std::string& name = parameterName; //< structured binding cannot be captured directly
+
+		std::visit([&](auto&& arg)
+		{
+			using T = std::decay_t<decltype(arg)>;
+
+			if constexpr (std::is_same_v<T, BoolParameter>)
+			{
+				access->parameters[name] = obs_data_get_bool(settings, name.c_str());
+			}
+			else if constexpr (std::is_same_v<T, IntegerParameter>)
+			{
+				access->parameters[name] = obs_data_get_int(settings, name.c_str());
+			}
+			else
+				static_assert(AlwaysFalse<T>(), "non-exhaustive visitor");
+		}, parameterData);
+
+		UpdateParameter(name);
+	}
+}
+
 void KinectDevice::UpdateEnabledSources()
 {
 	EnabledSourceFlags sourceFlags = 0;
@@ -71,6 +116,42 @@ void KinectDevice::UpdateEnabledSources()
 		sourceFlags |= access->enabledSources;
 
 	SetEnabledSources(sourceFlags);
+}
+
+void KinectDevice::UpdateParameter(const std::string& parameterName)
+{
+	auto it = m_parameters.find(parameterName);
+	assert(it != m_parameters.end());
+
+	std::visit([&](auto&& arg)
+	{
+		using T = std::decay_t<decltype(arg)>;
+
+		auto value = arg.defaultValue;
+		for (auto& access : m_accesses)
+		{
+			auto valIt = access->parameters.find(parameterName);
+			assert(valIt != access->parameters.end());
+
+			value = arg.combinator(value, std::get<decltype(value)>(valIt->second));
+		}
+
+		if (value != arg.value)
+		{
+			if constexpr (std::is_same_v<T, BoolParameter>)
+			{
+				HandleBoolParameterUpdate(parameterName, value);
+			}
+			else if constexpr (std::is_same_v<T, IntegerParameter>)
+			{
+				HandleIntParameterUpdate(parameterName, value);
+			}
+			else
+				static_assert(AlwaysFalse<T>(), "non-exhaustive visitor");
+
+			arg.value = value;
+		}
+	}, it->second);
 }
 
 void KinectDevice::UpdateServicePriority()
@@ -102,6 +183,30 @@ void KinectDevice::SetEnabledSources(EnabledSourceFlags sourceFlags)
 const std::string& KinectDevice::GetUniqueName() const
 {
 	return m_uniqueName;
+}
+
+void KinectDevice::SetDefaultValues(obs_data_t* settings)
+{
+	for (auto&& [parameterName, parameterData] : m_parameters)
+	{
+		const std::string& name = parameterName; //< structured binding cannot be captured directly
+
+		std::visit([&](auto&& arg)
+		{
+			using T = std::decay_t<decltype(arg)>;
+
+			if constexpr (std::is_same_v<T, BoolParameter>)
+			{
+				obs_data_set_default_bool(settings, name.c_str(), arg.defaultValue);
+			}
+			else if constexpr (std::is_same_v<T, IntegerParameter>)
+			{
+				obs_data_set_default_int(settings, name.c_str(), arg.defaultValue);
+			}
+			else
+				static_assert(AlwaysFalse<T>(), "non-exhaustive visitor");
+		}, parameterData);
+	}
 }
 
 void KinectDevice::StartCapture()
@@ -153,6 +258,28 @@ bool KinectDevice::IsRunning() const
 	return m_running;
 }
 
+void KinectDevice::RegisterBoolParameter(std::string parameterName, bool defaultValue, std::function<bool(bool, bool)> combinator)
+{
+	BoolParameter parameter;
+	parameter.combinator = std::move(combinator);
+	parameter.defaultValue = defaultValue;
+	parameter.value = defaultValue;
+
+	assert(m_parameters.find(parameterName) == m_parameters.end());
+	m_parameters.emplace(std::move(parameterName), std::move(parameter));
+}
+
+void KinectDevice::RegisterIntParameter(std::string parameterName, long long defaultValue, std::function<long long(long long, long long)> combinator)
+{
+	IntegerParameter parameter;
+	parameter.combinator = std::move(combinator);
+	parameter.defaultValue = defaultValue;
+	parameter.value = defaultValue;
+
+	assert(m_parameters.find(parameterName) == m_parameters.end());
+	m_parameters.emplace(std::move(parameterName), std::move(parameter));
+}
+
 void KinectDevice::SetUniqueName(std::string uniqueName)
 {
 	assert(m_uniqueName.empty());
@@ -163,4 +290,12 @@ void KinectDevice::UpdateFrame(KinectFramePtr kinectFrame)
 {
 	std::lock_guard<std::mutex> lock(m_lastFrameLock);
 	m_lastFrame = std::move(kinectFrame);
+}
+
+void KinectDevice::HandleBoolParameterUpdate(const std::string& parameterName, bool value)
+{
+}
+
+void KinectDevice::HandleIntParameterUpdate(const std::string& parameterName, long long value)
+{
 }

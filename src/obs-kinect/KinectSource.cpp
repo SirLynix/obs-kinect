@@ -452,6 +452,12 @@ void KinectSource::UpdateDevice(std::string deviceName)
 	RefreshDeviceAccess();
 }
 
+void KinectSource::UpdateDeviceParameters(obs_data_t* settings)
+{
+	if (m_deviceAccess)
+		m_deviceAccess->UpdateDeviceParameters(settings);
+}
+
 void KinectSource::ClearDeviceAccess()
 {
 	m_deviceAccess.reset();

@@ -25,10 +25,13 @@
 #include "KinectFrame.hpp"
 #include <atomic>
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <optional>
 #include <string>
 #include <thread>
+#include <unordered_map>
+#include <variant>
 #include <vector>
 
 class KinectDeviceAccess;
@@ -45,9 +48,13 @@ class OBSKINECT_API KinectDevice
 
 		KinectDeviceAccess AcquireAccess(EnabledSourceFlags enabledSources);
 
+		virtual obs_properties_t* CreateProperties() const;
+
 		KinectFrameConstPtr GetLastFrame();
 
 		const std::string& GetUniqueName() const;
+
+		void SetDefaultValues(obs_data_t* settings);
 
 		void StartCapture();
 		void StopCapture();
@@ -59,21 +66,46 @@ class OBSKINECT_API KinectDevice
 		std::optional<EnabledSourceFlags> GetSourceFlagsUpdate();
 
 		bool IsRunning() const;
+		void RegisterBoolParameter(std::string parameterName, bool defaultValue, std::function<bool(bool, bool)> combinator);
+		void RegisterIntParameter(std::string parameterName, long long defaultValue, std::function<long long(long long, long long)> combinator);
 		void SetUniqueName(std::string uniqueName);
 		void UpdateFrame(KinectFramePtr kinectFrame);
 
+		virtual void HandleBoolParameterUpdate(const std::string& parameterName, bool value);
+		virtual void HandleIntParameterUpdate(const std::string& parameterName, long long value);
 		virtual void SetServicePriority(ProcessPriority priority) = 0;
 		virtual void ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr) = 0;
 
 	private:
+		using ParameterValue = std::variant<bool, long long>;
+
 		struct AccessData
 		{
 			EnabledSourceFlags enabledSources;
 			ProcessPriority servicePriority = ProcessPriority::Normal;
+			std::unordered_map<std::string, ParameterValue> parameters;
 		};
 
+		struct BoolParameter
+		{
+			bool defaultValue;
+			bool value;
+			std::function<bool(bool, bool)> combinator;
+		};
+
+		struct IntegerParameter
+		{
+			long long defaultValue;
+			long long value;
+			std::function<long long(long long, long long)> combinator;
+		};
+
+		using ParameterData = std::variant<BoolParameter, IntegerParameter>;
+
 		void ReleaseAccess(AccessData* access);
+		void UpdateDeviceParameters(AccessData* access, obs_data_t* settings);
 		void UpdateEnabledSources();
+		void UpdateParameter(const std::string& parameterName);
 		void UpdateServicePriority();
 
 		void SetEnabledSources(EnabledSourceFlags sourceFlags);
@@ -86,6 +118,7 @@ class OBSKINECT_API KinectDevice
 		std::mutex m_lastFrameLock;
 		std::string m_uniqueName;
 		std::thread m_thread;
+		std::unordered_map<std::string, ParameterData> m_parameters;
 		std::vector<std::unique_ptr<AccessData>> m_accesses;
 		bool m_deviceSourceUpdated;
 };

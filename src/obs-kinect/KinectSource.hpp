@@ -66,6 +66,7 @@ class KinectSource
 
 		void Update(float seconds);
 		void UpdateDevice(std::string deviceName);
+		void UpdateDeviceParameters(obs_data_t* settings);
 		void UpdateDepthToColor(DepthToColorSettings depthToColor);
 		void UpdateGreenScreen(GreenScreenSettings greenScreen);
 		void UpdateInfraredToColor(InfraredToColorSettings infraredToColor);

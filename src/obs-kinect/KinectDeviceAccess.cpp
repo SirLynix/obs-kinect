@@ -65,6 +65,11 @@ void KinectDeviceAccess::SetServicePriority(ProcessPriority priority)
 	m_owner->UpdateServicePriority();
 }
 
+void KinectDeviceAccess::UpdateDeviceParameters(obs_data_t* settings)
+{
+	m_owner->UpdateDeviceParameters(m_data, settings);
+}
+
 KinectDeviceAccess& KinectDeviceAccess::operator=(KinectDeviceAccess&& access) noexcept
 {
 	std::swap(m_owner, access.m_owner);
