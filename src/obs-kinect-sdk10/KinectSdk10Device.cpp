@@ -310,7 +310,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 			}
 			else if (newFrameSourcesTypes & NUI_INITIALIZE_FLAG_USES_DEPTH)
 			{
-				hr = m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_DEPTH, NUI_IMAGE_RESOLUTION_320x240, NUI_IMAGE_STREAM_FLAG_ENABLE_NEAR_MODE, 2, depthEvent.get(), &depthStream);
+				hr = m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_DEPTH, NUI_IMAGE_RESOLUTION_640x480, NUI_IMAGE_STREAM_FLAG_ENABLE_NEAR_MODE, 2, depthEvent.get(), &depthStream);
 				if (FAILED(hr))
 					throw std::runtime_error("failed to open color stream: " + ErrToString(hr));
 
