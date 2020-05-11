@@ -53,6 +53,7 @@ KinectDeviceAccess KinectDevice::AcquireAccess(EnabledSourceFlags enabledSources
 		}, parameterData);
 	}
 
+	RefreshParameters();
 	UpdateEnabledSources();
 
 	return KinectDeviceAccess(*this, accessDataPtr.get());
@@ -69,12 +70,19 @@ auto KinectDevice::GetLastFrame() -> KinectFrameConstPtr
 	return m_lastFrame;
 }
 
+void KinectDevice::RefreshParameters()
+{
+	for (auto&& [parameterName, _] : m_parameters)
+		UpdateParameter(parameterName);
+}
+
 void KinectDevice::ReleaseAccess(AccessData* accessData)
 {
 	auto it = std::find_if(m_accesses.begin(), m_accesses.end(), [=](const std::unique_ptr<AccessData>& data) { return data.get() == accessData; });
 	assert(it != m_accesses.end());
 	m_accesses.erase(it);
 
+	RefreshParameters();
 	UpdateEnabledSources();
 
 	if (m_accesses.empty())
@@ -102,9 +110,9 @@ void KinectDevice::UpdateDeviceParameters(AccessData* access, obs_data_t* settin
 			else
 				static_assert(AlwaysFalse<T>(), "non-exhaustive visitor");
 		}, parameterData);
-
-		UpdateParameter(name);
 	}
+
+	RefreshParameters();
 }
 
 void KinectDevice::UpdateEnabledSources()

@@ -100,6 +100,7 @@ class OBSKINECT_API KinectDevice
 
 		using ParameterData = std::variant<BoolParameter, IntegerParameter>;
 
+		void RefreshParameters();
 		void ReleaseAccess(AccessData* access);
 		void UpdateDeviceParameters(AccessData* access, obs_data_t* settings);
 		void UpdateEnabledSources();
