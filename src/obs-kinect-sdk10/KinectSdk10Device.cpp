@@ -181,14 +181,14 @@ INuiSensor* KinectSdk10Device::GetSensor() const
 
 void KinectSdk10Device::ElevationThreadFunc()
 {
-	std::array<HANDLE, 2> events = { m_elevationUpdateEvent.get(), m_exitElevationThreadEvent.get() };
+	std::array<HANDLE, 2> events = { m_exitElevationThreadEvent.get(), m_elevationUpdateEvent.get() };
 
 	for (;;)
 	{
 		DWORD eventIndex = WaitForMultipleObjects(DWORD(events.size()), events.data(), FALSE, INFINITE);
 		switch (eventIndex)
 		{
-			case WAIT_OBJECT_0:
+			case WAIT_OBJECT_0 + 1:
 			{
 				os_sleep_ms(250); //< sleep a bit to help reduce SetAngle commands and wear
 
@@ -216,8 +216,8 @@ void KinectSdk10Device::ElevationThreadFunc()
 				break;
 			}
 
-			case WAIT_OBJECT_0 + 1:
-			default:
+			case WAIT_OBJECT_0: //< exit thread event
+			default: //< shouldn't happen but still
 				return;
 		}
 	}
