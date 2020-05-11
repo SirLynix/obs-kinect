@@ -70,6 +70,7 @@ class OBSKINECT_API KinectDevice
 		void RegisterBoolParameter(std::string parameterName, bool defaultValue, std::function<bool(bool, bool)> combinator);
 		void RegisterDoubleParameter(std::string parameterName, double defaultValue, double epsilon, std::function<double(double, double)> combinator);
 		void RegisterIntParameter(std::string parameterName, long long defaultValue, std::function<long long(long long, long long)> combinator);
+		void SetSupportedSources(SourceFlags enabledSources);
 		void SetUniqueName(std::string uniqueName);
 		void UpdateFrame(KinectFramePtr kinectFrame);
 
