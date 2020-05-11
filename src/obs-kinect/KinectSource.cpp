@@ -27,7 +27,6 @@
 KinectSource::KinectSource(KinectDeviceRegistry& registry) :
 m_gaussianBlur(GS_RGBA),
 m_registry(registry),
-m_servicePriority(ProcessPriority::Normal),
 m_sourceType(SourceType::Color),
 m_height(0),
 m_width(0),
@@ -59,13 +58,6 @@ void KinectSource::OnVisibilityUpdate(bool isVisible)
 
 	if (!m_isVisible)
 		m_finalTexture.reset(); //< Free some memory
-}
-
-void KinectSource::SetServicePriority(ProcessPriority servicePriority)
-{
-	m_servicePriority = servicePriority;
-	if (m_deviceAccess)
-		m_deviceAccess->SetServicePriority(servicePriority);
 }
 
 void KinectSource::SetSourceType(SourceType sourceType)
@@ -500,7 +492,6 @@ std::optional<KinectDeviceAccess> KinectSource::OpenAccess(KinectDevice& device)
 	try
 	{
 		KinectDeviceAccess deviceAccess = device.AcquireAccess(ComputeEnabledSourceFlags());
-		deviceAccess.SetServicePriority(m_servicePriority);
 
 		return deviceAccess;
 	}

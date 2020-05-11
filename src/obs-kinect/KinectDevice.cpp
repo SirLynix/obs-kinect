@@ -24,7 +24,6 @@ template<typename T>
 struct AlwaysFalse : std::false_type {};
 
 KinectDevice::KinectDevice() :
-m_servicePriority(ProcessPriority::Normal),
 m_deviceSourceUpdated(true),
 m_running(false)
 {
@@ -77,7 +76,6 @@ void KinectDevice::ReleaseAccess(AccessData* accessData)
 	m_accesses.erase(it);
 
 	UpdateEnabledSources();
-	UpdateServicePriority();
 
 	if (m_accesses.empty())
 		StopCapture();
@@ -152,22 +150,6 @@ void KinectDevice::UpdateParameter(const std::string& parameterName)
 			arg.value = value;
 		}
 	}, it->second);
-}
-
-void KinectDevice::UpdateServicePriority()
-{
-	ProcessPriority highestPriority = ProcessPriority::Normal;
-	for (auto& access : m_accesses)
-	{
-		if (access->servicePriority > highestPriority)
-			highestPriority = access->servicePriority;
-	}
-
-	if (m_servicePriority != highestPriority)
-	{
-		SetServicePriority(highestPriority);
-		m_servicePriority = highestPriority;
-	}
 }
 
 void KinectDevice::SetEnabledSources(EnabledSourceFlags sourceFlags)

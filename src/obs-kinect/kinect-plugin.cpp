@@ -59,7 +59,6 @@ static void kinect_source_update(void* data, obs_data_t* settings)
 	kinectSource->UpdateDevice(deviceName);
 	kinectSource->UpdateDeviceParameters(settings);
 
-	kinectSource->SetServicePriority(static_cast<ProcessPriority>(obs_data_get_int(settings, "service_priority")));
 	kinectSource->SetSourceType(static_cast<KinectSource::SourceType>(obs_data_get_int(settings, "source")));
 	kinectSource->ShouldStopOnHide(obs_data_get_bool(settings, "invisible_shutdown"));
 
@@ -151,11 +150,6 @@ static obs_properties_t* kinect_source_properties(void *unused)
 		return true;
 	});
 
-	p = obs_properties_add_list(props, "service_priority", obs_module_text("ObsKinect.Priority"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	obs_property_list_add_int(p, obs_module_text("ObsKinect.Priority_High"), static_cast<int>(ProcessPriority::High));
-	obs_property_list_add_int(p, obs_module_text("ObsKinect.Priority_AboveNormal"), static_cast<int>(ProcessPriority::AboveNormal));
-	obs_property_list_add_int(p, obs_module_text("ObsKinect.Priority_Normal"), static_cast<int>(ProcessPriority::Normal));
-
 	p = obs_properties_add_list(props, "source", obs_module_text("ObsKinect.Source"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(p, obs_module_text("ObsKinect.Source_Color"), static_cast<int>(KinectSource::SourceType::Color));
 	obs_property_list_add_int(p, obs_module_text("ObsKinect.Source_Depth"), static_cast<int>(KinectSource::SourceType::Depth));
@@ -238,7 +232,6 @@ static void kinect_source_defaults(obs_data_t* settings)
 		return false; //< Stop at first device
 	});
 
-	obs_data_set_default_int(settings, "service_priority", static_cast<int>(ProcessPriority::Normal));
 	obs_data_set_default_int(settings, "source", static_cast<int>(KinectSource::SourceType::Color));
 	obs_data_set_default_bool(settings, "invisible_shutdown", false);
 	obs_data_set_default_double(settings, "depth_average", 0.015);

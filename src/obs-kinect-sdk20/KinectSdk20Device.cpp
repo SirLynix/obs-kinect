@@ -20,8 +20,7 @@
 #include <array>
 #include <tlhelp32.h>
 
-KinectSdk20Device::KinectSdk20Device() :
-m_hasRequestedPrivilege(false)
+KinectSdk20Device::KinectSdk20Device()
 {
 	IKinectSensor* pKinectSensor;
 	if (FAILED(GetDefaultKinectSensor(&pKinectSensor)))
@@ -36,6 +35,30 @@ m_hasRequestedPrivilege(false)
 	m_coordinateMapper.reset(pCoordinateMapper);
 
 	SetUniqueName("Default Kinect");
+
+	RegisterIntParameter("sdk20_service_priority", static_cast<int>(ProcessPriority::Normal), [](long long a, long long b)
+	{
+		return std::max(a, b);
+	});
+}
+
+KinectSdk20Device::~KinectSdk20Device()
+{
+	// Reset service priority on exit
+	SetServicePriority(ProcessPriority::Normal);
+}
+
+obs_properties_t* KinectSdk20Device::CreateProperties() const
+{
+	obs_property_t* p;
+
+	obs_properties_t* props = obs_properties_create();
+	p = obs_properties_add_list(props, "sdk20_service_priority", Translate("ObsKinectV2.ServicePriority"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(p, Translate("ObsKinectV2.ServicePriority_High"), static_cast<int>(ProcessPriority::High));
+	obs_property_list_add_int(p, Translate("ObsKinectV2.ServicePriority_AboveNormal"), static_cast<int>(ProcessPriority::AboveNormal));
+	obs_property_list_add_int(p, Translate("ObsKinectV2.ServicePriority_Normal"), static_cast<int>(ProcessPriority::Normal));
+
+	return props;
 }
 
 bool KinectSdk20Device::MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthMappingFrameData::DepthCoordinates* depthCoordinatesOut) const
@@ -51,6 +74,100 @@ bool KinectSdk20Device::MapColorToDepth(const std::uint16_t* depthValues, std::s
 		return false;
 
 	return true;
+}
+
+void KinectSdk20Device::SetServicePriority(ProcessPriority priority)
+{
+	DWORD priorityClass;
+	switch (priority)
+	{
+		case ProcessPriority::High:        priorityClass = HIGH_PRIORITY_CLASS; break;
+		case ProcessPriority::AboveNormal: priorityClass = ABOVE_NORMAL_PRIORITY_CLASS; break;
+		case ProcessPriority::Normal:      priorityClass = NORMAL_PRIORITY_CLASS; break;
+
+		default:
+			warn("unknown process priority %d", int(priority));
+			return;
+	}
+
+	static bool hasRequestedPrivileges = false;
+	if (!hasRequestedPrivileges)
+	{
+		LUID luid;
+		if (!LookupPrivilegeValue(nullptr, SE_INC_BASE_PRIORITY_NAME, &luid))
+		{
+			warn("failed to get privilege SE_INC_BASE_PRIORITY_NAME");
+			return;
+		}
+
+		TOKEN_PRIVILEGES tkp;
+		tkp.PrivilegeCount = 1;
+		tkp.Privileges[0].Luid = luid;
+		tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+		HANDLE token;
+		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token))
+		{
+			warn("failed to open processor token");
+			return;
+		}
+		HandlePtr tokenOwner(token);
+
+		if (!AdjustTokenPrivileges(token, FALSE, &tkp, sizeof(tkp), nullptr, nullptr))
+		{
+			warn("failed to adjust token privileges");
+			return;
+		}
+
+		info("adjusted token privileges successfully");
+		hasRequestedPrivileges = true;
+	}
+
+	HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	if (snapshot == INVALID_HANDLE_VALUE)
+	{
+		warn("failed to retrieve processes snapshot");
+		return;
+	}
+	HandlePtr snapshotOwner(snapshot);
+
+	PROCESSENTRY32 entry;
+	entry.dwSize = sizeof(PROCESSENTRY32);
+
+	if (Process32First(snapshot, &entry))
+	{
+		do
+		{
+#ifdef UNICODE
+			if (wcscmp(entry.szExeFile, L"KinectService.exe") == 0)
+#else
+			if (strcmp(entry.szExeFile, "KinectService.exe") == 0)
+#endif
+			{
+				info("found KinectService.exe, trying to update its priority...");
+
+				HANDLE process = OpenProcess(PROCESS_SET_INFORMATION, FALSE, entry.th32ProcessID);
+				if (!process)
+				{
+					warn("failed to open process");
+					return;
+				}
+				HandlePtr processOwner(process);
+
+				if (!SetPriorityClass(process, priorityClass))
+				{
+					warn("failed to update process priority");
+					return;
+				}
+
+				info("KinectService.exe priority updated successfully to %s", ProcessPriorityToString(priority));
+				return;
+			}
+		}
+		while (Process32Next(snapshot, &entry));
+	}
+
+	warn("KinectService.exe not found");
 }
 
 auto KinectSdk20Device::RetrieveBodyIndexFrame(IMultiSourceFrame* multiSourceFrame) -> BodyIndexFrameData
@@ -281,97 +398,10 @@ auto KinectSdk20Device::RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFram
 	return frameData;
 }
 
-void KinectSdk20Device::SetServicePriority(ProcessPriority priority)
+void KinectSdk20Device::HandleIntParameterUpdate(const std::string& parameterName, long long value)
 {
-	DWORD priorityClass;
-	switch (priority)
-	{
-		case ProcessPriority::High:        priorityClass = HIGH_PRIORITY_CLASS; break;
-		case ProcessPriority::AboveNormal: priorityClass = ABOVE_NORMAL_PRIORITY_CLASS; break;
-		case ProcessPriority::Normal:      priorityClass = NORMAL_PRIORITY_CLASS; break;
-
-		default:
-			warn("unknown process priority %d", int(priority));
-			return;
-	}
-
-	if (!m_hasRequestedPrivilege)
-	{
-		LUID luid;
-		if (!LookupPrivilegeValue(nullptr, SE_INC_BASE_PRIORITY_NAME, &luid))
-		{
-			warn("failed to get privilege SE_INC_BASE_PRIORITY_NAME");
-			return;
-		}
-
-		TOKEN_PRIVILEGES tkp;
-		tkp.PrivilegeCount = 1;
-		tkp.Privileges[0].Luid = luid;
-		tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-
-		HANDLE token;
-		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token))
-		{
-			warn("failed to open processor token");
-			return;
-		}
-		HandlePtr tokenOwner(token);
-
-		if (!AdjustTokenPrivileges(token, FALSE, &tkp, sizeof(tkp), nullptr, nullptr))
-		{
-			warn("failed to adjust token privileges");
-			return;
-		}
-
-		info("adjusted token privileges successfully");
-		m_hasRequestedPrivilege = true;
-	}
-
-	HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-	if (snapshot == INVALID_HANDLE_VALUE)
-	{
-		warn("failed to retrieve processes snapshot");
-		return;
-	}
-	HandlePtr snapshotOwner(snapshot);
-
-	PROCESSENTRY32 entry;
-	entry.dwSize = sizeof(PROCESSENTRY32);
-
-	if (Process32First(snapshot, &entry))
-	{
-		do
-		{
-#ifdef UNICODE
-			if (wcscmp(entry.szExeFile, L"KinectService.exe") == 0)
-#else
-			if (strcmp(entry.szExeFile, "KinectService.exe") == 0)
-#endif
-			{
-				info("found KinectService.exe, trying to update its priority...");
-
-				HANDLE process = OpenProcess(PROCESS_SET_INFORMATION, FALSE, entry.th32ProcessID);
-				if (!process)
-				{
-					warn("failed to open process");
-					return;
-				}
-				HandlePtr processOwner(process);
-
-				if (!SetPriorityClass(process, priorityClass))
-				{
-					warn("failed to update process priority");
-					return;
-				}
-
-				info("KinectService.exe priority updated successfully to %s", ProcessPriorityToString(priority));
-				return;
-			}
-		}
-		while (Process32Next(snapshot, &entry));
-	}
-
-	warn("KinectService.exe not found");
+	if (parameterName == "sdk20_service_priority")
+		SetServicePriority(static_cast<ProcessPriority>(value));
 }
 
 void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& error)

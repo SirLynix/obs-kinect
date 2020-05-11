@@ -59,7 +59,6 @@ class KinectSource
 
 		void Render();
 
-		void SetServicePriority(ProcessPriority servicePriority);
 		void SetSourceType(SourceType sourceType);
 
 		void ShouldStopOnHide(bool shouldStop);
@@ -143,7 +142,6 @@ class KinectSource
 		ObsTexturePtr m_depthMappingTexture;
 		ObsTexturePtr m_depthTexture;
 		ObsTexturePtr m_infraredTexture;
-		ProcessPriority m_servicePriority;
 		SourceType m_sourceType;
 		std::string m_deviceName;
 		std::uint32_t m_height;

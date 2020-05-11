@@ -35,12 +35,10 @@ class KinectDeviceAccess
 		~KinectDeviceAccess();
 
 		EnabledSourceFlags GetEnabledSourceFlags() const;
-		ProcessPriority GetServicePriority() const;
 
 		KinectFrameConstPtr GetLastFrame();
 
 		void SetEnabledSourceFlags(EnabledSourceFlags enabledSources);
-		void SetServicePriority(ProcessPriority priority);
 
 		void UpdateDeviceParameters(obs_data_t* settings);
 

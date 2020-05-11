@@ -43,11 +43,6 @@ EnabledSourceFlags KinectDeviceAccess::GetEnabledSourceFlags() const
 	return m_data->enabledSources;
 }
 
-ProcessPriority KinectDeviceAccess::GetServicePriority() const
-{
-	return m_data->servicePriority;
-}
-
 KinectFrameConstPtr KinectDeviceAccess::GetLastFrame()
 {
 	return m_owner->GetLastFrame();
@@ -57,12 +52,6 @@ void KinectDeviceAccess::SetEnabledSourceFlags(EnabledSourceFlags enabledSources
 {
 	m_data->enabledSources = enabledSources;
 	m_owner->UpdateEnabledSources();
-}
-
-void KinectDeviceAccess::SetServicePriority(ProcessPriority priority)
-{
-	m_data->servicePriority = priority;
-	m_owner->UpdateServicePriority();
 }
 
 void KinectDeviceAccess::UpdateDeviceParameters(obs_data_t* settings)

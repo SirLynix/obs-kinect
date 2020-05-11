@@ -39,7 +39,6 @@ class KinectSdk10Device : public KinectDevice
 		void ElevationThreadFunc();
 		void HandleBoolParameterUpdate(const std::string& parameterName, bool value) override;
 		void HandleIntParameterUpdate(const std::string& parameterName, long long value) override;
-		void SetServicePriority(ProcessPriority priority) override;
 		void ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr) override;
 
 		DepthMappingFrameData BuildDepthMappingFrame(INuiSensor* sensor, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, std::vector<std::uint8_t>& tempMemory);

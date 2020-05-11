@@ -236,10 +236,6 @@ void KinectSdk10Device::HandleIntParameterUpdate(const std::string& parameterNam
 	}
 }
 
-void KinectSdk10Device::SetServicePriority(ProcessPriority priority)
-{
-}
-
 void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr)
 {
 	os_set_thread_name("KinectDeviceSdk10");

@@ -73,7 +73,6 @@ class OBSKINECT_API KinectDevice
 
 		virtual void HandleBoolParameterUpdate(const std::string& parameterName, bool value);
 		virtual void HandleIntParameterUpdate(const std::string& parameterName, long long value);
-		virtual void SetServicePriority(ProcessPriority priority) = 0;
 		virtual void ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr) = 0;
 
 	private:
@@ -82,7 +81,6 @@ class OBSKINECT_API KinectDevice
 		struct AccessData
 		{
 			EnabledSourceFlags enabledSources;
-			ProcessPriority servicePriority = ProcessPriority::Normal;
 			std::unordered_map<std::string, ParameterValue> parameters;
 		};
 
@@ -106,13 +104,11 @@ class OBSKINECT_API KinectDevice
 		void UpdateDeviceParameters(AccessData* access, obs_data_t* settings);
 		void UpdateEnabledSources();
 		void UpdateParameter(const std::string& parameterName);
-		void UpdateServicePriority();
 
 		void SetEnabledSources(EnabledSourceFlags sourceFlags);
 
 		EnabledSourceFlags m_deviceSources;
 		KinectFramePtr m_lastFrame;
-		ProcessPriority m_servicePriority;
 		std::atomic_bool m_running;
 		std::mutex m_deviceSourceLock;
 		std::mutex m_lastFrameLock;
