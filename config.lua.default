@@ -1,20 +1,29 @@
 -- Example config, copy to config.lua before building
 
 -- You shouldn't have to change this
-kinectsdk10 = {
-	Include = "$(KINECTSDK10_DIR)/inc",
-	Lib32 = "$(KINECTSDK10_DIR)/lib/x86",
-	Lib64 = "$(KINECTSDK10_DIR)/lib/amd64",
-}
+if (os.getenv("KINECTSDK10_DIR")) then
+	KinectSdk10 = {
+		Include = "$(KINECTSDK10_DIR)/inc",
+		Lib32 = "$(KINECTSDK10_DIR)/lib/x86",
+		Lib64 = "$(KINECTSDK10_DIR)/lib/amd64",
+	}
+elseif (os.istarget("windows")) then
+	print("Kinect SDK doesn't seem to be installed, skipping KinectSdk10 backend")
+end
 
-kinectsdk20 = {
-	Include = "$(KINECTSDK20_DIR)/inc",
-	Lib32 = "$(KINECTSDK20_DIR)/lib/x86",
-	Lib64 = "$(KINECTSDK20_DIR)/lib/x64",
-}
+
+if (os.getenv("KINECTSDK20_DIR")) then
+	KinectSdk20 = {
+		Include = "$(KINECTSDK20_DIR)/inc",
+		Lib32 = "$(KINECTSDK20_DIR)/lib/x86",
+		Lib64 = "$(KINECTSDK20_DIR)/lib/x64",
+	}
+elseif (os.istarget("windows")) then
+	print("Kinect SDK 2 doesn't seem to be installed, skipping KinectSdk20 backend")
+end
 
 -- Where is libobs located (found in OBS repository)
-libobs = {
+LibObs = {
 	Include = "../obs-studio/libobs",
 	Lib32 = "../obs-studio/build32/libobs/Release",
 	Lib64 = "../obs-studio/build64/libobs/Release",

@@ -1,4 +1,5 @@
 Config = {}
+setmetatable(Config, { __index = _G })
 
 local configLoader, err = load(io.readfile("config.lua"), "config.lua", "t", Config)
 if (not configLoader) then
@@ -10,9 +11,9 @@ if (not configLoaded) then
 	error("config.lua failed to load: " .. err)
 end
 
-local obsinclude = assert(Config.libobs.Include, "Missing obs include dir")
-local obslib32 = assert(Config.libobs.Lib32, "Missing obs lib dir (x86)")
-local obslib64 = assert(Config.libobs.Lib64, "Missing obs lib dir (x86_64)")
+local obsinclude = assert(Config.LibObs.Include, "Missing obs include dir")
+local obslib32 = assert(Config.LibObs.Lib32, "Missing obs lib dir (x86)")
+local obslib64 = assert(Config.LibObs.Lib64, "Missing obs lib dir (x86_64)")
 
 local projects = {}
 
@@ -36,75 +37,68 @@ table.insert(projects, {
 	Links = "obs"
 })
 
-if (os.istarget("windows")) then
-	if (Config.kinectsdk10) then
-		table.insert(projects, {
-			Name = "obs-kinect-sdk10",
-			Defines = {"WIN32", "_WINDOWS"},
-			Files = { 
-				"src/obs-kinect-sdk10/**.hpp", 
-				"src/obs-kinect-sdk10/**.inl", 
-				"src/obs-kinect-sdk10/**.cpp"
-			},
-			Include = {
-				obsinclude,
-				"include/obs-kinect",
-				assert(Config.kinectsdk10.Include, "Missing kinectsdk10 include dir")
-			},
-			LibDir32 = {
-				obslib32,
-				assert(Config.kinectsdk10.Lib32, "Missing kinectsdk10 lib dir (x86)")
-			},
-			LibDir64 = {
-				obslib64,
-				assert(Config.kinectsdk10.Lib64, "Missing kinectsdk10 lib dir (x86_64)")
-			},
-			Links = {
-				"obs-kinect",
-				"obs",
-				"Kinect10"
-			}
-		})
-	else
-		print("Ignored kinectsdk10 project (missing configuration)")
-	end
+if (Config.KinectSdk10) then
+	table.insert(projects, {
+		Name = "obs-kinect-sdk10",
+		Defines = {"WIN32", "_WINDOWS"},
+		Files = { 
+			"src/obs-kinect-sdk10/**.hpp", 
+			"src/obs-kinect-sdk10/**.inl", 
+			"src/obs-kinect-sdk10/**.cpp"
+		},
+		Include = {
+			obsinclude,
+			"include/obs-kinect",
+			assert(Config.KinectSdk10.Include, "Missing KinectSdk10 include dir"),
+			Config.KinectSdk10Toolkit and Config.KinectSdk10Toolkit.Include or nil
+		},
+		LibDir32 = {
+			obslib32,
+			assert(Config.KinectSdk10.Lib32, "Missing KinectSdk10 lib dir (x86)")
+		},
+		LibDir64 = {
+			obslib64,
+			assert(Config.KinectSdk10.Lib64, "Missing KinectSdk10 lib dir (x86_64)")
+		},
+		Links = {
+			"obs-kinect",
+			"obs",
+			"Kinect10"
+		}
+	})
 else
-	print("Ignored kinectsdk10 project (host isn't windows)")
+	print("Skipping KinectSdk10 backend")
 end
 
-if (os.istarget("windows")) then
-	if (Config.kinectsdk20) then
-		table.insert(projects, {
-			Name = "obs-kinect-sdk20",
-			Files = { 
-				"src/obs-kinect-sdk20/**.hpp", 
-				"src/obs-kinect-sdk20/**.inl", 
-				"src/obs-kinect-sdk20/**.cpp"
-			},
-			Include = {
-				obsinclude,
-				"include/obs-kinect",
-				assert(Config.kinectsdk20.Include, "Missing kinectsdk20 include dir")
-			},
-			LibDir32 = {
-				obslib32,
-				assert(Config.kinectsdk20.Lib32, "Missing kinectsdk20 lib dir (x86)")
-			},
-			LibDir64 = {
-				obslib64,
-				assert(Config.kinectsdk20.Lib64, "Missing kinectsdk20 lib dir (x86_64)")
-			},
-			Links = {
-				"obs-kinect",
-				"obs",
-				"kinect20"
-			}
-		})
-	else
-		print("Ignored kinectsdk20 project (missing configuration)")
-	end
+if (Config.KinectSdk10) then
+	table.insert(projects, {
+		Name = "obs-kinect-sdk20",
+		Files = { 
+			"src/obs-kinect-sdk20/**.hpp", 
+			"src/obs-kinect-sdk20/**.inl", 
+			"src/obs-kinect-sdk20/**.cpp"
+		},
+		Include = {
+			obsinclude,
+			"include/obs-kinect",
+			assert(Config.KinectSdk10.Include, "Missing KinectSdk10 include dir")
+		},
+		LibDir32 = {
+			obslib32,
+			assert(Config.KinectSdk10.Lib32, "Missing KinectSdk10 lib dir (x86)")
+		},
+		LibDir64 = {
+			obslib64,
+			assert(Config.KinectSdk10.Lib64, "Missing KinectSdk10 lib dir (x86_64)")
+		},
+		Links = {
+			"obs-kinect",
+			"obs",
+			"kinect20"
+		}
+	})
 else
-	print("Ignored kinectsdk20 project (host isn't windows)")
+	print("Skipping KinectSdk20 backend")
 end
 
 workspace("obs-kinect")
