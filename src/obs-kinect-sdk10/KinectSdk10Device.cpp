@@ -155,6 +155,28 @@ m_hasRequestedPrivilege(false)
 
 		return b;
 	});
+
+	INuiColorCameraSettings* pNuiCameraSettings;
+	if (SUCCEEDED(m_kinectSensor->NuiGetColorCameraSettings(&pNuiCameraSettings)))
+	{
+		m_cameraSettings.reset(pNuiCameraSettings);
+
+		double brightness = 0.5;
+		double exposureTime = 2000;
+		double frameInterval = 2000;
+		double gain = 8.0;
+
+		m_cameraSettings->GetBrightness(&brightness);
+		m_cameraSettings->GetExposureTime(&exposureTime);
+		m_cameraSettings->GetFrameInterval(&frameInterval);
+		m_cameraSettings->GetGain(&gain);
+
+		RegisterBoolParameter("sdk10_auto_exposure", true, [](bool a, bool b) { return a && b; });
+		RegisterDoubleParameter("sdk10_brightness", brightness, 0.001, [](double a, double b) { return std::max(a, b); });
+		RegisterDoubleParameter("sdk10_exposure_time", exposureTime, 1, [](double a, double b) { return std::max(a, b); });
+		RegisterDoubleParameter("sdk10_frame_interval", frameInterval, 1, [](double a, double b) { return std::max(a, b); });
+		RegisterDoubleParameter("sdk10_gain", frameInterval, 1, [](double a, double b) { return std::max(a, b); });
+	}
 }
 
 KinectSdk10Device::~KinectSdk10Device()
@@ -167,7 +189,21 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 {
 	obs_property_t* p;
 
+	constexpr double BrignessMax = 1.0;
+	constexpr double BrignessMin = 0.0;
+	constexpr double GainMax = 16.0;
+	constexpr double GainMin = 0.0;
+	constexpr double ExposureMax = 4000.0;
+	constexpr double ExposureMin = 1.0;
+	constexpr double FrameIntervalMax = 4000.0;
+	constexpr double FrameIntervalMin = 0.0;
+
 	obs_properties_t* props = obs_properties_create();
+	p = obs_properties_add_bool(props, "sdk10_auto_exposure", Translate("ObsKinectV1.AutoExposure"));
+	p = obs_properties_add_float_slider(props, "sdk10_brightness", Translate("ObsKinectV1.Brightness"), BrignessMin, BrignessMax, 0.05);
+	p = obs_properties_add_float_slider(props, "sdk10_exposure_time", Translate("ObsKinectV1.Exposure"), ExposureMin, ExposureMax, 20.0);
+	p = obs_properties_add_float_slider(props, "sdk10_frame_interval", Translate("ObsKinectV1.FrameInterval"), ExposureMin, ExposureMax, 20.0);
+	p = obs_properties_add_float_slider(props, "sdk10_gain", Translate("ObsKinectV1.Gain"), GainMin, GainMax, 0.1);
 	p = obs_properties_add_int_slider(props, "sdk10_camera_elevation", Translate("ObsKinectV1.CameraElevation"), NUI_CAMERA_ELEVATION_MINIMUM, NUI_CAMERA_ELEVATION_MAXIMUM, 1);
 	obs_property_int_set_suffix(p, "°");
 
@@ -225,6 +261,20 @@ void KinectSdk10Device::ElevationThreadFunc()
 
 void KinectSdk10Device::HandleBoolParameterUpdate(const std::string& parameterName, bool value)
 {
+	if (parameterName == "sdk10_auto_exposure")
+		m_cameraSettings->SetAutoExposure(value);
+}
+
+void KinectSdk10Device::HandleDoubleParameterUpdate(const std::string& parameterName, double value)
+{
+	if (parameterName == "sdk10_brightness")
+		m_cameraSettings->SetBrightness(value);
+	else if (parameterName == "sdk10_exposure_time")
+		m_cameraSettings->SetExposureTime(value);
+	else if (parameterName == "sdk10_frame_interval")
+		m_cameraSettings->SetFrameInterval(value);
+	else if (parameterName == "sdk10_gain")
+		m_cameraSettings->SetGain(value);
 }
 
 void KinectSdk10Device::HandleIntParameterUpdate(const std::string& parameterName, long long value)

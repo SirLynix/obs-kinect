@@ -38,6 +38,7 @@ class KinectSdk10Device : public KinectDevice
 	private:
 		void ElevationThreadFunc();
 		void HandleBoolParameterUpdate(const std::string& parameterName, bool value) override;
+		void HandleDoubleParameterUpdate(const std::string& parameterName, double value) override;
 		void HandleIntParameterUpdate(const std::string& parameterName, long long value) override;
 		void ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr) override;
 
@@ -49,6 +50,7 @@ class KinectSdk10Device : public KinectDevice
 		static InfraredFrameData RetrieveInfraredFrame(INuiSensor* sensor, HANDLE irStream, std::int64_t* timestamp);
 		static void ExtractDepth(DepthFrameData& depthFrame);
 
+		ReleasePtr<INuiColorCameraSettings> m_cameraSettings;
 		ReleasePtr<INuiCoordinateMapper> m_coordinateMapper;
 		ReleasePtr<INuiSensor> m_kinectSensor;
 		HandlePtr m_elevationUpdateEvent;
