@@ -67,16 +67,18 @@ class OBSKINECT_API KinectDevice
 
 		bool IsRunning() const;
 		void RegisterBoolParameter(std::string parameterName, bool defaultValue, std::function<bool(bool, bool)> combinator);
+		void RegisterDoubleParameter(std::string parameterName, double defaultValue, double epsilon, std::function<double(double, double)> combinator);
 		void RegisterIntParameter(std::string parameterName, long long defaultValue, std::function<long long(long long, long long)> combinator);
 		void SetUniqueName(std::string uniqueName);
 		void UpdateFrame(KinectFramePtr kinectFrame);
 
 		virtual void HandleBoolParameterUpdate(const std::string& parameterName, bool value);
+		virtual void HandleDoubleParameterUpdate(const std::string& parameterName, double value);
 		virtual void HandleIntParameterUpdate(const std::string& parameterName, long long value);
 		virtual void ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr) = 0;
 
 	private:
-		using ParameterValue = std::variant<bool, long long>;
+		using ParameterValue = std::variant<bool, double, long long>;
 
 		struct AccessData
 		{
@@ -92,10 +94,15 @@ class OBSKINECT_API KinectDevice
 			std::function<T (T, T)> combinator;
 		};
 
+		struct DoubleParameter : DataParameter<double>
+		{
+			double epsilon;
+		};
+
 		using BoolParameter = DataParameter<bool>;
 		using IntegerParameter = DataParameter<long long>;
 
-		using ParameterData = std::variant<BoolParameter, IntegerParameter>;
+		using ParameterData = std::variant<BoolParameter, DoubleParameter, IntegerParameter>;
 
 		void RefreshParameters();
 		void ReleaseAccess(AccessData* access);

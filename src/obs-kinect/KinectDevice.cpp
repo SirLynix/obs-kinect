@@ -103,6 +103,10 @@ void KinectDevice::UpdateDeviceParameters(AccessData* access, obs_data_t* settin
 			{
 				access->parameters[name] = obs_data_get_bool(settings, name.c_str());
 			}
+			else if constexpr (std::is_same_v<T, DoubleParameter>)
+			{
+				access->parameters[name] = obs_data_get_double(settings, name.c_str());
+			}
 			else if constexpr (std::is_same_v<T, IntegerParameter>)
 			{
 				access->parameters[name] = obs_data_get_int(settings, name.c_str());
@@ -147,21 +151,31 @@ void KinectDevice::UpdateParameter(const std::string& parameterName)
 				value = std::get<decltype(value)>(valIt->second);
 		}
 
-		if (value != arg.value)
+		if constexpr (std::is_same_v<T, BoolParameter>)
 		{
-			if constexpr (std::is_same_v<T, BoolParameter>)
-			{
-				HandleBoolParameterUpdate(parameterName, value);
-			}
-			else if constexpr (std::is_same_v<T, IntegerParameter>)
-			{
-				HandleIntParameterUpdate(parameterName, value);
-			}
-			else
-				static_assert(AlwaysFalse<T>(), "non-exhaustive visitor");
+			if (value == arg.value)
+				return;
 
-			arg.value = value;
+			HandleBoolParameterUpdate(parameterName, value);
 		}
+		else if constexpr (std::is_same_v<T, DoubleParameter>)
+		{
+			if (std::abs(arg.value - value) <= arg.epsilon)
+				return;
+
+			HandleDoubleParameterUpdate(parameterName, value);
+		}
+		else if constexpr (std::is_same_v<T, IntegerParameter>)
+		{
+			if (value == arg.value)
+				return;
+
+			HandleIntParameterUpdate(parameterName, value);
+		}
+		else
+			static_assert(AlwaysFalse<T>(), "non-exhaustive visitor");
+
+		arg.value = value;
 	}, it->second);
 }
 
@@ -193,6 +207,10 @@ void KinectDevice::SetDefaultValues(obs_data_t* settings)
 			if constexpr (std::is_same_v<T, BoolParameter>)
 			{
 				obs_data_set_default_bool(settings, name.c_str(), arg.defaultValue);
+			}
+			else if constexpr (std::is_same_v<T, DoubleParameter>)
+			{
+				obs_data_set_default_double(settings, name.c_str(), arg.defaultValue);
 			}
 			else if constexpr (std::is_same_v<T, IntegerParameter>)
 			{
@@ -264,6 +282,18 @@ void KinectDevice::RegisterBoolParameter(std::string parameterName, bool default
 	m_parameters.emplace(std::move(parameterName), std::move(parameter));
 }
 
+void KinectDevice::RegisterDoubleParameter(std::string parameterName, double defaultValue, double epsilon, std::function<double(double, double)> combinator)
+{
+	DoubleParameter parameter;
+	parameter.combinator = std::move(combinator);
+	parameter.defaultValue = defaultValue;
+	parameter.epsilon = epsilon;
+	parameter.value = defaultValue;
+
+	assert(m_parameters.find(parameterName) == m_parameters.end());
+	m_parameters.emplace(std::move(parameterName), std::move(parameter));
+}
+
 void KinectDevice::RegisterIntParameter(std::string parameterName, long long defaultValue, std::function<long long(long long, long long)> combinator)
 {
 	IntegerParameter parameter;
@@ -288,6 +318,10 @@ void KinectDevice::UpdateFrame(KinectFramePtr kinectFrame)
 }
 
 void KinectDevice::HandleBoolParameterUpdate(const std::string& parameterName, bool value)
+{
+}
+
+void KinectDevice::HandleDoubleParameterUpdate(const std::string& parameterName, double value)
 {
 }
 
