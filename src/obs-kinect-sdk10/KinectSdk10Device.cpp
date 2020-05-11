@@ -168,7 +168,7 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 	obs_property_t* p;
 
 	obs_properties_t* props = obs_properties_create();
-	p = obs_properties_add_int_slider(props, "sdk10_camera_elevation", obs_module_text("ObsKinectV1.CameraElevation"), NUI_CAMERA_ELEVATION_MINIMUM, NUI_CAMERA_ELEVATION_MAXIMUM, 1);
+	p = obs_properties_add_int_slider(props, "sdk10_camera_elevation", Translate("ObsKinectV1.CameraElevation"), NUI_CAMERA_ELEVATION_MINIMUM, NUI_CAMERA_ELEVATION_MAXIMUM, 1);
 	obs_property_int_set_suffix(p, "°");
 
 	return props;

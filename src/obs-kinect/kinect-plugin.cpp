@@ -310,3 +310,8 @@ void obs_module_unload()
 {
 	s_deviceRegistry.reset();
 }
+
+const char* Translate(const char* key)
+{
+	return obs_module_text(key);
+}
