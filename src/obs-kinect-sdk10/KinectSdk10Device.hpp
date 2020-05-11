@@ -29,9 +29,16 @@ class KinectSdk10Device : public KinectDevice
 {
 	public:
 		KinectSdk10Device(int sensorId);
-		~KinectSdk10Device() = default;
+		~KinectSdk10Device();
+
+		obs_properties_t* CreateProperties() const override;
+
+		INuiSensor* GetSensor() const;
 
 	private:
+		void ElevationThreadFunc();
+		void HandleBoolParameterUpdate(const std::string& parameterName, bool value) override;
+		void HandleIntParameterUpdate(const std::string& parameterName, long long value) override;
 		void SetServicePriority(ProcessPriority priority) override;
 		void ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr) override;
 
@@ -45,6 +52,10 @@ class KinectSdk10Device : public KinectDevice
 
 		ReleasePtr<INuiCoordinateMapper> m_coordinateMapper;
 		ReleasePtr<INuiSensor> m_kinectSensor;
+		HandlePtr m_elevationUpdateEvent;
+		HandlePtr m_exitElevationThreadEvent;
+		std::atomic<LONG> m_kinectElevation;
+		std::thread m_elevationThread;
 		bool m_hasRequestedPrivilege;
 };
 

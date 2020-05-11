@@ -78,7 +78,7 @@ namespace
 
 	std::string ErrToString(HRESULT hr)
 	{
-		switch (hr)
+		switch (HRESULT_CODE(hr))
 		{
 			case S_OK: return "No error";
 			case E_FAIL: return "Unspecified failure";
@@ -109,6 +109,7 @@ namespace
 }
 
 KinectSdk10Device::KinectSdk10Device(int sensorId) :
+m_kinectElevation(0),
 m_hasRequestedPrivilege(false)
 {
 	HRESULT hr;
@@ -141,6 +142,98 @@ m_hasRequestedPrivilege(false)
 	}
 	else
 		SetUniqueName("Kinect #" + std::to_string(sensorId));
+
+	m_elevationUpdateEvent.reset(CreateEvent(nullptr, TRUE, FALSE, nullptr));
+	m_exitElevationThreadEvent.reset(CreateEvent(nullptr, TRUE, FALSE, nullptr));
+
+	m_elevationThread = std::thread(&KinectSdk10Device::ElevationThreadFunc, this);
+
+	RegisterIntParameter("sdk10_camera_elevation", 0, [](long long a, long long b)
+	{
+		if (b == 0)
+			return a;
+
+		return b;
+	});
+}
+
+KinectSdk10Device::~KinectSdk10Device()
+{
+	SetEvent(m_exitElevationThreadEvent.get());
+	m_elevationThread.join();
+}
+
+obs_properties_t* KinectSdk10Device::CreateProperties() const
+{
+	obs_property_t* p;
+
+	obs_properties_t* props = obs_properties_create();
+	p = obs_properties_add_int_slider(props, "sdk10_camera_elevation", obs_module_text("ObsKinectV1.CameraElevation"), NUI_CAMERA_ELEVATION_MINIMUM, NUI_CAMERA_ELEVATION_MAXIMUM, 1);
+	obs_property_int_set_suffix(p, "°");
+
+	return props;
+}
+
+INuiSensor* KinectSdk10Device::GetSensor() const
+{
+	return m_kinectSensor.get();
+}
+
+void KinectSdk10Device::ElevationThreadFunc()
+{
+	std::array<HANDLE, 2> events = { m_elevationUpdateEvent.get(), m_exitElevationThreadEvent.get() };
+
+	for (;;)
+	{
+		DWORD eventIndex = WaitForMultipleObjects(DWORD(events.size()), events.data(), FALSE, INFINITE);
+		switch (eventIndex)
+		{
+			case WAIT_OBJECT_0:
+			{
+				os_sleep_ms(250); //< sleep a bit to help reduce SetAngle commands and wear
+
+				ResetEvent(m_elevationUpdateEvent.get());
+				LONG newElevation = m_kinectElevation.load(std::memory_order_relaxed);
+
+				info("setting elevation angle to %d", int(newElevation));
+				HRESULT hr = m_kinectSensor->NuiCameraElevationSetAngle(newElevation);
+				if (FAILED(hr))
+				{
+					switch (HRESULT_CODE(hr))
+					{
+						// Kinect doesn't like moving too quick, wait a bit and try again
+						case ERROR_RETRY:
+						case ERROR_TOO_MANY_CMDS:
+							os_sleep_ms(100);
+							SetEvent(m_elevationUpdateEvent.get());
+							break;
+
+						default:
+							warn("failed to change Kinect elevation: %s", ErrToString(hr).c_str());
+							break;
+					}
+				}
+				break;
+			}
+
+			case WAIT_OBJECT_0 + 1:
+			default:
+				return;
+		}
+	}
+}
+
+void KinectSdk10Device::HandleBoolParameterUpdate(const std::string& parameterName, bool value)
+{
+}
+
+void KinectSdk10Device::HandleIntParameterUpdate(const std::string& parameterName, long long value)
+{
+	if (parameterName == "sdk10_camera_elevation")
+	{
+		m_kinectElevation.store(LONG(value), std::memory_order_relaxed);
+		SetEvent(m_elevationUpdateEvent.get());
+	}
 }
 
 void KinectSdk10Device::SetServicePriority(ProcessPriority priority)
