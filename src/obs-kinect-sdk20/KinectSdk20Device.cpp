@@ -34,6 +34,7 @@ KinectSdk20Device::KinectSdk20Device()
 
 	m_coordinateMapper.reset(pCoordinateMapper);
 
+	SetSupportedSources(Source_Body | Source_Color | Source_ColorToDepthMapping | Source_Depth | Source_Infrared);
 	SetUniqueName("Default Kinect");
 
 	RegisterIntParameter("sdk20_service_priority", static_cast<int>(ProcessPriority::Normal), [](long long a, long long b)
@@ -411,10 +412,10 @@ void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 	ReleasePtr<IMultiSourceFrameReader> multiSourceFrameReader;
 	ClosePtr<IKinectSensor> openedKinectSensor;
 
-	EnabledSourceFlags enabledSourceFlags = 0;
+	SourceFlags enabledSourceFlags = 0;
 	DWORD enabledFrameSourceTypes = 0;
 
-	auto UpdateMultiSourceFrameReader = [&](EnabledSourceFlags enabledSources)
+	auto UpdateMultiSourceFrameReader = [&](SourceFlags enabledSources)
 	{
 		DWORD newFrameSourcesTypes = 0;
 		if (enabledSources & Source_Body)

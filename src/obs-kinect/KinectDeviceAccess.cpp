@@ -38,7 +38,7 @@ KinectDeviceAccess::~KinectDeviceAccess()
 		m_owner->ReleaseAccess(m_data);
 }
 
-EnabledSourceFlags KinectDeviceAccess::GetEnabledSourceFlags() const
+SourceFlags KinectDeviceAccess::GetEnabledSourceFlags() const
 {
 	return m_data->enabledSources;
 }
@@ -48,7 +48,7 @@ KinectFrameConstPtr KinectDeviceAccess::GetLastFrame()
 	return m_owner->GetLastFrame();
 }
 
-void KinectDeviceAccess::SetEnabledSourceFlags(EnabledSourceFlags enabledSources)
+void KinectDeviceAccess::SetEnabledSourceFlags(SourceFlags enabledSources)
 {
 	m_data->enabledSources = enabledSources;
 	m_owner->UpdateEnabledSources();

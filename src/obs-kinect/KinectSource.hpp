@@ -72,17 +72,18 @@ class KinectSource
 
 		enum class GreenScreenType
 		{
-			Body = 0,
-			BodyOrDepth = 2,
-			BodyWithinDepth = 3,
-			Depth = 1
+			Body = 0,            //< Requires Source_Body (| Source_ColorToDepthMapping if color source is used)
+			BodyOrDepth = 2,     //< Requires Source_Body | Source_Depth (| Source_ColorToDepthMapping if color source is used)
+			BodyWithinDepth = 3, //< Requires Source_Body | Source_Depth (| Source_ColorToDepthMapping if color source is used)
+			Dedicated = 4,       //< Requires Source_BackgroundRemoval
+			Depth = 1            //< Requires Source_Depth (| Source_ColorToDepthMapping if color source is used)
 		};
 
 		enum class SourceType
 		{
-			Color = 0,
-			Depth = 1,
-			Infrared = 2
+			Color = 0,   //< Requires Source_Color
+			Depth = 1,   //< Requires Source_Depth
+			Infrared = 2 //< Requires Source_Infrared
 		};
 
 		struct DepthToColorSettings
@@ -119,7 +120,7 @@ class KinectSource
 		};
 
 		void ClearDeviceAccess();
-		EnabledSourceFlags ComputeEnabledSourceFlags() const;
+		SourceFlags ComputeEnabledSourceFlags() const;
 		std::optional<KinectDeviceAccess> OpenAccess(KinectDevice& device);
 		void RefreshDeviceAccess();
 

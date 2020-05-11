@@ -455,9 +455,9 @@ void KinectSource::ClearDeviceAccess()
 	m_deviceAccess.reset();
 }
 
-EnabledSourceFlags KinectSource::ComputeEnabledSourceFlags() const
+SourceFlags KinectSource::ComputeEnabledSourceFlags() const
 {
-	EnabledSourceFlags flags = 0;
+	SourceFlags flags = 0;
 	switch (m_sourceType)
 	{
 		case SourceType::Color:

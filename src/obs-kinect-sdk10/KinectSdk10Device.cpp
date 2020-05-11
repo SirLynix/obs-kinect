@@ -143,6 +143,8 @@ m_hasRequestedPrivilege(false)
 	else
 		SetUniqueName("Kinect #" + std::to_string(sensorId));
 
+	SetSupportedSources(Source_BackgroundRemoval | Source_Body | Source_Color | Source_ColorToDepthMapping | Source_Depth | Source_Infrared);
+
 	m_elevationUpdateEvent.reset(CreateEvent(nullptr, TRUE, FALSE, nullptr));
 	m_exitElevationThreadEvent.reset(CreateEvent(nullptr, TRUE, FALSE, nullptr));
 
@@ -298,7 +300,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 	HANDLE depthStream;
 	HANDLE irStream;
 
-	EnabledSourceFlags enabledSourceFlags = 0;
+	SourceFlags enabledSourceFlags = 0;
 	DWORD enabledFrameSourceTypes = 0;
 
 	InitializedNuiSensorPtr<INuiSensor> openedSensor;
@@ -307,7 +309,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 	std::int64_t depthTimestamp = 0;
 	std::int64_t irTimestamp = 0;
 
-	auto UpdateMultiSourceFrameReader = [&](EnabledSourceFlags enabledSources)
+	auto UpdateMultiSourceFrameReader = [&](SourceFlags enabledSources)
 	{
 		bool forceReset = (openedSensor == nullptr);
 		DWORD newFrameSourcesTypes = 0;

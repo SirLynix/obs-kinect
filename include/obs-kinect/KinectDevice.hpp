@@ -46,12 +46,13 @@ class OBSKINECT_API KinectDevice
 		KinectDevice(KinectDevice&&) = delete;
 		virtual ~KinectDevice();
 
-		KinectDeviceAccess AcquireAccess(EnabledSourceFlags enabledSources);
+		KinectDeviceAccess AcquireAccess(SourceFlags enabledSources);
 
 		virtual obs_properties_t* CreateProperties() const;
 
 		KinectFrameConstPtr GetLastFrame();
 
+		SourceFlags GetSupportedSources() const;
 		const std::string& GetUniqueName() const;
 
 		void SetDefaultValues(obs_data_t* settings);
@@ -63,7 +64,7 @@ class OBSKINECT_API KinectDevice
 		KinectDevice& operator=(KinectDevice&&) = delete;
 
 	protected:
-		std::optional<EnabledSourceFlags> GetSourceFlagsUpdate();
+		std::optional<SourceFlags> GetSourceFlagsUpdate();
 
 		bool IsRunning() const;
 		void RegisterBoolParameter(std::string parameterName, bool defaultValue, std::function<bool(bool, bool)> combinator);
@@ -82,7 +83,7 @@ class OBSKINECT_API KinectDevice
 
 		struct AccessData
 		{
-			EnabledSourceFlags enabledSources;
+			SourceFlags enabledSources;
 			std::unordered_map<std::string, ParameterValue> parameters;
 		};
 
@@ -110,9 +111,10 @@ class OBSKINECT_API KinectDevice
 		void UpdateEnabledSources();
 		void UpdateParameter(const std::string& parameterName);
 
-		void SetEnabledSources(EnabledSourceFlags sourceFlags);
+		void SetEnabledSources(SourceFlags sourceFlags);
 
-		EnabledSourceFlags m_deviceSources;
+		SourceFlags m_deviceSources;
+		SourceFlags m_supportedSources;
 		KinectFramePtr m_lastFrame;
 		std::atomic_bool m_running;
 		std::mutex m_deviceSourceLock;

@@ -34,11 +34,11 @@ class KinectDeviceAccess
 		KinectDeviceAccess(KinectDeviceAccess&& access) noexcept;
 		~KinectDeviceAccess();
 
-		EnabledSourceFlags GetEnabledSourceFlags() const;
+		SourceFlags GetEnabledSourceFlags() const;
 
 		KinectFrameConstPtr GetLastFrame();
 
-		void SetEnabledSourceFlags(EnabledSourceFlags enabledSources);
+		void SetEnabledSourceFlags(SourceFlags enabledSources);
 
 		void UpdateDeviceParameters(obs_data_t* settings);
 

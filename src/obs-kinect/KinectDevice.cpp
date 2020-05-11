@@ -24,6 +24,7 @@ template<typename T>
 struct AlwaysFalse : std::false_type {};
 
 KinectDevice::KinectDevice() :
+m_supportedSources(0),
 m_deviceSourceUpdated(true),
 m_running(false)
 {
@@ -35,7 +36,7 @@ KinectDevice::~KinectDevice()
 	StopCapture(); //< Just in case
 }
 
-KinectDeviceAccess KinectDevice::AcquireAccess(EnabledSourceFlags enabledSources)
+KinectDeviceAccess KinectDevice::AcquireAccess(SourceFlags enabledSources)
 {
 	if (m_accesses.empty())
 		StartCapture();
@@ -121,7 +122,7 @@ void KinectDevice::UpdateDeviceParameters(AccessData* access, obs_data_t* settin
 
 void KinectDevice::UpdateEnabledSources()
 {
-	EnabledSourceFlags sourceFlags = 0;
+	SourceFlags sourceFlags = 0;
 	for (auto& access : m_accesses)
 		sourceFlags |= access->enabledSources;
 
@@ -179,7 +180,7 @@ void KinectDevice::UpdateParameter(const std::string& parameterName)
 	}, it->second);
 }
 
-void KinectDevice::SetEnabledSources(EnabledSourceFlags sourceFlags)
+void KinectDevice::SetEnabledSources(SourceFlags sourceFlags)
 {
 	if (m_deviceSources == sourceFlags)
 		return;
@@ -187,6 +188,11 @@ void KinectDevice::SetEnabledSources(EnabledSourceFlags sourceFlags)
 	std::lock_guard<std::mutex> lock(m_deviceSourceLock);
 	m_deviceSources = sourceFlags;
 	m_deviceSourceUpdated = false;
+}
+
+SourceFlags KinectDevice::GetSupportedSources() const
+{
+	return m_supportedSources;
 }
 
 const std::string& KinectDevice::GetUniqueName() const
@@ -254,7 +260,7 @@ void KinectDevice::StopCapture()
 	m_lastFrame.reset();
 }
 
-std::optional<EnabledSourceFlags> KinectDevice::GetSourceFlagsUpdate()
+std::optional<SourceFlags> KinectDevice::GetSourceFlagsUpdate()
 {
 	std::unique_lock<std::mutex> lock(m_deviceSourceLock);
 	if (!m_deviceSourceUpdated)
@@ -305,9 +311,15 @@ void KinectDevice::RegisterIntParameter(std::string parameterName, long long def
 	m_parameters.emplace(std::move(parameterName), std::move(parameter));
 }
 
+void KinectDevice::SetSupportedSources(SourceFlags enabledSources)
+{
+	assert(m_supportedSources == 0); //< Multiple calls are not allowed
+	m_supportedSources = enabledSources;
+}
+
 void KinectDevice::SetUniqueName(std::string uniqueName)
 {
-	assert(m_uniqueName.empty());
+	assert(m_uniqueName.empty()); //< Multiple calls are not allowed
 	m_uniqueName = std::move(uniqueName);
 }
 
