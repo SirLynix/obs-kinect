@@ -345,10 +345,6 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 	} // m & cv no longer exists from here
 
 	constexpr std::uint64_t KinectMaxFramerate = 30;
-	constexpr std::uint64_t PollingRate = KinectMaxFramerate * 2; //< Poll at twice the highest framerate of Kinect, to be sure (TODO: Use events)
-
-	std::uint64_t now = os_gettime_ns();
-	std::uint64_t delay = 1'000'000'000ULL / PollingRate;
 
 	KinectFramePtr nextFramePtr = std::make_shared<KinectFrame>();
 
@@ -381,6 +377,20 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 		try
 		{
+			std::array<HANDLE, 3> events;
+			DWORD eventCount = 0;
+
+			if (enabledSourceFlags & Source_Color)
+				events[eventCount++] = colorEvent.get();
+
+			if (enabledSourceFlags & (Source_Body | Source_Depth | Source_ColorToDepthMapping))
+				events[eventCount++] = depthEvent.get();
+
+			if (enabledSourceFlags & Source_Infrared)
+				events[eventCount++] = irEvent.get();
+
+			WaitForMultipleObjects(eventCount, events.data(), FALSE, 100);
+
 			// Check if color frame is available
 			if ((enabledSourceFlags & Source_Color) && 
 			    WaitForSingleObject(colorEvent.get(), 0) == WAIT_OBJECT_0)
@@ -477,8 +487,6 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 				depthTimestamp = 0;
 				irTimestamp = 0;
 			}
-
-			os_sleepto_ns(now += delay);
 		}
 		catch (const std::exception& e)
 		{
