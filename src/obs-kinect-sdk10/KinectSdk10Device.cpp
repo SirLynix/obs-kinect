@@ -138,7 +138,7 @@ m_hasRequestedPrivilege(false)
 		std::array<char, 128> u8UniqueId;
 		os_wcs_to_utf8(uniqueId, length, u8UniqueId.data(), u8UniqueId.size());
 
-		SetUniqueName(u8UniqueId.data());
+		SetUniqueName("Kinect #" + std::to_string(sensorId) + ": " + u8UniqueId.data());
 	}
 	else
 		SetUniqueName("Kinect #" + std::to_string(sensorId));
