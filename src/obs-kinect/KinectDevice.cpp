@@ -134,12 +134,17 @@ void KinectDevice::UpdateParameter(const std::string& parameterName)
 		using T = std::decay_t<decltype(arg)>;
 
 		auto value = arg.defaultValue;
-		for (auto& access : m_accesses)
+		for (std::size_t i = 0; i < m_accesses.size(); ++i)
 		{
+			auto& access = m_accesses[i];
+
 			auto valIt = access->parameters.find(parameterName);
 			assert(valIt != access->parameters.end());
 
-			value = arg.combinator(value, std::get<decltype(value)>(valIt->second));
+			if (i > 0)
+				value = arg.combinator(value, std::get<decltype(value)>(valIt->second));
+			else
+				value = std::get<decltype(value)>(valIt->second);
 		}
 
 		if (value != arg.value)
