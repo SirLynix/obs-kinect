@@ -65,8 +65,8 @@ class OBSKINECT_API KinectDeviceRegistry
 				std::unique_ptr<KinectDevice> device;
 			};
 
-			std::vector<Device> devices;
 			KinectPlugin plugin;
+			std::vector<Device> devices; //< Order matters
 		};
 
 		std::unordered_map<std::string, KinectDevice*> m_deviceByName;
