@@ -332,9 +332,15 @@ static obs_properties_t* kinect_source_properties(void *unused)
 		return true;
 	});
 
-	obs_properties_add_int_slider(greenscreenProps, "greenscreen_maxdist", obs_module_text("ObsKinect.GreenScreenMaxDist"), 0, 10000, 10);
-	obs_properties_add_int_slider(greenscreenProps, "greenscreen_mindist", obs_module_text("ObsKinect.GreenScreenMinDist"), 0, 10000, 10);
-	obs_properties_add_int_slider(greenscreenProps, "greenscreen_fadedist", obs_module_text("ObsKinect.GreenScreenFadeDist"), 0, 200, 1);
+	p = obs_properties_add_int_slider(greenscreenProps, "greenscreen_maxdist", obs_module_text("ObsKinect.GreenScreenMaxDist"), 0, 10000, 10);
+	obs_property_int_set_suffix(p, obs_module_text("ObsKinect.GreenScreenDistUnit"));
+
+	p = obs_properties_add_int_slider(greenscreenProps, "greenscreen_mindist", obs_module_text("ObsKinect.GreenScreenMinDist"), 0, 10000, 10);
+	obs_property_int_set_suffix(p, obs_module_text("ObsKinect.GreenScreenDistUnit"));
+
+	p = obs_properties_add_int_slider(greenscreenProps, "greenscreen_fadedist", obs_module_text("ObsKinect.GreenScreenFadeDist"), 0, 200, 1);
+	obs_property_int_set_suffix(p, obs_module_text("ObsKinect.GreenScreenDistUnit"));
+
 	obs_properties_add_int_slider(greenscreenProps, "greenscreen_blurpasses", obs_module_text("ObsKinect.GreenScreenBlurPassCount"), 0, 20, 1);
 	obs_properties_add_int_slider(greenscreenProps, "greenscreen_maxdirtydepth", obs_module_text("ObsKinect.GreenScreenMaxDirtyDepth"), 0, 30, 1);
 	obs_properties_add_bool(greenscreenProps, "greenscreen_gpudepthmapping", obs_module_text("ObsKinect.GreenScreenGpuDepthMapping"));
