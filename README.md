@@ -119,6 +119,13 @@ Since the depth and body maps provided by Kinect have lower resolution than the 
 Since 0.3, Body and depth filter can be combined with "Body + depth" or "Body within depth" green screen types.
 Kinect v1 dedicated background removal (Microsoft background removal) is also supported.
 
+## Why isn't dedicated background removal available?
+
+If you're using a KinectV2 this is normal, Microsoft didn't (afaik) release a background removal library for Kinect v2.
+If you're using a KinectV1, you're maybe lacking the KinectBackgroundRemoval180_(32|64).dll in your plugin folder (next to obs-kinect.dll)?
+
+Please [create an issue](https://github.com/SirLynix/obs-kinect/issues) otherwise!
+
 ## Why do nothing shows up when I enable body green-screen type?
 
 Body filtering is based on body data from Kinect, which means Kinect has to recognize your body first.
