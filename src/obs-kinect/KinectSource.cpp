@@ -166,17 +166,21 @@ void KinectSource::Update(float /*seconds*/)
 		}
 	};
 
-	m_height = 0;
-	m_width = 0;
+	if (!m_deviceAccess)
+	{
+		m_height = 0;
+		m_width = 0;
+		return;
+	}
 
 	try
 	{
-		if (!m_deviceAccess)
-			return;
-
 		auto frameData = m_deviceAccess->GetLastFrame();
 		if (!frameData || frameData->frameIndex == m_lastFrameIndex)
 			return;
+
+		m_height = 0;
+		m_width = 0;
 
 		m_lastFrameIndex = frameData->frameIndex;
 
