@@ -1,6 +1,20 @@
 -- Example config, copy to config.lua before building
 
--- You shouldn't have to change this
+-- Where is libobs located (found in OBS repository)
+LibObs = {
+	Include = "../obs-studio/libobs",
+	Lib32 = "../obs-studio/build32/libobs/Release",
+	Lib64 = "../obs-studio/build64/libobs/Release",
+}
+
+-- Where to copy generated plugin file after a successful build (depending on configuration/arch)
+-- If you don't want the plugin to be copied, just comment out/delete thoses lines
+CopyToDebug32 = [[C:\Users\Lynix\Documents\GitHub\obs-studio\build32\rundir\Debug\obs-plugins\32bit]]
+CopyToDebug64 = [[C:\Users\Lynix\Documents\GitHub\obs-studio\build64\rundir\Debug\obs-plugins\64bit]]
+CopyToRelease32 = [[C:\Users\Lynix\Documents\GitHub\obs-studio\build32\rundir\Release\obs-plugins\32bit]]
+CopyToRelease64 = [[C:\Users\Lynix\Documents\GitHub\obs-studio\build64\rundir\Release\obs-plugins\64bit]]
+
+-- You shouldn't have to change anything under this line
 if (os.getenv("KINECTSDK10_DIR")) then
 	KinectSdk10 = {
 		Include = "$(KINECTSDK10_DIR)/inc",
@@ -30,17 +44,3 @@ if (os.getenv("KINECTSDK20_DIR")) then
 elseif (os.istarget("windows")) then
 	print("Kinect SDK 2 doesn't seem to be installed, skipping KinectSdk20 backend")
 end
-
--- Where is libobs located (found in OBS repository)
-LibObs = {
-	Include = "../obs-studio/libobs",
-	Lib32 = "../obs-studio/build32/libobs/Release",
-	Lib64 = "../obs-studio/build64/libobs/Release",
-}
-
--- Where to copy generated plugin file after a successful build (depending on configuration/arch)
--- If you don't want the plugin to be copied, just comment out thoses lines
-CopyToDebug32 = [[C:\Users\Lynix\Documents\GitHub\obs-studio\build32\rundir\Debug\obs-plugins\32bit]]
-CopyToDebug64 = [[C:\Users\Lynix\Documents\GitHub\obs-studio\build64\rundir\Debug\obs-plugins\64bit]]
-CopyToRelease32 = [[C:\Users\Lynix\Documents\GitHub\obs-studio\build32\rundir\Release\obs-plugins\32bit]]
-CopyToRelease64 = [[C:\Users\Lynix\Documents\GitHub\obs-studio\build64\rundir\Release\obs-plugins\64bit]]

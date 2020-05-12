@@ -14,18 +14,18 @@ This plugins allows you to access a Kinect v2 (originally for XBox One) streams 
 # Requirement
 
 - Windows. For now this plugin is only compatible with Windows as it uses the official Kinect for Windows API (may change in the future).
-- A Kinect (obviously), v2 (xbox one) preferred (this plugins aims to support v1 in the future but this hasn't been done yet), they're *relatively* cheap on eBay (between 50€ and 100€).
+- A Kinect (obviously), v1 (xbox 360) and v2 (xbox one) are supported (but v2 has better quality), they're *relatively* cheap on eBay (between 50€ and 100€).
 - If your Kinect isn't pluggable to your computer: a Kinect to USB adapter (search for PeakLead Kinect to USB on Amazon).
 - Not running on a potato computer, Kinect itself requires a little bit of CPU power, especially when using the faux green screen effect (I'm trying to improve that) because of the color-to-depth mapping (which is done on the CPU). The plugin itself runs on the GPU.
-- **[Kinect for Windows runtime](https://www.microsoft.com/en-us/download/details.aspx?id=44559)** or **[Kinect for Windows SDK](https://www.microsoft.com/en-us/download/details.aspx?id=44561)** (if you plan to build this yourself or play with Kinect examples).
-- OBS Studio >= 24.0.0 (hasn't been tested on older versions).
+- **Kinect for Windows runtime or SDK** (links in "How to use")
+- OBS Studio >= 25.0.0.
 - **Visual Studio 2019 redistribuables** ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe)) 
 
 # To do
 
 - ~~Improve green-screen filtering using gaussian blur~~
 - Optimize green-screen filtering effect (especially the color-to-depth mapping part, if possible)
-- Add support for Kinect v1
+- ~~Add support for Kinect v1~~
 - Add support for Linux and macOS (using [libfreenect](https://github.com/OpenKinect/libfreenect) and [libfreenect2](https://github.com/OpenKinect/libfreenect2))
 - ~~Use shaders to do faux green-screen processing. 1080p pixel processing is a really heavy CPU task and would benefit a lot to run on the GPU~~
 - Add more fun effects (use issues to post your ideas)
@@ -34,12 +34,28 @@ This plugins allows you to access a Kinect v2 (originally for XBox One) streams 
 
 # How to use (for end-users, you probably want this)
 
+**If you want to have support for the Kinect v1 (xbox 360 version)**
+- Download and install [**Kinect for Windows runtime v1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40277)
+
+**If you want to have support for the Kinect v2 (xbox one version)**
+- Download and install [**Kinect for Windows runtime v2.0**](https://www.microsoft.com/en-us/download/details.aspx?id=44559)
+
+You can/must install both if you want to support both Kinect versions.
+
 Download the [latest releases](https://github.com/SirLynix/obs-kinect/releases) and copy the files in your OBS folder, restart OBS and you should have a "Kinect source" available
 
 # How to build (for people wanting to contribute)
 
 Clone and build OBS-studio first.
-Be sure to have the [Kinect for Windows SDK](https://www.microsoft.com/en-us/download/details.aspx?id=44561)
+
+**If you want to have support for the Kinect v1 (xbox 360 version)**
+- Download and install [**Kinect for Windows SDK 1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40278)
+- (Optional) Download and install [**Kinect for Windows Developer Toolkit v1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40276), this is required for dedicated background support!
+
+**If you want to have support for the Kinect v2 (xbox one version)**
+- Download and install [**Kinect for Windows SDK v2.0**](https://www.microsoft.com/en-us/download/details.aspx?id=44561)
+
+You can/must install both if you want to support both Kinect versions.
 
 Copy the config.lua.default to config.lua and changes the values accordingly.
 
@@ -49,19 +65,31 @@ Open the project workspace/solution (located in build/<actionfolder>) and build 
 
 # Commonly asked questions
 
-## I copied the files and the plugin doesn't show up
+## I copied the files and the source doesn't show up
 
-Did you install every dependency, including Kinect Runtime (or SDK) v2.0 and Visual Studio 2019 redistribuables?
-Links are in the "requirement" part, right above.
+Did you install every dependency, including Kinect Runtime (or SDK) and Visual Studio 2019 redistribuables?
+Links are in the "requirement" and "how to use" parts, right above.
+
+## I have a Kinect source but there are no device in the list
+
+Are you sure to have a Kinect v1/v2 plugged in?
+Did you download Kinect for Windows runtime for your Kinect version (see "How to use")?
+
+If yes, please download Kinect for Windows SDK (see "How to build") and try to run Kinect examples from it.
+If Kinect examples are running but this plugins doesn't work, please [create an issue](https://github.com/SirLynix/obs-kinect/issues) and post your OBS Studio logs with it.
 
 ## Does it works on Linux/macOS?
 
 Not yet, I still have to try to use libfreenect(2) for that.
-Unfortunately since some of the features I'm planning are based on Windows Kinect SDK features (like body indexing), theses will probably never be available to other systems.
+Unfortunately since some of the features this plugin provides (like body indexing and dedicated background removal) are based on Windows Kinect SDK features, theses will probably never be available to other systems.
 
-## Does this plugin works for the Kinect v1?
+## Does this plugin works for the Kinect v1 (Xbox 360 version)?
 
-Not yet, I hope I will be able to add support for it in the future.
+Yes! 0.3 added the support for it!
+
+## Does this plugin supports Azure Kinect (v3)
+
+Nope, since I don't have the money to buy one.
 
 ## I have a Kinect for Xbox One, how can I use it on my computer?
 
@@ -87,6 +115,38 @@ There's also a cool effect of transition that you can enable, just play around a
 Since 0.2 there's also a "Body" filter which uses the body informations from Kinect (basically Kinect tries to identifies pixels associated with a human being), which can filter you out even if you move away from the sensor.
 
 Since the depth and body maps provided by Kinect have lower resolution than the color map, the raw effect looks kinda harsh. Fortunately this plugin also provide a real-time blur improving the effect.
+
+Since 0.3, Body and depth filter can be combined with "Body + depth" or "Body within depth" green screen types.
+Kinect v1 dedicated background removal (Microsoft background removal) is also supported.
+
+## Why do nothing shows up when I enable body green-screen type?
+
+Body filtering is based on body data from Kinect, which means Kinect has to recognize your body first.
+
+Kinect v2 does that kinda well but v1 may struggle at the beginning, try to move away from your Kinect to let it see your whole body and then come back.
+
+## I have to get really far away from the Kinect for the green screen to work!
+
+Kinect v1 depth range is about 80-400cm in front of it, but you can enable near mode to bring it to 40-200cm
+
+Kinect v2 depth range is about 50-500cm in front of it.
+
+This range is a physical limitation, there's not much I can do about it.
+
+## (KinectV1) Having both a color and a infrared source at the same time doesn't seem to work, my color source look weird
+
+This is a limitation of the Kinect v1, infrared replaces the color stream which mean it cannot be displayed at the same time as color.
+
+Kinect v2 doesn't have this limitation.
+
+## Can I have multiple Kinect source at the same time?
+
+Yes!
+
+Since 0.3, Kinect devices are only polled once, no matter how many sources you have.
+This means you can have as many Kinect sources for the price of one per device.
+
+However, greenscreen processing is done on a per-source basis.
 
 ## Why do I have some "transparency shadow" around me/my hands?
 
