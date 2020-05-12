@@ -27,7 +27,6 @@
 KinectSource::KinectSource(KinectDeviceRegistry& registry) :
 m_gaussianBlur(GS_RGBA),
 m_registry(registry),
-m_servicePriority(ProcessPriority::Normal),
 m_sourceType(SourceType::Color),
 m_height(0),
 m_width(0),
@@ -60,13 +59,6 @@ void KinectSource::OnVisibilityUpdate(bool isVisible)
 
 	if (!m_isVisible)
 		m_finalTexture.reset(); //< Free some memory
-}
-
-void KinectSource::SetServicePriority(ProcessPriority servicePriority)
-{
-	m_servicePriority = servicePriority;
-	if (m_deviceAccess)
-		m_deviceAccess->SetServicePriority(servicePriority);
 }
 
 void KinectSource::SetSourceType(SourceType sourceType)
@@ -360,8 +352,8 @@ void KinectSource::Update(float /*seconds*/)
 				depthValues = m_depthTexture.get();
 			}
 
-			// All green screen types (except depth) requires body index texture
-			if (m_greenScreenSettings.type != GreenScreenType::Depth)
+			// All green screen types (except depth/dedicated) require body index texture
+			if (m_greenScreenSettings.type != GreenScreenType::Depth && m_greenScreenSettings.type != GreenScreenType::Dedicated)
 			{
 				if (!frameData->bodyIndexFrame)
 					return;
@@ -372,66 +364,81 @@ void KinectSource::Update(float /*seconds*/)
 
 			// Apply green screen filtering
 			gs_texture_t* filterTexture = nullptr;
-			switch (m_greenScreenSettings.type)
+			if (m_greenScreenSettings.type == GreenScreenType::Dedicated)
 			{
-				case GreenScreenType::Body:
-				{
-					GreenScreenFilterEffect::BodyFilterParams filterParams;
-					filterParams.bodyIndexTexture = m_bodyIndexTexture.get();
-					filterParams.colorToDepthTexture = depthMappingTexture;
+				if (!frameData->backgroundRemovalFrame)
+					return;
 
-					filterTexture = m_greenScreenFilterEffect.Filter(m_width, m_height, filterParams);
-					break;
+				const BackgroundRemovalFrameData& backgroundRemovalFrame = *frameData->backgroundRemovalFrame;
+				UpdateTexture(m_backgroundRemovalTexture, GS_R8, backgroundRemovalFrame.width, backgroundRemovalFrame.height, backgroundRemovalFrame.pitch, backgroundRemovalFrame.ptr.get());
+
+				filterTexture = m_backgroundRemovalTexture.get();
+			}
+			else
+			{
+				m_backgroundRemovalTexture.reset(); //< Release some memory
+
+				switch (m_greenScreenSettings.type)
+				{
+					case GreenScreenType::Body:
+					{
+						GreenScreenFilterEffect::BodyFilterParams filterParams;
+						filterParams.bodyIndexTexture = m_bodyIndexTexture.get();
+						filterParams.colorToDepthTexture = depthMappingTexture;
+
+						filterTexture = m_greenScreenFilterEffect.Filter(m_width, m_height, filterParams);
+						break;
+					}
+
+					case GreenScreenType::BodyOrDepth:
+					{
+						GreenScreenFilterEffect::BodyOrDepthFilterParams filterParams;
+						filterParams.bodyIndexTexture = m_bodyIndexTexture.get();
+						filterParams.colorToDepthTexture = depthMappingTexture;
+						filterParams.depthTexture = depthValues;
+						filterParams.maxDepth = m_greenScreenSettings.depthMax;
+						filterParams.minDepth = m_greenScreenSettings.depthMin;
+						filterParams.progressiveDepth = m_greenScreenSettings.fadeDist;
+
+						filterTexture = m_greenScreenFilterEffect.Filter(m_width, m_height, filterParams);
+						break;
+					}
+
+					case GreenScreenType::BodyWithinDepth:
+					{
+						GreenScreenFilterEffect::BodyWithinDepthFilterParams filterParams;
+						filterParams.bodyIndexTexture = m_bodyIndexTexture.get();
+						filterParams.colorToDepthTexture = depthMappingTexture;
+						filterParams.depthTexture = depthValues;
+						filterParams.maxDepth = m_greenScreenSettings.depthMax;
+						filterParams.minDepth = m_greenScreenSettings.depthMin;
+						filterParams.progressiveDepth = m_greenScreenSettings.fadeDist;
+
+						filterTexture = m_greenScreenFilterEffect.Filter(m_width, m_height, filterParams);
+						break;
+					}
+
+					case GreenScreenType::Depth:
+					{
+						GreenScreenFilterEffect::DepthFilterParams filterParams;
+						filterParams.colorToDepthTexture = depthMappingTexture;
+						filterParams.depthTexture = depthValues;
+						filterParams.maxDepth = m_greenScreenSettings.depthMax;
+						filterParams.minDepth = m_greenScreenSettings.depthMin;
+						filterParams.progressiveDepth = m_greenScreenSettings.fadeDist;
+
+						filterTexture = m_greenScreenFilterEffect.Filter(m_width, m_height, filterParams);
+						break;
+					}
 				}
 
-				case GreenScreenType::BodyOrDepth:
-				{
-					GreenScreenFilterEffect::BodyOrDepthFilterParams filterParams;
-					filterParams.bodyIndexTexture = m_bodyIndexTexture.get();
-					filterParams.colorToDepthTexture = depthMappingTexture;
-					filterParams.depthTexture = depthValues;
-					filterParams.maxDepth = m_greenScreenSettings.depthMax;
-					filterParams.minDepth = m_greenScreenSettings.depthMin;
-					filterParams.progressiveDepth = m_greenScreenSettings.fadeDist;
+				if (!filterTexture)
+					return;
 
-					filterTexture = m_greenScreenFilterEffect.Filter(m_width, m_height, filterParams);
-					break;
-				}
-
-				case GreenScreenType::BodyWithinDepth:
-				{
-					GreenScreenFilterEffect::BodyWithinDepthFilterParams filterParams;
-					filterParams.bodyIndexTexture = m_bodyIndexTexture.get();
-					filterParams.colorToDepthTexture = depthMappingTexture;
-					filterParams.depthTexture = depthValues;
-					filterParams.maxDepth = m_greenScreenSettings.depthMax;
-					filterParams.minDepth = m_greenScreenSettings.depthMin;
-					filterParams.progressiveDepth = m_greenScreenSettings.fadeDist;
-
-					filterTexture = m_greenScreenFilterEffect.Filter(m_width, m_height, filterParams);
-					break;
-				}
-
-				case GreenScreenType::Depth:
-				{
-					GreenScreenFilterEffect::DepthFilterParams filterParams;
-					filterParams.colorToDepthTexture = depthMappingTexture;
-					filterParams.depthTexture = depthValues;
-					filterParams.maxDepth = m_greenScreenSettings.depthMax;
-					filterParams.minDepth = m_greenScreenSettings.depthMin;
-					filterParams.progressiveDepth = m_greenScreenSettings.fadeDist;
-
-					filterTexture = m_greenScreenFilterEffect.Filter(m_width, m_height, filterParams);
-					break;
-				}
-
+				if (m_greenScreenSettings.blurPassCount > 0)
+					filterTexture = m_gaussianBlur.Blur(filterTexture, m_greenScreenSettings.blurPassCount);
 			}
 
-			if (!filterTexture)
-				return;
-
-			if (m_greenScreenSettings.blurPassCount > 0)
-				filterTexture = m_gaussianBlur.Blur(filterTexture, m_greenScreenSettings.blurPassCount);
 
 			gs_texture_t* filteredTexture = m_alphaMaskFilter.Filter(sourceTexture, filterTexture);
 
@@ -455,14 +462,20 @@ void KinectSource::UpdateDevice(std::string deviceName)
 	RefreshDeviceAccess();
 }
 
+void KinectSource::UpdateDeviceParameters(obs_data_t* settings)
+{
+	if (m_deviceAccess)
+		m_deviceAccess->UpdateDeviceParameters(settings);
+}
+
 void KinectSource::ClearDeviceAccess()
 {
 	m_deviceAccess.reset();
 }
 
-EnabledSourceFlags KinectSource::ComputeEnabledSourceFlags() const
+SourceFlags KinectSource::ComputeEnabledSourceFlags() const
 {
-	EnabledSourceFlags flags = 0;
+	SourceFlags flags = 0;
 	switch (m_sourceType)
 	{
 		case SourceType::Color:
@@ -483,10 +496,21 @@ EnabledSourceFlags KinectSource::ComputeEnabledSourceFlags() const
 		if (m_sourceType == SourceType::Color)
 			flags |= Source_ColorToDepthMapping;
 
-		if (m_greenScreenSettings.type != GreenScreenType::Depth)
-			flags |= Source_Body;
-		else
-			flags |= Source_Depth;
+		switch (m_greenScreenSettings.type)
+		{
+			case GreenScreenType::Body:
+			case GreenScreenType::BodyOrDepth:
+			case GreenScreenType::BodyWithinDepth:
+				flags |= Source_Body;
+				[[fallthrough]];
+			case GreenScreenType::Depth:
+				flags |= Source_Depth;
+				break;
+
+			case GreenScreenType::Dedicated:
+				flags |= Source_BackgroundRemoval;
+				break;
+		}
 	}
 
 	return flags;
@@ -497,7 +521,6 @@ std::optional<KinectDeviceAccess> KinectSource::OpenAccess(KinectDevice& device)
 	try
 	{
 		KinectDeviceAccess deviceAccess = device.AcquireAccess(ComputeEnabledSourceFlags());
-		deviceAccess.SetServicePriority(m_servicePriority);
 
 		return deviceAccess;
 	}

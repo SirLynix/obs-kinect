@@ -34,6 +34,10 @@
 	#define OBSKINECT_API OBSKINECT_IMPORT
 #endif
 
+#define OBSKINECT_VERSION_MAJOR 0
+#define OBSKINECT_VERSION_MINOR 3
+#define OBSKINECT_VERSION ((OBSKINECT_VERSION_MAJOR << 8) | OBSKINECT_VERSION_MINOR)
+
 #include <obs-module.h>
 #include <util/platform.h>
 #include <memory>
@@ -82,5 +86,7 @@ struct ObsTextureDeleter
 };
 
 using ObsTexturePtr = std::unique_ptr<gs_texture_t, ObsTextureDeleter>;
+
+OBSKINECT_API const char* Translate(const char* key); //< implemented in kinect-plugin.cpp
 
 #endif

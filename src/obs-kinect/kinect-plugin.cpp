@@ -18,6 +18,7 @@
 #include "KinectDeviceRegistry.hpp"
 #include "KinectSource.hpp"
 #include <obs-module.h>
+#include <array>
 #include <cstring>
 #include <optional>
 
@@ -29,6 +30,48 @@ static std::optional<KinectDeviceRegistry> s_deviceRegistry;
 
 static const char* NoDevice = "none_none";
 
+struct Source
+{
+	const char* text;
+	KinectSource::SourceType value;
+	SourceFlags requiredSources;
+};
+
+static std::array<Source, 3> sources = {
+	{
+		{ obs_module_text("ObsKinect.Source_Color"), KinectSource::SourceType::Color, Source_Color },
+		{ obs_module_text("ObsKinect.Source_Depth"), KinectSource::SourceType::Depth, Source_Depth },
+		{ obs_module_text("ObsKinect.Source_Infrared"), KinectSource::SourceType::Infrared, Source_Infrared }
+	}
+};
+
+struct GreenScreenType
+{
+	const char* text;
+	KinectSource::GreenScreenType value;
+	SourceFlags requiredDeviceSources;
+	SourceFlags supportedSources;
+};
+
+static std::array<GreenScreenType, 5> greenscreenTypes = {
+	{
+		{ obs_module_text("ObsKinect.GreenScreenType_Body"), KinectSource::GreenScreenType::Body, Source_Body, Source_Color | Source_Depth | Source_Infrared },
+		{ obs_module_text("ObsKinect.GreenScreenType_Depth"), KinectSource::GreenScreenType::Depth, Source_Depth, Source_Color | Source_Depth | Source_Infrared },
+		{ obs_module_text("ObsKinect.GreenScreenType_BodyOrDepth"), KinectSource::GreenScreenType::BodyOrDepth, Source_Body | Source_Depth, Source_Color | Source_Depth | Source_Infrared },
+		{ obs_module_text("ObsKinect.GreenScreenType_BodyWithinDepth"), KinectSource::GreenScreenType::BodyWithinDepth, Source_Body | Source_Depth, Source_Color | Source_Depth | Source_Infrared },
+		{ obs_module_text("ObsKinect.GreenScreenType_Dedicated"), KinectSource::GreenScreenType::Dedicated, Source_BackgroundRemoval, Source_Color }
+	}
+};
+
+bool get_property_visibility(obs_properties_t* props, const char* propertyName)
+{
+	obs_property_t* property = obs_properties_get(props, propertyName);
+	if (!property)
+		return false;
+
+	return obs_property_visible(property);
+}
+
 void set_property_visibility(obs_properties_t* props, const char* propertyName, bool visible)
 {
 	obs_property_t* property = obs_properties_get(props, propertyName);
@@ -36,10 +79,81 @@ void set_property_visibility(obs_properties_t* props, const char* propertyName, 
 		obs_property_set_visible(property, visible);
 }
 
+void update_depthinfrared_visibility(obs_properties_t* props, obs_data_t* s)
+{
+	bool sourceVisible = get_property_visibility(props, "source");
+	KinectSource::SourceType sourceType = static_cast<KinectSource::SourceType>(obs_data_get_int(s, "source"));
+
+	bool depthVisible = (sourceVisible && sourceType == KinectSource::SourceType::Depth);
+	bool infraredVisible = (sourceVisible && sourceType == KinectSource::SourceType::Infrared);
+
+	set_property_visibility(props, "depth_dynamic", depthVisible);
+	set_property_visibility(props, "depth_average", depthVisible);
+	set_property_visibility(props, "depth_standard_deviation", depthVisible);
+
+	set_property_visibility(props, "infrared_dynamic", infraredVisible);
+	set_property_visibility(props, "infrared_average", infraredVisible);
+	set_property_visibility(props, "infrared_standard_deviation", infraredVisible);
+}
+
+void update_greenscreen_availability(KinectDevice* device, obs_properties_t* props, obs_data_t* s)
+{
+	bool sourceVisible = get_property_visibility(props, "source");
+
+	SourceFlags source = 0;
+	switch (static_cast<KinectSource::SourceType>(obs_data_get_int(s, "source")))
+	{
+		case KinectSource::SourceType::Color:
+			source = Source_Color;
+			break;
+
+		case KinectSource::SourceType::Depth:
+			source = Source_Depth;
+			break;
+
+		case KinectSource::SourceType::Infrared:
+			source = Source_Infrared;
+			break;
+
+		default:
+			assert(false);
+	}
+
+	obs_property_t* type = obs_properties_get(props, "greenscreen_type");
+	assert(type);
+
+	SourceFlags supportedSource = device->GetSupportedSources();
+	for (std::size_t i = 0; i < greenscreenTypes.size(); ++i)
+	{
+		const GreenScreenType& greenscreen = greenscreenTypes[i];
+		obs_property_list_item_disable(type, i, !sourceVisible || ((greenscreen.requiredDeviceSources & supportedSource) != greenscreen.requiredDeviceSources) || ((greenscreen.supportedSources & source)) != source);
+	}
+}
+
+void update_greenscreen_visibility(obs_properties_t* props, obs_data_t* s)
+{
+	bool enabled = obs_data_get_bool(s, "greenscreen_enabled") && get_property_visibility(props, "greenscreen_enabled");
+	KinectSource::GreenScreenType type = static_cast<KinectSource::GreenScreenType>(obs_data_get_int(s, "greenscreen_type"));
+
+	set_property_visibility(props, "greenscreen", enabled);
+
+	bool depthSettingsVisible = (enabled && type != KinectSource::GreenScreenType::Body && type != KinectSource::GreenScreenType::Dedicated);
+
+	set_property_visibility(props, "greenscreen_fadedist", depthSettingsVisible);
+	set_property_visibility(props, "greenscreen_maxdist", depthSettingsVisible);
+	set_property_visibility(props, "greenscreen_mindist", depthSettingsVisible);
+	set_property_visibility(props, "greenscreen_maxdirtydepth", depthSettingsVisible);
+
+	bool blurSettingsVisible = (enabled && type != KinectSource::GreenScreenType::Dedicated);
+
+	set_property_visibility(props, "greenscreen_blurpasses", blurSettingsVisible);
+	set_property_visibility(props, "greenscreen_gpudepthmapping", blurSettingsVisible);
+};
+
 void update_device_list(obs_property_t* deviceList)
 {
 	obs_property_list_clear(deviceList);
-	obs_property_list_add_string(deviceList, obs_module_text("KinectSource.NoDevice"), NoDevice);
+	obs_property_list_add_string(deviceList, obs_module_text("ObsKinect.NoDevice"), NoDevice);
 
 	s_deviceRegistry->ForEachDevice([deviceList](const std::string& pluginName, const std::string& uniqueName, const KinectDevice& device)
 	{
@@ -57,8 +171,8 @@ static void kinect_source_update(void* data, obs_data_t* settings)
 	const char* deviceName = obs_data_get_string(settings, "device");
 
 	kinectSource->UpdateDevice(deviceName);
+	kinectSource->UpdateDeviceParameters(settings);
 
-	kinectSource->SetServicePriority(static_cast<ProcessPriority>(obs_data_get_int(settings, "service_priority")));
 	kinectSource->SetSourceType(static_cast<KinectSource::SourceType>(obs_data_get_int(settings, "source")));
 	kinectSource->ShouldStopOnHide(obs_data_get_bool(settings, "invisible_shutdown"));
 
@@ -112,11 +226,14 @@ static obs_properties_t* kinect_source_properties(void *unused)
 	obs_properties_t* props = obs_properties_create();
 	obs_property_t* p;
 
-	p = obs_properties_add_list(props, "device", obs_module_text("KinectSource.Device"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	obs_properties_add_bool(props, "invisible_shutdown", obs_module_text("ObsKinect.InvisibleShutdown"));
+
+	// Device selection
+	p = obs_properties_add_list(props, "device", obs_module_text("ObsKinect.Device"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
 
 	update_device_list(p);
 
-	obs_properties_add_button(props, "device_refresh", "Refresh Kinect Devices", [](obs_properties_t* props, obs_property_t* property, void* data)
+	obs_properties_add_button(props, "device_refresh", obs_module_text("ObsKinect.RefreshDevices"), [](obs_properties_t* props, obs_property_t* property, void* data)
 	{
 		s_deviceRegistry->Refresh();
 
@@ -125,85 +242,115 @@ static obs_properties_t* kinect_source_properties(void *unused)
 		return true;
 	});
 
-	p = obs_properties_add_list(props, "service_priority", obs_module_text("KinectSource.Priority"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	obs_property_list_add_int(p, obs_module_text("KinectSource.Priority_High"), static_cast<int>(ProcessPriority::High));
-	obs_property_list_add_int(p, obs_module_text("KinectSource.Priority_AboveNormal"), static_cast<int>(ProcessPriority::AboveNormal));
-	obs_property_list_add_int(p, obs_module_text("KinectSource.Priority_Normal"), static_cast<int>(ProcessPriority::Normal));
-
-	obs_properties_add_bool(props, "invisible_shutdown", obs_module_text("KinectSource.InvisibleShutdown"));
-
-	p = obs_properties_add_list(props, "source", obs_module_text("KinectSource.Source"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	obs_property_list_add_int(p, obs_module_text("KinectSource.Source_Color"), static_cast<int>(KinectSource::SourceType::Color));
-	obs_property_list_add_int(p, obs_module_text("KinectSource.Source_Depth"), static_cast<int>(KinectSource::SourceType::Depth));
-	obs_property_list_add_int(p, obs_module_text("KinectSource.Source_Infrared"), static_cast<int>(KinectSource::SourceType::Infrared));
-
-	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
+	s_deviceRegistry->ForEachDevice([&](const std::string& /*pluginName*/, const std::string& uniqueName, const KinectDevice& device)
 	{
-		KinectSource::SourceType sourceType = static_cast<KinectSource::SourceType>(obs_data_get_int(s, "source"));
-
-		bool depthVisible = (sourceType == KinectSource::SourceType::Depth);
-		bool infraredVisible = (sourceType == KinectSource::SourceType::Infrared);
-
-		set_property_visibility(props, "depth_dynamic", depthVisible);
-		set_property_visibility(props, "depth_average", depthVisible);
-		set_property_visibility(props, "depth_standard_deviation", depthVisible);
-
-		set_property_visibility(props, "infrared_dynamic", infraredVisible);
-		set_property_visibility(props, "infrared_average", infraredVisible);
-		set_property_visibility(props, "infrared_standard_deviation", infraredVisible);
+		obs_properties_t* deviceProperties = device.CreateProperties();
+		if (deviceProperties)
+			obs_properties_add_group(props, ("device_properties_" + uniqueName).c_str(), device.GetUniqueName().c_str(), OBS_GROUP_NORMAL, deviceProperties);
 
 		return true;
 	});
 
-	obs_properties_add_bool(props, "depth_dynamic", obs_module_text("KinectSource.DepthDynamic"));
-	obs_properties_add_float_slider(props, "depth_average", obs_module_text("KinectSource.DepthAverage"), 0.0, 1.0, 0.005);
-	obs_properties_add_float_slider(props, "depth_standard_deviation", obs_module_text("KinectSource.DepthStandardDeviation"), 0.0, 10.0, 0.5);
-
-	obs_properties_add_bool(props, "infrared_dynamic", obs_module_text("KinectSource.InfraredDynamic"));
-	obs_properties_add_float_slider(props, "infrared_average", obs_module_text("KinectSource.InfraredAverage"), 0.0, 1.0, 0.005);
-	obs_properties_add_float_slider(props, "infrared_standard_deviation", obs_module_text("KinectSource.InfraredStandardDeviation"), 0.0, 10.0, 0.5);
-
-	auto greenscreenVisibilityCallback = [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
+	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
 	{
-		bool enabled = obs_data_get_bool(s, "greenscreen_enabled");
-		KinectSource::GreenScreenType type = static_cast<KinectSource::GreenScreenType>(obs_data_get_int(s, "greenscreen_type"));
+		s_deviceRegistry->ForEachDevice([=](const std::string& /*pluginName*/, const std::string& uniqueName, const KinectDevice& device)
+		{
+			set_property_visibility(props, ("device_properties_" + uniqueName).c_str(), false);
+			return true;
+		});
 
-		set_property_visibility(props, "greenscreen_blurpasses", enabled);
-		set_property_visibility(props, "greenscreen_type", enabled);
-		set_property_visibility(props, "greenscreen_gpudepthmapping", enabled);
+		std::string selectedDevice = obs_data_get_string(s, "device");
+		if (KinectDevice* device = s_deviceRegistry->GetDevice(selectedDevice))
+		{
+			set_property_visibility(props, ("device_properties_" + selectedDevice).c_str(), true);
+			set_property_visibility(props, "source", true);
 
-		bool depthSettingsVisible = (enabled && type != KinectSource::GreenScreenType::Body);
+			obs_property_t* sourceList = obs_properties_get(props, "source");
+			assert(sourceList);
 
-		set_property_visibility(props, "greenscreen_fadedist", depthSettingsVisible);
-		set_property_visibility(props, "greenscreen_maxdist", depthSettingsVisible);
-		set_property_visibility(props, "greenscreen_mindist", depthSettingsVisible);
-		set_property_visibility(props, "greenscreen_maxdirtydepth", depthSettingsVisible);
+			SourceFlags supportedSource = device->GetSupportedSources();
+			for (std::size_t i = 0; i < sources.size(); ++i)
+			{
+				const Source& sourceData = sources[i];
+				obs_property_list_item_disable(sourceList, i, (sourceData.requiredSources & supportedSource) != sourceData.requiredSources);
+			}
+
+			update_greenscreen_availability(device, props, s);
+		}
+		else
+			set_property_visibility(props, "source", false);
+
+		update_depthinfrared_visibility(props, s);
+		update_greenscreen_visibility(props, s);
 
 		return true;
-	};
+	});
 
-	p = obs_properties_add_bool(props, "greenscreen_enabled", obs_module_text("KinectSource.GreenScreenEnabled"));
-	obs_property_set_modified_callback(p, greenscreenVisibilityCallback);
+	// Source selection
+	p = obs_properties_add_list(props, "source", obs_module_text("ObsKinect.Source"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	for (const Source& sourceData : sources)
+		obs_property_list_add_int(p, sourceData.text, static_cast<int>(sourceData.value));
 
-	p = obs_properties_add_list(props, "greenscreen_type", obs_module_text("KinectSource.GreenScreenType"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	obs_property_list_add_int(p, obs_module_text("KinectSource.GreenScreenType_Body"), static_cast<int>(KinectSource::GreenScreenType::Body));
-	obs_property_list_add_int(p, obs_module_text("KinectSource.GreenScreenType_Depth"), static_cast<int>(KinectSource::GreenScreenType::Depth));
-	obs_property_list_add_int(p, obs_module_text("KinectSource.GreenScreenType_BodyOrDepth"), static_cast<int>(KinectSource::GreenScreenType::BodyOrDepth));
-	obs_property_list_add_int(p, obs_module_text("KinectSource.GreenScreenType_BodyWithinDepth"), static_cast<int>(KinectSource::GreenScreenType::BodyWithinDepth));
+	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
+	{
+		update_depthinfrared_visibility(props, s);
+		update_greenscreen_visibility(props, s);
 
-	obs_property_set_modified_callback(p, greenscreenVisibilityCallback);
+		std::string selectedDevice = obs_data_get_string(s, "device");
+		if (KinectDevice* device = s_deviceRegistry->GetDevice(selectedDevice))
+			update_greenscreen_availability(device, props, s);
 
-	obs_properties_add_int_slider(props, "greenscreen_maxdist", obs_module_text("KinectSource.GreenScreenMaxDist"), 0, 10000, 10);
-	obs_properties_add_int_slider(props, "greenscreen_mindist", obs_module_text("KinectSource.GreenScreenMinDist"), 0, 10000, 10);
-	obs_properties_add_int_slider(props, "greenscreen_fadedist", obs_module_text("KinectSource.GreenScreenFadeDist"), 0, 200, 1);
-	obs_properties_add_int_slider(props, "greenscreen_blurpasses", obs_module_text("KinectSource.GreenScreenBlurPassCount"), 0, 20, 1);
-	obs_properties_add_int_slider(props, "greenscreen_maxdirtydepth", obs_module_text("KinectSource.GreenScreenMaxDirtyDepth"), 0, 30, 1);
-	obs_properties_add_bool(props, "greenscreen_gpudepthmapping", obs_module_text("KinectSource.GreenScreenGpuDepthMapping"));
+		return true;
+	});
+
+	// Depth/infrared to color settings
+	obs_properties_add_bool(props, "depth_dynamic", obs_module_text("ObsKinect.DepthDynamic"));
+	obs_properties_add_float_slider(props, "depth_average", obs_module_text("ObsKinect.DepthAverage"), 0.0, 1.0, 0.005);
+	obs_properties_add_float_slider(props, "depth_standard_deviation", obs_module_text("ObsKinect.DepthStandardDeviation"), 0.0, 10.0, 0.5);
+
+	obs_properties_add_bool(props, "infrared_dynamic", obs_module_text("ObsKinect.InfraredDynamic"));
+	obs_properties_add_float_slider(props, "infrared_average", obs_module_text("ObsKinect.InfraredAverage"), 0.0, 1.0, 0.005);
+	obs_properties_add_float_slider(props, "infrared_standard_deviation", obs_module_text("ObsKinect.InfraredStandardDeviation"), 0.0, 10.0, 0.5);
+
+	// Green screen stuff
+	p = obs_properties_add_bool(props, "greenscreen_enabled", obs_module_text("ObsKinect.GreenScreenEnabled"));
+	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
+	{
+		update_greenscreen_visibility(props, s);
+		return true;
+	});
+
+	obs_properties_t* greenscreenProps = obs_properties_create();
+
+	p = obs_properties_add_list(greenscreenProps, "greenscreen_type", obs_module_text("ObsKinect.GreenScreenType"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	for (const GreenScreenType& greenscreen : greenscreenTypes)
+		obs_property_list_add_int(p, greenscreen.text, static_cast<int>(greenscreen.value));
+
+	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
+	{
+		update_greenscreen_visibility(props, s);
+		return true;
+	});
+
+	p = obs_properties_add_int_slider(greenscreenProps, "greenscreen_maxdist", obs_module_text("ObsKinect.GreenScreenMaxDist"), 0, 10000, 10);
+	obs_property_int_set_suffix(p, obs_module_text("ObsKinect.GreenScreenDistUnit"));
+
+	p = obs_properties_add_int_slider(greenscreenProps, "greenscreen_mindist", obs_module_text("ObsKinect.GreenScreenMinDist"), 0, 10000, 10);
+	obs_property_int_set_suffix(p, obs_module_text("ObsKinect.GreenScreenDistUnit"));
+
+	p = obs_properties_add_int_slider(greenscreenProps, "greenscreen_fadedist", obs_module_text("ObsKinect.GreenScreenFadeDist"), 0, 200, 1);
+	obs_property_int_set_suffix(p, obs_module_text("ObsKinect.GreenScreenDistUnit"));
+
+	obs_properties_add_int_slider(greenscreenProps, "greenscreen_blurpasses", obs_module_text("ObsKinect.GreenScreenBlurPassCount"), 0, 20, 1);
+	obs_properties_add_int_slider(greenscreenProps, "greenscreen_maxdirtydepth", obs_module_text("ObsKinect.GreenScreenMaxDirtyDepth"), 0, 30, 1);
+	obs_properties_add_bool(greenscreenProps, "greenscreen_gpudepthmapping", obs_module_text("ObsKinect.GreenScreenGpuDepthMapping"));
+
+	obs_properties_add_group(props, "greenscreen", obs_module_text("ObsKinect.GreenScreen"), OBS_GROUP_NORMAL, greenscreenProps);
 
 	return props;
 }
 
-static void kinect_source_defaults(obs_data_t *settings)
+static void kinect_source_defaults(obs_data_t* settings)
 {
 	obs_data_set_default_string(settings, "device", NoDevice);
 	s_deviceRegistry->ForEachDevice([=](const std::string& pluginName, const std::string& uniqueName, const KinectDevice& device)
@@ -212,7 +359,6 @@ static void kinect_source_defaults(obs_data_t *settings)
 		return false; //< Stop at first device
 	});
 
-	obs_data_set_default_int(settings, "service_priority", static_cast<int>(ProcessPriority::Normal));
 	obs_data_set_default_int(settings, "source", static_cast<int>(KinectSource::SourceType::Color));
 	obs_data_set_default_bool(settings, "invisible_shutdown", false);
 	obs_data_set_default_double(settings, "depth_average", 0.015);
@@ -270,6 +416,7 @@ MODULE_EXPORT
 bool obs_module_load()
 {
 	s_deviceRegistry.emplace();
+	s_deviceRegistry->RegisterPlugin("obs-kinect-sdk10");
 	s_deviceRegistry->RegisterPlugin("obs-kinect-sdk20");
 
 	s_deviceRegistry->Refresh();
@@ -282,4 +429,9 @@ MODULE_EXPORT
 void obs_module_unload()
 {
 	s_deviceRegistry.reset();
+}
+
+const char* Translate(const char* key)
+{
+	return obs_module_text(key);
 }

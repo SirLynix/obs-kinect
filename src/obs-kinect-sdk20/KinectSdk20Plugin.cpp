@@ -15,44 +15,27 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#pragma once
+#include "KinectSdk20Plugin.hpp"
+#include "KinectSdk20Device.hpp"
 
-#ifndef OBS_KINECT_PLUGIN_KINECTPLUGIN
-#define OBS_KINECT_PLUGIN_KINECTPLUGIN
-
-#include "Helper.hpp"
-#include "KinectPluginImpl.hpp"
-#include <util/platform.h>
-#include <string>
-#include <vector>
-
-class KinectDevice;
-
-class KinectPlugin
+std::string KinectSdk20Plugin::GetUniqueName() const
 {
-	public:
-		KinectPlugin() = default;
-		KinectPlugin(const KinectPlugin&) = delete;
-		KinectPlugin(KinectPlugin&&) noexcept = default;
-		~KinectPlugin() = default;
+	return "KinectSDK2.0";
+}
 
-		void Close();
+std::vector<std::unique_ptr<KinectDevice>> KinectSdk20Plugin::Refresh() const
+{
+	std::vector<std::unique_ptr<KinectDevice>> devices;
 
-		const std::string& GetUniqueName() const;
+	try
+	{
+		// We have only one device: the default one
+		devices.emplace_back(std::make_unique<KinectSdk20Device>());
+	}
+	catch (const std::exception& e)
+	{
+		warn("%s", e.what());
+	}
 
-		bool IsOpen() const;
-
-		bool Open(const char* path);
-
-		std::vector<std::unique_ptr<KinectDevice>> Refresh() const;
-
-		KinectPlugin& operator=(const KinectPlugin&) = delete;
-		KinectPlugin& operator=(KinectPlugin&&) noexcept = default;
-
-	private:
-		std::unique_ptr<KinectPluginImpl> m_impl;
-		std::string m_uniqueName;
-		ObsLibPtr m_lib;
-};
-
-#endif
+	return devices;
+}

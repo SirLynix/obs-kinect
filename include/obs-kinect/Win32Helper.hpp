@@ -65,4 +65,16 @@ struct ReleaseDeleter
 template<typename T> using ClosePtr = std::unique_ptr<T, CloseDeleter<T>>;
 template<typename T> using ReleasePtr = std::unique_ptr<T, ReleaseDeleter<T>>;
 
+// Kinect v1 sensor deleter (after NuiInitialize call)
+template<typename NuiSensor>
+struct SensorDeleter
+{
+	void operator()(NuiSensor* handle) const
+	{
+		handle->NuiShutdown();
+	}
+};
+
+template<typename T> using InitializedNuiSensorPtr = std::unique_ptr<T, SensorDeleter<T>>;
+
 #endif

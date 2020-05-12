@@ -38,14 +38,9 @@ KinectDeviceAccess::~KinectDeviceAccess()
 		m_owner->ReleaseAccess(m_data);
 }
 
-EnabledSourceFlags KinectDeviceAccess::GetEnabledSourceFlags() const
+SourceFlags KinectDeviceAccess::GetEnabledSourceFlags() const
 {
 	return m_data->enabledSources;
-}
-
-ProcessPriority KinectDeviceAccess::GetServicePriority() const
-{
-	return m_data->servicePriority;
 }
 
 KinectFrameConstPtr KinectDeviceAccess::GetLastFrame()
@@ -53,16 +48,15 @@ KinectFrameConstPtr KinectDeviceAccess::GetLastFrame()
 	return m_owner->GetLastFrame();
 }
 
-void KinectDeviceAccess::SetEnabledSourceFlags(EnabledSourceFlags enabledSources)
+void KinectDeviceAccess::SetEnabledSourceFlags(SourceFlags enabledSources)
 {
 	m_data->enabledSources = enabledSources;
 	m_owner->UpdateEnabledSources();
 }
 
-void KinectDeviceAccess::SetServicePriority(ProcessPriority priority)
+void KinectDeviceAccess::UpdateDeviceParameters(obs_data_t* settings)
 {
-	m_data->servicePriority = priority;
-	m_owner->UpdateServicePriority();
+	m_owner->UpdateDeviceParameters(m_data, settings);
 }
 
 KinectDeviceAccess& KinectDeviceAccess::operator=(KinectDeviceAccess&& access) noexcept

@@ -25,27 +25,30 @@
 
 #include <Kinect.h>
 
-class KinectDeviceSdk20 : public KinectDevice
+class KinectSdk20Device : public KinectDevice
 {
 	public:
-		KinectDeviceSdk20();
-		~KinectDeviceSdk20() = default;
+		KinectSdk20Device();
+		~KinectSdk20Device();
+
+		obs_properties_t* CreateProperties() const override;
 
 		bool MapColorToDepth(const std::uint16_t* depthValues, std::size_t valueCount, std::size_t colorPixelCount, DepthMappingFrameData::DepthCoordinates* depthCoordinatesOut) const;
 
+		static void SetServicePriority(ProcessPriority priority);
+
 	private:
-		void SetServicePriority(ProcessPriority priority) override;
+		void HandleIntParameterUpdate(const std::string& parameterName, long long value) override;
 		void ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr) override;
 
 		static BodyIndexFrameData RetrieveBodyIndexFrame(IMultiSourceFrame* multiSourceFrame);
 		static ColorFrameData RetrieveColorFrame(IMultiSourceFrame* multiSourceFrame);
 		static DepthFrameData RetrieveDepthFrame(IMultiSourceFrame* multiSourceFrame);
-		static DepthMappingFrameData RetrieveDepthMappingFrame(const KinectDeviceSdk20& device, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame);
+		static DepthMappingFrameData RetrieveDepthMappingFrame(const KinectSdk20Device& device, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame);
 		static InfraredFrameData RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFrame);
 
 		ReleasePtr<IKinectSensor> m_kinectSensor;
 		ReleasePtr<ICoordinateMapper> m_coordinateMapper;
-		bool m_hasRequestedPrivilege;
 };
 
 #endif

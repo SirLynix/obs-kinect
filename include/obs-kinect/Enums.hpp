@@ -26,14 +26,15 @@
 
 enum EnabledSources
 {
-	Source_Body                = 1 << 0,
-	Source_Color               = 1 << 1,
-	Source_ColorToDepthMapping = 1 << 2,
-	Source_Depth               = 1 << 3,
-	Source_Infrared            = 1 << 4
+	Source_BackgroundRemoval   = 1 << 0,
+	Source_Body                = 1 << 1,
+	Source_Color               = 1 << 2,
+	Source_ColorToDepthMapping = 1 << 3,
+	Source_Depth               = 1 << 4,
+	Source_Infrared            = 1 << 5
 };
 
-using EnabledSourceFlags = std::uint32_t;
+using SourceFlags = std::uint32_t;
 
 enum class ProcessPriority
 {
@@ -42,7 +43,7 @@ enum class ProcessPriority
 	High = 2
 };
 
-OBSKINECT_API std::string EnabledSourceToString(EnabledSourceFlags flags);
+OBSKINECT_API std::string EnabledSourceToString(SourceFlags flags);
 OBSKINECT_API const char* ProcessPriorityToString(ProcessPriority priority);
 
 #endif

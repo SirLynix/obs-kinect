@@ -17,42 +17,25 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_KINECTPLUGIN
-#define OBS_KINECT_PLUGIN_KINECTPLUGIN
+#ifndef OBS_KINECT_PLUGIN_KINECTSDK10PLUGIN
+#define OBS_KINECT_PLUGIN_KINECTSDK10PLUGIN
 
-#include "Helper.hpp"
 #include "KinectPluginImpl.hpp"
-#include <util/platform.h>
-#include <string>
-#include <vector>
 
-class KinectDevice;
-
-class KinectPlugin
+class KinectSdk10Plugin : public KinectPluginImpl
 {
 	public:
-		KinectPlugin() = default;
-		KinectPlugin(const KinectPlugin&) = delete;
-		KinectPlugin(KinectPlugin&&) noexcept = default;
-		~KinectPlugin() = default;
+		KinectSdk10Plugin() = default;
+		KinectSdk10Plugin(const KinectSdk10Plugin&) = delete;
+		KinectSdk10Plugin(KinectSdk10Plugin&&) = delete;
+		~KinectSdk10Plugin() = default;
 
-		void Close();
+		std::string GetUniqueName() const override;
 
-		const std::string& GetUniqueName() const;
+		std::vector<std::unique_ptr<KinectDevice>> Refresh() const override;
 
-		bool IsOpen() const;
-
-		bool Open(const char* path);
-
-		std::vector<std::unique_ptr<KinectDevice>> Refresh() const;
-
-		KinectPlugin& operator=(const KinectPlugin&) = delete;
-		KinectPlugin& operator=(KinectPlugin&&) noexcept = default;
-
-	private:
-		std::unique_ptr<KinectPluginImpl> m_impl;
-		std::string m_uniqueName;
-		ObsLibPtr m_lib;
+		KinectSdk10Plugin& operator=(const KinectSdk10Plugin&) = delete;
+		KinectSdk10Plugin& operator=(KinectSdk10Plugin&&) = delete;
 };
 
 #endif

@@ -18,10 +18,16 @@
 #include "KinectDevice.hpp"
 #include "KinectDeviceAccess.hpp"
 #include <algorithm>
+#include <type_traits>
+
+template<typename T>
+struct AlwaysFalse : std::false_type {};
 
 KinectDevice::KinectDevice() :
-m_servicePriority(ProcessPriority::Normal),
+m_deviceSources(0),
+m_supportedSources(0),
 m_running(false),
+m_uniqueName("Unnamed device"),
 m_frameIndex(0),
 m_deviceSourceUpdated(true)
 {
@@ -29,11 +35,11 @@ m_deviceSourceUpdated(true)
 
 KinectDevice::~KinectDevice()
 {
-	m_accesses.clear();
+	assert(m_accesses.empty());
 	StopCapture(); //< Just in case
 }
 
-KinectDeviceAccess KinectDevice::AcquireAccess(EnabledSourceFlags enabledSources)
+KinectDeviceAccess KinectDevice::AcquireAccess(SourceFlags enabledSources)
 {
 	if (m_accesses.empty())
 		StartCapture();
@@ -41,9 +47,25 @@ KinectDeviceAccess KinectDevice::AcquireAccess(EnabledSourceFlags enabledSources
 	auto& accessDataPtr = m_accesses.emplace_back(std::make_unique<AccessData>());
 	accessDataPtr->enabledSources = enabledSources;
 
+	for (auto&& [parameterName, parameterData] : m_parameters)
+	{
+		const std::string& name = parameterName; //< structured binding cannot be captured directly
+
+		std::visit([&](auto&& arg)
+		{
+			accessDataPtr->parameters[name] = arg.defaultValue;
+		}, parameterData);
+	}
+
+	RefreshParameters();
 	UpdateEnabledSources();
 
 	return KinectDeviceAccess(*this, accessDataPtr.get());
+}
+
+obs_properties_t* KinectDevice::CreateProperties() const
+{
+	return nullptr;
 }
 
 auto KinectDevice::GetLastFrame() -> KinectFrameConstPtr
@@ -52,45 +74,116 @@ auto KinectDevice::GetLastFrame() -> KinectFrameConstPtr
 	return m_lastFrame;
 }
 
+void KinectDevice::RefreshParameters()
+{
+	for (auto&& [parameterName, _] : m_parameters)
+		UpdateParameter(parameterName);
+}
+
 void KinectDevice::ReleaseAccess(AccessData* accessData)
 {
 	auto it = std::find_if(m_accesses.begin(), m_accesses.end(), [=](const std::unique_ptr<AccessData>& data) { return data.get() == accessData; });
 	assert(it != m_accesses.end());
 	m_accesses.erase(it);
 
+	RefreshParameters();
 	UpdateEnabledSources();
-	UpdateServicePriority();
 
 	if (m_accesses.empty())
 		StopCapture();
 }
 
+void KinectDevice::UpdateDeviceParameters(AccessData* access, obs_data_t* settings)
+{
+	for (auto&& [parameterName, parameterData] : m_parameters)
+	{
+		const std::string& name = parameterName; //< structured binding cannot be captured directly
+
+		std::visit([&](auto&& arg)
+		{
+			using T = std::decay_t<decltype(arg)>;
+
+			if constexpr (std::is_same_v<T, BoolParameter>)
+			{
+				access->parameters[name] = obs_data_get_bool(settings, name.c_str());
+			}
+			else if constexpr (std::is_same_v<T, DoubleParameter>)
+			{
+				access->parameters[name] = obs_data_get_double(settings, name.c_str());
+			}
+			else if constexpr (std::is_same_v<T, IntegerParameter>)
+			{
+				access->parameters[name] = obs_data_get_int(settings, name.c_str());
+			}
+			else
+				static_assert(AlwaysFalse<T>(), "non-exhaustive visitor");
+		}, parameterData);
+	}
+
+	RefreshParameters();
+}
+
 void KinectDevice::UpdateEnabledSources()
 {
-	EnabledSourceFlags sourceFlags = 0;
+	SourceFlags sourceFlags = 0;
 	for (auto& access : m_accesses)
 		sourceFlags |= access->enabledSources;
 
 	SetEnabledSources(sourceFlags);
 }
 
-void KinectDevice::UpdateServicePriority()
+void KinectDevice::UpdateParameter(const std::string& parameterName)
 {
-	ProcessPriority highestPriority = ProcessPriority::Normal;
-	for (auto& access : m_accesses)
-	{
-		if (access->servicePriority > highestPriority)
-			highestPriority = access->servicePriority;
-	}
+	auto it = m_parameters.find(parameterName);
+	assert(it != m_parameters.end());
 
-	if (m_servicePriority != highestPriority)
+	std::visit([&](auto&& arg)
 	{
-		SetServicePriority(highestPriority);
-		m_servicePriority = highestPriority;
-	}
+		using T = std::decay_t<decltype(arg)>;
+
+		auto value = arg.defaultValue;
+		for (std::size_t i = 0; i < m_accesses.size(); ++i)
+		{
+			auto& access = m_accesses[i];
+
+			auto valIt = access->parameters.find(parameterName);
+			assert(valIt != access->parameters.end());
+
+			if (i > 0)
+				value = arg.combinator(value, std::get<decltype(value)>(valIt->second));
+			else
+				value = std::get<decltype(value)>(valIt->second);
+		}
+
+		if constexpr (std::is_same_v<T, BoolParameter>)
+		{
+			if (value == arg.value)
+				return;
+
+			HandleBoolParameterUpdate(parameterName, value);
+		}
+		else if constexpr (std::is_same_v<T, DoubleParameter>)
+		{
+			if (std::abs(arg.value - value) <= arg.epsilon)
+				return;
+
+			HandleDoubleParameterUpdate(parameterName, value);
+		}
+		else if constexpr (std::is_same_v<T, IntegerParameter>)
+		{
+			if (value == arg.value)
+				return;
+
+			HandleIntParameterUpdate(parameterName, value);
+		}
+		else
+			static_assert(AlwaysFalse<T>(), "non-exhaustive visitor");
+
+		arg.value = value;
+	}, it->second);
 }
 
-void KinectDevice::SetEnabledSources(EnabledSourceFlags sourceFlags)
+void KinectDevice::SetEnabledSources(SourceFlags sourceFlags)
 {
 	if (m_deviceSources == sourceFlags)
 		return;
@@ -100,9 +193,42 @@ void KinectDevice::SetEnabledSources(EnabledSourceFlags sourceFlags)
 	m_deviceSourceUpdated = false;
 }
 
+SourceFlags KinectDevice::GetSupportedSources() const
+{
+	return m_supportedSources;
+}
+
 const std::string& KinectDevice::GetUniqueName() const
 {
 	return m_uniqueName;
+}
+
+void KinectDevice::SetDefaultValues(obs_data_t* settings)
+{
+	for (auto&& [parameterName, parameterData] : m_parameters)
+	{
+		const std::string& name = parameterName; //< structured binding cannot be captured directly
+
+		std::visit([&](auto&& arg)
+		{
+			using T = std::decay_t<decltype(arg)>;
+
+			if constexpr (std::is_same_v<T, BoolParameter>)
+			{
+				obs_data_set_default_bool(settings, name.c_str(), arg.defaultValue);
+			}
+			else if constexpr (std::is_same_v<T, DoubleParameter>)
+			{
+				obs_data_set_default_double(settings, name.c_str(), arg.defaultValue);
+			}
+			else if constexpr (std::is_same_v<T, IntegerParameter>)
+			{
+				obs_data_set_default_int(settings, name.c_str(), arg.defaultValue);
+			}
+			else
+				static_assert(AlwaysFalse<T>(), "non-exhaustive visitor");
+		}, parameterData);
+	}
 }
 
 void KinectDevice::StartCapture()
@@ -137,7 +263,7 @@ void KinectDevice::StopCapture()
 	m_lastFrame.reset();
 }
 
-std::optional<EnabledSourceFlags> KinectDevice::GetSourceFlagsUpdate()
+std::optional<SourceFlags> KinectDevice::GetSourceFlagsUpdate()
 {
 	std::unique_lock<std::mutex> lock(m_deviceSourceLock);
 	if (!m_deviceSourceUpdated)
@@ -154,9 +280,49 @@ bool KinectDevice::IsRunning() const
 	return m_running;
 }
 
+void KinectDevice::RegisterBoolParameter(std::string parameterName, bool defaultValue, std::function<bool(bool, bool)> combinator)
+{
+	BoolParameter parameter;
+	parameter.combinator = std::move(combinator);
+	parameter.defaultValue = defaultValue;
+	parameter.value = defaultValue;
+
+	assert(m_parameters.find(parameterName) == m_parameters.end());
+	m_parameters.emplace(std::move(parameterName), std::move(parameter));
+}
+
+void KinectDevice::RegisterDoubleParameter(std::string parameterName, double defaultValue, double epsilon, std::function<double(double, double)> combinator)
+{
+	DoubleParameter parameter;
+	parameter.combinator = std::move(combinator);
+	parameter.defaultValue = defaultValue;
+	parameter.epsilon = epsilon;
+	parameter.value = defaultValue;
+
+	assert(m_parameters.find(parameterName) == m_parameters.end());
+	m_parameters.emplace(std::move(parameterName), std::move(parameter));
+}
+
+void KinectDevice::RegisterIntParameter(std::string parameterName, long long defaultValue, std::function<long long(long long, long long)> combinator)
+{
+	IntegerParameter parameter;
+	parameter.combinator = std::move(combinator);
+	parameter.defaultValue = defaultValue;
+	parameter.value = defaultValue;
+
+	assert(m_parameters.find(parameterName) == m_parameters.end());
+	m_parameters.emplace(std::move(parameterName), std::move(parameter));
+}
+
+void KinectDevice::SetSupportedSources(SourceFlags enabledSources)
+{
+	assert(m_supportedSources == 0); //< Multiple calls are not allowed
+	m_supportedSources = enabledSources;
+}
+
 void KinectDevice::SetUniqueName(std::string uniqueName)
 {
-	assert(m_uniqueName.empty());
+	assert(m_uniqueName.empty()); //< Multiple calls are not allowed
 	m_uniqueName = std::move(uniqueName);
 }
 
@@ -165,4 +331,16 @@ void KinectDevice::UpdateFrame(KinectFramePtr kinectFrame)
 	std::lock_guard<std::mutex> lock(m_lastFrameLock);
 	m_lastFrame = std::move(kinectFrame);
 	m_lastFrame->frameIndex = m_frameIndex++;
+}
+
+void KinectDevice::HandleBoolParameterUpdate(const std::string& parameterName, bool value)
+{
+}
+
+void KinectDevice::HandleDoubleParameterUpdate(const std::string& parameterName, double value)
+{
+}
+
+void KinectDevice::HandleIntParameterUpdate(const std::string& parameterName, long long value)
+{
 }

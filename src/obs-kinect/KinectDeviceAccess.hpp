@@ -34,13 +34,13 @@ class KinectDeviceAccess
 		KinectDeviceAccess(KinectDeviceAccess&& access) noexcept;
 		~KinectDeviceAccess();
 
-		EnabledSourceFlags GetEnabledSourceFlags() const;
-		ProcessPriority GetServicePriority() const;
+		SourceFlags GetEnabledSourceFlags() const;
 
 		KinectFrameConstPtr GetLastFrame();
 
-		void SetEnabledSourceFlags(EnabledSourceFlags enabledSources);
-		void SetServicePriority(ProcessPriority priority);
+		void SetEnabledSourceFlags(SourceFlags enabledSources);
+
+		void UpdateDeviceParameters(obs_data_t* settings);
 
 		KinectDeviceAccess& operator=(const KinectDeviceAccess&) = delete;
 		KinectDeviceAccess& operator=(KinectDeviceAccess&& access) noexcept;

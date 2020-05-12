@@ -15,44 +15,6 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#pragma once
-
-#ifndef OBS_KINECT_PLUGIN_KINECTPLUGIN
-#define OBS_KINECT_PLUGIN_KINECTPLUGIN
-
-#include "Helper.hpp"
 #include "KinectPluginImpl.hpp"
-#include <util/platform.h>
-#include <string>
-#include <vector>
 
-class KinectDevice;
-
-class KinectPlugin
-{
-	public:
-		KinectPlugin() = default;
-		KinectPlugin(const KinectPlugin&) = delete;
-		KinectPlugin(KinectPlugin&&) noexcept = default;
-		~KinectPlugin() = default;
-
-		void Close();
-
-		const std::string& GetUniqueName() const;
-
-		bool IsOpen() const;
-
-		bool Open(const char* path);
-
-		std::vector<std::unique_ptr<KinectDevice>> Refresh() const;
-
-		KinectPlugin& operator=(const KinectPlugin&) = delete;
-		KinectPlugin& operator=(KinectPlugin&&) noexcept = default;
-
-	private:
-		std::unique_ptr<KinectPluginImpl> m_impl;
-		std::string m_uniqueName;
-		ObsLibPtr m_lib;
-};
-
-#endif
+KinectPluginImpl::~KinectPluginImpl() = default;

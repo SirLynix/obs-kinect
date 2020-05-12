@@ -59,30 +59,31 @@ class KinectSource
 
 		void Render();
 
-		void SetServicePriority(ProcessPriority servicePriority);
 		void SetSourceType(SourceType sourceType);
 
 		void ShouldStopOnHide(bool shouldStop);
 
 		void Update(float seconds);
 		void UpdateDevice(std::string deviceName);
+		void UpdateDeviceParameters(obs_data_t* settings);
 		void UpdateDepthToColor(DepthToColorSettings depthToColor);
 		void UpdateGreenScreen(GreenScreenSettings greenScreen);
 		void UpdateInfraredToColor(InfraredToColorSettings infraredToColor);
 
 		enum class GreenScreenType
 		{
-			Body = 0,
-			BodyOrDepth = 2,
-			BodyWithinDepth = 3,
-			Depth = 1
+			Body = 0,            //< Requires Source_Body (| Source_ColorToDepthMapping if color source is used)
+			BodyOrDepth = 2,     //< Requires Source_Body | Source_Depth (| Source_ColorToDepthMapping if color source is used)
+			BodyWithinDepth = 3, //< Requires Source_Body | Source_Depth (| Source_ColorToDepthMapping if color source is used)
+			Dedicated = 4,       //< Requires Source_BackgroundRemoval
+			Depth = 1            //< Requires Source_Depth (| Source_ColorToDepthMapping if color source is used)
 		};
 
 		enum class SourceType
 		{
-			Color = 0,
-			Depth = 1,
-			Infrared = 2
+			Color = 0,   //< Requires Source_Color
+			Depth = 1,   //< Requires Source_Depth
+			Infrared = 2 //< Requires Source_Infrared
 		};
 
 		struct DepthToColorSettings
@@ -119,7 +120,7 @@ class KinectSource
 		};
 
 		void ClearDeviceAccess();
-		EnabledSourceFlags ComputeEnabledSourceFlags() const;
+		SourceFlags ComputeEnabledSourceFlags() const;
 		std::optional<KinectDeviceAccess> OpenAccess(KinectDevice& device);
 		void RefreshDeviceAccess();
 
@@ -137,12 +138,12 @@ class KinectSource
 		GreenScreenSettings m_greenScreenSettings;
 		InfraredToColorSettings m_infraredToColorSettings;
 		KinectDeviceRegistry& m_registry;
+		ObsTexturePtr m_backgroundRemovalTexture;
 		ObsTexturePtr m_bodyIndexTexture;
 		ObsTexturePtr m_colorTexture;
 		ObsTexturePtr m_depthMappingTexture;
 		ObsTexturePtr m_depthTexture;
 		ObsTexturePtr m_infraredTexture;
-		ProcessPriority m_servicePriority;
 		SourceType m_sourceType;
 		std::string m_deviceName;
 		std::uint32_t m_height;

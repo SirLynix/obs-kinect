@@ -25,10 +25,13 @@
 #include "KinectFrame.hpp"
 #include <atomic>
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <optional>
 #include <string>
 #include <thread>
+#include <unordered_map>
+#include <variant>
 #include <vector>
 
 class KinectDeviceAccess;
@@ -43,11 +46,16 @@ class OBSKINECT_API KinectDevice
 		KinectDevice(KinectDevice&&) = delete;
 		virtual ~KinectDevice();
 
-		KinectDeviceAccess AcquireAccess(EnabledSourceFlags enabledSources);
+		KinectDeviceAccess AcquireAccess(SourceFlags enabledSources);
+
+		virtual obs_properties_t* CreateProperties() const;
 
 		KinectFrameConstPtr GetLastFrame();
 
+		SourceFlags GetSupportedSources() const;
 		const std::string& GetUniqueName() const;
+
+		void SetDefaultValues(obs_data_t* settings);
 
 		void StartCapture();
 		void StopCapture();
@@ -58,36 +66,65 @@ class OBSKINECT_API KinectDevice
 		static constexpr std::uint64_t InvalidFrameIndex = std::numeric_limits<std::uint64_t>::max();
 
 	protected:
-		std::optional<EnabledSourceFlags> GetSourceFlagsUpdate();
+		std::optional<SourceFlags> GetSourceFlagsUpdate();
 
 		bool IsRunning() const;
+		void RegisterBoolParameter(std::string parameterName, bool defaultValue, std::function<bool(bool, bool)> combinator);
+		void RegisterDoubleParameter(std::string parameterName, double defaultValue, double epsilon, std::function<double(double, double)> combinator);
+		void RegisterIntParameter(std::string parameterName, long long defaultValue, std::function<long long(long long, long long)> combinator);
+		void SetSupportedSources(SourceFlags enabledSources);
 		void SetUniqueName(std::string uniqueName);
 		void UpdateFrame(KinectFramePtr kinectFrame);
 
-		virtual void SetServicePriority(ProcessPriority priority) = 0;
+		virtual void HandleBoolParameterUpdate(const std::string& parameterName, bool value);
+		virtual void HandleDoubleParameterUpdate(const std::string& parameterName, double value);
+		virtual void HandleIntParameterUpdate(const std::string& parameterName, long long value);
 		virtual void ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr) = 0;
 
 	private:
+		using ParameterValue = std::variant<bool, double, long long>;
+
 		struct AccessData
 		{
-			EnabledSourceFlags enabledSources;
-			ProcessPriority servicePriority = ProcessPriority::Normal;
+			SourceFlags enabledSources;
+			std::unordered_map<std::string, ParameterValue> parameters;
 		};
 
+		template<typename T>
+		struct DataParameter
+		{
+			T defaultValue;
+			T value;
+			std::function<T (T, T)> combinator;
+		};
+
+		struct DoubleParameter : DataParameter<double>
+		{
+			double epsilon;
+		};
+
+		using BoolParameter = DataParameter<bool>;
+		using IntegerParameter = DataParameter<long long>;
+
+		using ParameterData = std::variant<BoolParameter, DoubleParameter, IntegerParameter>;
+
+		void RefreshParameters();
 		void ReleaseAccess(AccessData* access);
+		void UpdateDeviceParameters(AccessData* access, obs_data_t* settings);
 		void UpdateEnabledSources();
-		void UpdateServicePriority();
+		void UpdateParameter(const std::string& parameterName);
 
-		void SetEnabledSources(EnabledSourceFlags sourceFlags);
+		void SetEnabledSources(SourceFlags sourceFlags);
 
-		EnabledSourceFlags m_deviceSources;
+		SourceFlags m_deviceSources;
+		SourceFlags m_supportedSources;
 		KinectFramePtr m_lastFrame;
-		ProcessPriority m_servicePriority;
 		std::atomic_bool m_running;
 		std::mutex m_deviceSourceLock;
 		std::mutex m_lastFrameLock;
 		std::string m_uniqueName;
 		std::thread m_thread;
+		std::unordered_map<std::string, ParameterData> m_parameters;
 		std::vector<std::unique_ptr<AccessData>> m_accesses;
 		std::uint64_t m_frameIndex;
 		bool m_deviceSourceUpdated;
