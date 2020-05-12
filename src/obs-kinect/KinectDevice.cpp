@@ -24,9 +24,12 @@ template<typename T>
 struct AlwaysFalse : std::false_type {};
 
 KinectDevice::KinectDevice() :
+m_deviceSources(0),
 m_supportedSources(0),
-m_deviceSourceUpdated(true),
-m_running(false)
+m_running(false),
+m_uniqueName("Unnamed device"),
+m_frameIndex(0),
+m_deviceSourceUpdated(true)
 {
 }
 
@@ -327,6 +330,7 @@ void KinectDevice::UpdateFrame(KinectFramePtr kinectFrame)
 {
 	std::lock_guard<std::mutex> lock(m_lastFrameLock);
 	m_lastFrame = std::move(kinectFrame);
+	m_lastFrame->frameIndex = m_frameIndex++;
 }
 
 void KinectDevice::HandleBoolParameterUpdate(const std::string& parameterName, bool value)

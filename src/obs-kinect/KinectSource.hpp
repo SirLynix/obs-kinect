@@ -148,6 +148,7 @@ class KinectSource
 		std::string m_deviceName;
 		std::uint32_t m_height;
 		std::uint32_t m_width;
+		std::uint64_t m_lastFrameIndex;
 		bool m_isVisible;
 		bool m_stopOnHide;
 };
