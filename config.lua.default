@@ -11,6 +11,15 @@ elseif (os.istarget("windows")) then
 	print("Kinect SDK doesn't seem to be installed, skipping KinectSdk10 backend")
 end
 
+if (os.getenv("KINECT_TOOLKIT_DIR")) then
+	KinectSdk10Toolkit = {
+		Include = "$(KINECT_TOOLKIT_DIR)/inc",
+		Lib32 = "$(KINECTSDK10_DIR)/lib/x86",
+		Lib64 = "$(KINECTSDK10_DIR)/lib/amd64"
+	}
+elseif (os.istarget("windows")) then
+	print("Kinect SDK ToolKit doesn't seem to be installed, dedicated background removal won't be available")
+end
 
 if (os.getenv("KINECTSDK20_DIR")) then
 	KinectSdk20 = {

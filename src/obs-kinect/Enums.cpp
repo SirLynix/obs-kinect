@@ -17,10 +17,13 @@
 
 #include "Enums.hpp"
 
-std::string EnabledSourceToString(EnabledSourceFlags flags)
+std::string EnabledSourceToString(SourceFlags flags)
 {
 	std::string str;
 	str.reserve(64);
+	if (flags & Source_BackgroundRemoval)
+		str += "BackgroundRemoval | ";
+
 	if (flags & Source_Body)
 		str += "Body | ";
 

@@ -109,8 +109,10 @@ namespace
 }
 
 KinectSdk10Device::KinectSdk10Device(int sensorId) :
-m_kinectElevation(0),
-m_hasRequestedPrivilege(false)
+m_kinectElevation(0)
+#if HAS_BACKGROUND_REMOVAL
+, m_trackedSkeleton(NUI_SKELETON_INVALID_TRACKING_ID)
+#endif
 {
 	HRESULT hr;
 
@@ -143,46 +145,37 @@ m_hasRequestedPrivilege(false)
 	else
 		SetUniqueName("Kinect #" + std::to_string(sensorId));
 
-	SetSupportedSources(Source_BackgroundRemoval | Source_Body | Source_Color | Source_ColorToDepthMapping | Source_Depth | Source_Infrared);
+	SourceFlags supportedSources = Source_Body | Source_Color | Source_ColorToDepthMapping | Source_Depth | Source_Infrared;
 
-	m_elevationUpdateEvent.reset(CreateEvent(nullptr, TRUE, FALSE, nullptr));
-	m_exitElevationThreadEvent.reset(CreateEvent(nullptr, TRUE, FALSE, nullptr));
+#if HAS_BACKGROUND_REMOVAL
+#ifdef _WIN64
+	m_backgroundRemovalLib.reset(os_dlopen("KinectBackgroundRemoval180_64"));
+#else
+	m_backgroundRemovalLib.reset(os_dlopen("KinectBackgroundRemoval180_32"));
+#endif
 
-	m_elevationThread = std::thread(&KinectSdk10Device::ElevationThreadFunc, this);
-
-	RegisterIntParameter("sdk10_camera_elevation", 0, [](long long a, long long b)
+	if (m_backgroundRemovalLib)
 	{
-		if (b == 0)
-			return a;
+		m_NuiCreateBackgroundRemovedColorStream = reinterpret_cast<NuiCreateBackgroundRemovedColorStreamPtr>(os_dlsym(m_backgroundRemovalLib.get(), "NuiCreateBackgroundRemovedColorStream"));
 
-		return b;
-	});
-
-	INuiColorCameraSettings* pNuiCameraSettings;
-	if (SUCCEEDED(m_kinectSensor->NuiGetColorCameraSettings(&pNuiCameraSettings)))
-	{
-		m_cameraSettings.reset(pNuiCameraSettings);
-
-		double brightness = 0.5;
-		double exposureTime = 2000;
-		double frameInterval = 2000;
-		double gain = 8.0;
-
-		m_cameraSettings->GetBrightness(&brightness);
-		m_cameraSettings->GetExposureTime(&exposureTime);
-		m_cameraSettings->GetFrameInterval(&frameInterval);
-		m_cameraSettings->GetGain(&gain);
-
-		RegisterBoolParameter("sdk10_auto_exposure", true, [](bool a, bool b) { return a && b; });
-		RegisterDoubleParameter("sdk10_brightness", brightness, 0.001, [](double a, double b) { return std::max(a, b); });
-		RegisterDoubleParameter("sdk10_exposure_time", exposureTime, 1, [](double a, double b) { return std::max(a, b); });
-		RegisterDoubleParameter("sdk10_frame_interval", frameInterval, 1, [](double a, double b) { return std::max(a, b); });
-		RegisterDoubleParameter("sdk10_gain", frameInterval, 1, [](double a, double b) { return std::max(a, b); });
+		supportedSources |= Source_BackgroundRemoval;
 	}
+	else
+		m_NuiCreateBackgroundRemovedColorStream = nullptr;
+#endif
+
+	SetSupportedSources(supportedSources);
+
+	StartElevationThread();
+	RegisterParameters();
 }
 
 KinectSdk10Device::~KinectSdk10Device()
 {
+	StopCapture(); //< Ensure capture thread finishes before unloading background removal lib
+
+	m_kinectSensor->NuiSkeletonTrackingDisable();
+
 	SetEvent(m_exitElevationThreadEvent.get());
 	m_elevationThread.join();
 }
@@ -287,6 +280,46 @@ void KinectSdk10Device::HandleIntParameterUpdate(const std::string& parameterNam
 		SetEvent(m_elevationUpdateEvent.get());
 	}
 }
+void KinectSdk10Device::RegisterParameters()
+{
+	RegisterIntParameter("sdk10_camera_elevation", 0, [](long long a, long long b)
+	{
+		if (b == 0)
+			return a;
+
+		return b;
+	});
+
+	INuiColorCameraSettings* pNuiCameraSettings;
+	if (SUCCEEDED(m_kinectSensor->NuiGetColorCameraSettings(&pNuiCameraSettings)))
+	{
+		m_cameraSettings.reset(pNuiCameraSettings);
+
+		double brightness = 0.5;
+		double exposureTime = 2000;
+		double frameInterval = 2000;
+		double gain = 8.0;
+
+		m_cameraSettings->GetBrightness(&brightness);
+		m_cameraSettings->GetExposureTime(&exposureTime);
+		m_cameraSettings->GetFrameInterval(&frameInterval);
+		m_cameraSettings->GetGain(&gain);
+
+		RegisterBoolParameter("sdk10_auto_exposure", true, [](bool a, bool b) { return a && b; });
+		RegisterDoubleParameter("sdk10_brightness", brightness, 0.001, [](double a, double b) { return std::max(a, b); });
+		RegisterDoubleParameter("sdk10_exposure_time", exposureTime, 1, [](double a, double b) { return std::max(a, b); });
+		RegisterDoubleParameter("sdk10_frame_interval", frameInterval, 1, [](double a, double b) { return std::max(a, b); });
+		RegisterDoubleParameter("sdk10_gain", frameInterval, 1, [](double a, double b) { return std::max(a, b); });
+	}
+}
+
+void KinectSdk10Device::StartElevationThread()
+{
+	m_elevationUpdateEvent.reset(CreateEvent(nullptr, TRUE, FALSE, nullptr));
+	m_exitElevationThreadEvent.reset(CreateEvent(nullptr, TRUE, FALSE, nullptr));
+
+	m_elevationThread = std::thread(&KinectSdk10Device::ElevationThreadFunc, this);
+}
 
 void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr)
 {
@@ -300,20 +333,34 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 	HANDLE depthStream;
 	HANDLE irStream;
 
+	std::int64_t colorTimestamp = 0;
+	std::int64_t depthTimestamp = 0;
+	std::int64_t irTimestamp = 0;
+
+#if HAS_BACKGROUND_REMOVAL
+	HandlePtr backgroundRemovalEvent;
+	HandlePtr skeletonEvent;
+	if (m_NuiCreateBackgroundRemovedColorStream)
+	{
+		backgroundRemovalEvent.reset(CreateEvent(nullptr, TRUE, FALSE, nullptr));
+		skeletonEvent.reset(CreateEvent(nullptr, TRUE, FALSE, nullptr));
+	}
+
+	ReleasePtr<INuiBackgroundRemovedColorStream> backgroundRemovalStream;
+	std::int64_t backgroundRemovalTimestamp = 0;
+	std::int64_t skeletonTimestamp = 0;
+#endif
+
 	SourceFlags enabledSourceFlags = 0;
 	DWORD enabledFrameSourceTypes = 0;
 
 	InitializedNuiSensorPtr<INuiSensor> openedSensor;
 
-	std::int64_t colorTimestamp = 0;
-	std::int64_t depthTimestamp = 0;
-	std::int64_t irTimestamp = 0;
-
 	auto UpdateMultiSourceFrameReader = [&](SourceFlags enabledSources)
 	{
 		bool forceReset = (openedSensor == nullptr);
 		DWORD newFrameSourcesTypes = 0;
-		if (enabledSources & Source_Body)
+		if (enabledSources & (Source_Body | Source_BackgroundRemoval))
 			newFrameSourcesTypes |= NUI_INITIALIZE_FLAG_USES_DEPTH_AND_PLAYER_INDEX;
 		else if (enabledSources & (Source_Depth | Source_ColorToDepthMapping))
 			newFrameSourcesTypes |= NUI_INITIALIZE_FLAG_USES_DEPTH;
@@ -378,6 +425,28 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 				irTimestamp = 0;
 			}
 
+#if HAS_BACKGROUND_REMOVAL
+			if (enabledSources & Source_BackgroundRemoval && m_NuiCreateBackgroundRemovedColorStream)
+			{
+				hr = m_kinectSensor->NuiSkeletonTrackingEnable(skeletonEvent.get(), NUI_SKELETON_TRACKING_FLAG_ENABLE_IN_NEAR_RANGE);
+				if (FAILED(hr))
+					throw std::runtime_error("failed to enable skeleton tracking: " + ErrToString(hr));
+
+				INuiBackgroundRemovedColorStream* backgroundRemovedColorStream;
+				hr = m_NuiCreateBackgroundRemovedColorStream(m_kinectSensor.get(), &backgroundRemovedColorStream);
+				if (FAILED(hr))
+					throw std::runtime_error("failed to create background removing stream: " + ErrToString(hr));
+
+				backgroundRemovalStream.reset(backgroundRemovedColorStream);
+				hr = backgroundRemovalStream->Enable(NUI_IMAGE_RESOLUTION_640x480, NUI_IMAGE_RESOLUTION_640x480, backgroundRemovalEvent.get());
+				if (FAILED(hr))
+
+				backgroundRemovalTimestamp = 0;
+			}
+			else
+				m_kinectSensor->NuiSkeletonTrackingDisable();
+#endif
+
 			openedSensor.reset(m_kinectSensor.get());
 		}
 
@@ -425,7 +494,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 		try
 		{
-			std::array<HANDLE, 3> events;
+			std::array<HANDLE, 5> events;
 			DWORD eventCount = 0;
 
 			if (enabledSourceFlags & Source_Color)
@@ -437,6 +506,14 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 			if (enabledSourceFlags & Source_Infrared)
 				events[eventCount++] = irEvent.get();
 
+#if HAS_BACKGROUND_REMOVAL
+			if (enabledSourceFlags & Source_BackgroundRemoval)
+			{
+				events[eventCount++] = skeletonEvent.get();
+				events[eventCount++] = backgroundRemovalEvent.get();
+			}
+#endif
+
 			WaitForMultipleObjects(eventCount, events.data(), FALSE, 100);
 
 			// Check if color frame is available
@@ -446,6 +523,18 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 				try
 				{
 					nextFramePtr->colorFrame = RetrieveColorFrame(openedSensor.get(), colorStream, &colorTimestamp);
+
+#if HAS_BACKGROUND_REMOVAL
+					if (enabledSourceFlags & Source_BackgroundRemoval)
+					{
+						UINT byteCount = nextFramePtr->colorFrame->pitch * nextFramePtr->colorFrame->height;
+						LARGE_INTEGER time;
+						time.QuadPart = colorTimestamp;
+						HRESULT hr = backgroundRemovalStream->ProcessColor(byteCount, reinterpret_cast<const BYTE*>(nextFramePtr->colorFrame->ptr.get()), time);
+						if (FAILED(hr))
+							warn("dedicated background removal: failed to process color: %s", ErrToString(hr).c_str());
+					}
+#endif
 				}
 				catch (const std::exception& e)
 				{
@@ -458,7 +547,47 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 			{
 				try
 				{
-					nextFramePtr->depthFrame = RetrieveDepthFrame(openedSensor.get(), depthStream, &depthTimestamp);
+					ImageFrameCallback callback;
+#if HAS_BACKGROUND_REMOVAL
+					if (enabledSourceFlags & Source_BackgroundRemoval)
+					{
+						callback = [&](NUI_IMAGE_FRAME& depthImageFrame)
+						{
+							try
+							{
+								HRESULT hr;
+
+								BOOL nearMode = TRUE;
+								INuiFrameTexture* pTexture;
+
+								hr = m_kinectSensor->NuiImageFrameGetDepthImagePixelFrameTexture(depthStream, &depthImageFrame, &nearMode, &pTexture);
+								if (FAILED(hr))
+									throw std::runtime_error("failed to get depth image pixel frame texture");
+
+								ReleasePtr<INuiFrameTexture> texture(pTexture);
+
+								NUI_LOCKED_RECT lockedRect;
+
+								hr = texture->LockRect(0, &lockedRect, nullptr, 0);
+								if (FAILED(hr))
+									throw std::runtime_error("failed to lock texture: " + ErrToString(hr));
+
+								auto UnlockRect = [](INuiFrameTexture* texture) { texture->UnlockRect(0); };
+								std::unique_ptr<INuiFrameTexture, decltype(UnlockRect)> unlockRect(texture.get(), UnlockRect);
+
+								hr = backgroundRemovalStream->ProcessDepth(lockedRect.size, lockedRect.pBits, depthImageFrame.liTimeStamp);
+								if (FAILED(hr))
+									throw std::runtime_error("failed to process depth");
+							}
+							catch (const std::exception& e)
+							{
+								warn("dedicated background removal: %s", e.what());
+							}
+						};
+					}
+#endif
+
+					nextFramePtr->depthFrame = RetrieveDepthFrame(openedSensor.get(), depthStream, &depthTimestamp, callback);
 				}
 				catch (const std::exception& e)
 				{
@@ -479,10 +608,59 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 				}
 			}
 
+#if HAS_BACKGROUND_REMOVAL
+			if (enabledSourceFlags & Source_BackgroundRemoval)
+			{
+				if (WaitForSingleObject(skeletonEvent.get(), 0) == WAIT_OBJECT_0)
+				{
+					try
+					{
+						HRESULT hr;
+
+						NUI_SKELETON_FRAME skeletonFrame;
+						hr = m_kinectSensor->NuiSkeletonGetNextFrame(0, &skeletonFrame);
+						if (FAILED(hr))
+							throw std::runtime_error("failed to access next frame: " + ErrToString(hr));
+
+						DWORD bestSkeleton = ChooseSkeleton(skeletonFrame, m_trackedSkeleton);
+						if (bestSkeleton != m_trackedSkeleton && bestSkeleton != NUI_SKELETON_INVALID_TRACKING_ID)
+						{
+							info("dedicated background removal: now tracking player %lu", static_cast<unsigned long>(bestSkeleton));
+							hr = backgroundRemovalStream->SetTrackedPlayer(bestSkeleton);
+							if (FAILED(hr))
+								throw std::runtime_error("failed to set tracked player: " + ErrToString(hr));
+
+							m_trackedSkeleton = bestSkeleton;
+						}
+
+						hr = backgroundRemovalStream->ProcessSkeleton(NUI_SKELETON_COUNT, skeletonFrame.SkeletonData, skeletonFrame.liTimeStamp);
+						if (FAILED(hr))
+							warn("dedicated background removal: failed to process skeleton: %s", ErrToString(hr).c_str());
+					}
+					catch (const std::exception& e)
+					{
+						warn("failed to retrieve skeleton frame: %s", e.what());
+					}
+				}
+
+				if (WaitForSingleObject(backgroundRemovalEvent.get(), 0) == WAIT_OBJECT_0)
+				{
+					try
+					{
+						nextFramePtr->backgroundRemovalFrame = RetrieveBackgroundRemovalFrame(backgroundRemovalStream.get(), &backgroundRemovalTimestamp);
+					}
+					catch (const std::exception& e)
+					{
+						warn("failed to retrieve background removed frame: %s", e.what());
+					}
+				}
+			}
+#endif
+
 			bool canUpdateFrame = true;
 
 			// Check all timestamp belongs to the same timeframe
-			std::array<std::int64_t, 3> timestamps;
+			std::array<std::int64_t, 4> timestamps;
 			std::size_t timestampCount = 0;
 
 			if (enabledSourceFlags & Source_Color)
@@ -493,6 +671,11 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 			if (enabledSourceFlags & Source_Infrared)
 				timestamps[timestampCount++] = irTimestamp;
+
+#if HAS_BACKGROUND_REMOVAL
+			if (enabledSourceFlags & Source_BackgroundRemoval)
+				timestamps[timestampCount++] = backgroundRemovalTimestamp;
+#endif
 
 			std::int64_t refTimestamp = timestamps.front();
 			for (std::size_t i = 0; i < timestampCount; ++i)
@@ -640,7 +823,74 @@ BodyIndexFrameData KinectSdk10Device::BuildBodyFrame(const DepthFrameData& depth
 	return frameData;
 }
 
-ColorFrameData KinectSdk10Device::RetrieveColorFrame(INuiSensor* sensor, HANDLE colorStream, std::int64_t* timestamp)
+#if HAS_BACKGROUND_REMOVAL
+BackgroundRemovalFrameData KinectSdk10Device::RetrieveBackgroundRemovalFrame(INuiBackgroundRemovedColorStream* backgroundRemovalStream, std::int64_t* timestamp)
+{
+	HRESULT hr;
+
+	NUI_BACKGROUND_REMOVED_COLOR_FRAME backgroundRemovedColorFrame;
+	hr = backgroundRemovalStream->GetNextFrame(0, &backgroundRemovedColorFrame);
+	if (FAILED(hr))
+		throw std::runtime_error("failed to access next frame: " + ErrToString(hr));
+
+	auto ReleaseColorFrame = [&](NUI_BACKGROUND_REMOVED_COLOR_FRAME* frame) { backgroundRemovalStream->ReleaseFrame(frame); };
+	std::unique_ptr<NUI_BACKGROUND_REMOVED_COLOR_FRAME, decltype(ReleaseColorFrame)> releaseColor(&backgroundRemovedColorFrame, ReleaseColorFrame);
+
+	BackgroundRemovalFrameData frameData;
+	ConvertResolutionToSize(backgroundRemovedColorFrame.backgroundRemovedColorFrameResolution, frameData);
+
+	constexpr std::size_t bpp = 1; //< Background Removal is A8
+
+	std::size_t memSize = frameData.width * frameData.height * bpp;
+	frameData.memory.resize(memSize);
+	std::uint8_t* memPtr = frameData.memory.data();
+
+	frameData.ptr.reset(memPtr);
+	frameData.pitch = frameData.width * bpp;
+
+	const BYTE* inputPtr = backgroundRemovedColorFrame.pBackgroundRemovedColorData;
+
+	for (std::size_t y = 0; y < frameData.height; ++y)
+	{
+		for (std::size_t x = 0; x < frameData.width; ++x)
+		{
+			// Background removed color frame is BGRA, keep only alpha
+			*memPtr++ = inputPtr[3];
+			inputPtr += 4;
+		}
+	}
+
+	if (timestamp)
+		*timestamp = backgroundRemovedColorFrame.liTimeStamp.QuadPart;
+
+	return frameData;
+}
+
+DWORD KinectSdk10Device::ChooseSkeleton(const NUI_SKELETON_FRAME& skeletonFrame, DWORD currentSkeleton)
+{
+	float bestSkeletonDistance = std::numeric_limits<float>::max();
+	DWORD bestSkeletonId = NUI_SKELETON_INVALID_TRACKING_ID;
+
+	for (const NUI_SKELETON_DATA& skeleton : skeletonFrame.SkeletonData)
+	{
+		if (skeleton.eTrackingState == NUI_SKELETON_TRACKED)
+		{
+			if (currentSkeleton == skeleton.dwTrackingID)
+				return currentSkeleton;
+
+			if (skeleton.Position.z < bestSkeletonDistance)
+			{
+				bestSkeletonDistance = skeleton.Position.z;
+				bestSkeletonId = skeleton.dwTrackingID;
+			}
+		}
+	}
+
+	return bestSkeletonId;
+}
+#endif
+
+ColorFrameData KinectSdk10Device::RetrieveColorFrame(INuiSensor* sensor, HANDLE colorStream, std::int64_t* timestamp, const ImageFrameCallback& rawframeOp)
 {
 	HRESULT hr;
 
@@ -652,6 +902,9 @@ ColorFrameData KinectSdk10Device::RetrieveColorFrame(INuiSensor* sensor, HANDLE 
 
 	auto ReleaseColorFrame = [&](NUI_IMAGE_FRAME* frame) { sensor->NuiImageStreamReleaseFrame(colorStream, frame); };
 	std::unique_ptr<NUI_IMAGE_FRAME, decltype(ReleaseColorFrame)> releaseColor(&colorFrame, ReleaseColorFrame);
+
+	if (rawframeOp)
+		rawframeOp(colorFrame);
 
 	INuiFrameTexture* texture = colorFrame.pFrameTexture;
 
@@ -672,12 +925,12 @@ ColorFrameData KinectSdk10Device::RetrieveColorFrame(INuiSensor* sensor, HANDLE 
 
 	constexpr std::size_t bpp = 4; //< Color is stored as BGRA8
 
-	std::size_t memSize = frameData.width * frameData.height * 4;
+	std::size_t memSize = frameData.width * frameData.height * bpp;
 	frameData.memory.resize(memSize);
 	std::uint8_t* memPtr = frameData.memory.data();
 
 	frameData.ptr.reset(memPtr);
-	frameData.pitch = frameData.width * 4;
+	frameData.pitch = frameData.width * bpp;
 	frameData.format = GS_BGRA;
 
 	if (frameData.pitch == lockedRect.Pitch)
@@ -699,7 +952,7 @@ ColorFrameData KinectSdk10Device::RetrieveColorFrame(INuiSensor* sensor, HANDLE 
 	{
 		for (std::size_t x = 0; x < frameData.width; ++x)
 		{
-			std::uint8_t* ptr = &memPtr[y * frameData.pitch + x * 4];
+			std::uint8_t* ptr = &memPtr[y * frameData.pitch + x * bpp];
 			ptr[3] = 255;
 		}
 	}
@@ -710,7 +963,7 @@ ColorFrameData KinectSdk10Device::RetrieveColorFrame(INuiSensor* sensor, HANDLE 
 	return frameData;
 }
 
-DepthFrameData KinectSdk10Device::RetrieveDepthFrame(INuiSensor* sensor, HANDLE depthStream, std::int64_t* timestamp)
+DepthFrameData KinectSdk10Device::RetrieveDepthFrame(INuiSensor* sensor, HANDLE depthStream, std::int64_t* timestamp, const ImageFrameCallback& rawframeOp)
 {
 	HRESULT hr;
 
@@ -722,6 +975,9 @@ DepthFrameData KinectSdk10Device::RetrieveDepthFrame(INuiSensor* sensor, HANDLE 
 
 	auto ReleaseColorFrame = [&](NUI_IMAGE_FRAME* frame) { sensor->NuiImageStreamReleaseFrame(depthStream, frame); };
 	std::unique_ptr<NUI_IMAGE_FRAME, decltype(ReleaseColorFrame)> releaseColor(&depthFrame, ReleaseColorFrame);
+
+	if (rawframeOp)
+		rawframeOp(depthFrame);
 
 	INuiFrameTexture* texture = depthFrame.pFrameTexture;
 
@@ -769,7 +1025,7 @@ DepthFrameData KinectSdk10Device::RetrieveDepthFrame(INuiSensor* sensor, HANDLE 
 	return frameData;
 }
 
-InfraredFrameData KinectSdk10Device::RetrieveInfraredFrame(INuiSensor* sensor, HANDLE irStream, std::int64_t* timestamp)
+InfraredFrameData KinectSdk10Device::RetrieveInfraredFrame(INuiSensor* sensor, HANDLE irStream, std::int64_t* timestamp, const ImageFrameCallback& rawframeOp)
 {
 	HRESULT hr;
 
@@ -781,6 +1037,9 @@ InfraredFrameData KinectSdk10Device::RetrieveInfraredFrame(INuiSensor* sensor, H
 
 	auto ReleaseColorFrame = [&](NUI_IMAGE_FRAME* frame) { sensor->NuiImageStreamReleaseFrame(irStream, frame); };
 	std::unique_ptr<NUI_IMAGE_FRAME, decltype(ReleaseColorFrame)> releaseColor(&irFrame, ReleaseColorFrame);
+
+	if (rawframeOp)
+		rawframeOp(irFrame);
 
 	INuiFrameTexture* texture = irFrame.pFrameTexture;
 

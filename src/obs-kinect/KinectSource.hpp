@@ -138,6 +138,7 @@ class KinectSource
 		GreenScreenSettings m_greenScreenSettings;
 		InfraredToColorSettings m_infraredToColorSettings;
 		KinectDeviceRegistry& m_registry;
+		ObsTexturePtr m_backgroundRemovalTexture;
 		ObsTexturePtr m_bodyIndexTexture;
 		ObsTexturePtr m_colorTexture;
 		ObsTexturePtr m_depthMappingTexture;
