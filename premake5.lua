@@ -70,7 +70,7 @@ else
 	print("Skipping KinectSdk10 backend")
 end
 
-if (Config.KinectSdk10) then
+if (Config.KinectSdk20) then
 	table.insert(projects, {
 		Name = "obs-kinect-sdk20",
 		Files = { 
@@ -81,15 +81,15 @@ if (Config.KinectSdk10) then
 		Include = {
 			obsinclude,
 			"include/obs-kinect",
-			assert(Config.KinectSdk10.Include, "Missing KinectSdk10 include dir")
+			assert(Config.KinectSdk20.Include, "Missing KinectSdk20 include dir")
 		},
 		LibDir32 = {
 			obslib32,
-			assert(Config.KinectSdk10.Lib32, "Missing KinectSdk10 lib dir (x86)")
+			assert(Config.KinectSdk20.Lib32, "Missing KinectSdk20 lib dir (x86)")
 		},
 		LibDir64 = {
 			obslib64,
-			assert(Config.KinectSdk10.Lib64, "Missing KinectSdk10 lib dir (x86_64)")
+			assert(Config.KinectSdk20.Lib64, "Missing KinectSdk20 lib dir (x86_64)")
 		},
 		Links = {
 			"obs-kinect",
