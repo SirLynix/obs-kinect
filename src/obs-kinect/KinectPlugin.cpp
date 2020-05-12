@@ -19,6 +19,11 @@
 #include "KinectPluginImpl.hpp"
 #include "KinectDevice.hpp"
 
+KinectPlugin::~KinectPlugin()
+{
+	Close();
+}
+
 void KinectPlugin::Close()
 {
 	m_impl.reset();

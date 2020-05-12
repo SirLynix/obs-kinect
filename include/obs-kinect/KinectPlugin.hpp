@@ -34,7 +34,7 @@ class KinectPlugin
 		KinectPlugin() = default;
 		KinectPlugin(const KinectPlugin&) = delete;
 		KinectPlugin(KinectPlugin&&) noexcept = default;
-		~KinectPlugin() = default;
+		~KinectPlugin();
 
 		void Close();
 
