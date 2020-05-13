@@ -16,6 +16,7 @@
 ******************************************************************************/
 
 #include "KinectSdk10Device.hpp"
+#include <comdef.h>
 #include <util/threading.h>
 #include <array>
 
@@ -78,7 +79,7 @@ namespace
 
 	std::string ErrToString(HRESULT hr)
 	{
-		switch (HRESULT_CODE(hr))
+		switch (hr)
 		{
 			case S_OK: return "No error";
 			case E_FAIL: return "Unspecified failure";
@@ -103,7 +104,17 @@ namespace
 			case E_NUI_NOTREADY: return "Some part of the device is not connected";
 			case E_NUI_SKELETAL_ENGINE_BUSY: return "Skeletal engine is already in use";
 			case E_NUI_NOTPOWERED: return "The hub and motor are connected, but the camera is not";
-			default: return "Unknown error";
+			default: 
+			{
+				_com_error err(hr);
+				LPCTSTR errMsg = err.ErrorMessage();
+
+				std::string errMessage;
+				errMessage.resize(512, ' ');
+				errMessage.resize(os_wcs_to_utf8(errMsg, 0, errMessage.data(), errMessage.size()));
+
+				return "Unhandled error (" + errMessage + ")";
+			}
 		}
 	}
 }
