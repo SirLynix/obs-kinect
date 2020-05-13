@@ -4,7 +4,7 @@ OBS Plugin to access Kinect data (and setup a virtual green screen based on dept
 
 # Features
 
-This plugins allows you to access a Kinect v2 (originally for XBox One) streams and setup a "virtual green screen effect" based on depth/body data.
+This plugins allows you to access a Kinect v1 (for Xbox 360) and Kinect v2 (for Xbox One) streams and setup a "virtual green screen effect" based on depth/body data.
 
 ![Example of a virtual Green screen made by obs-kinect](https://files.digitalpulsesoftware.net/obs-kinect.png)
 
@@ -17,9 +17,9 @@ This plugins allows you to access a Kinect v2 (originally for XBox One) streams 
 - A Kinect (obviously), v1 (xbox 360) and v2 (xbox one) are supported (but v2 has better quality), they're *relatively* cheap on eBay (between 50€ and 100€).
 - If your Kinect isn't pluggable to your computer: a Kinect to USB adapter (search for PeakLead Kinect to USB on Amazon).
 - Not running on a potato computer, Kinect itself requires a little bit of CPU power, especially when using the faux green screen effect (I'm trying to improve that) because of the color-to-depth mapping (which is done on the CPU). The plugin itself runs on the GPU.
-- **Kinect for Windows runtime or SDK** (links in "How to use")
-- OBS Studio >= 25.0.0.
-- **Visual Studio 2019 redistribuables** ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe)) 
+- ⚠️ OBS Studio >= 25.0 (since 0.3 this plugins no longer works on OBS Studio 24.0, if upgrading is a problem let me know).
+- ⚠️ **Kinect for Windows runtime** (links in "How to use", Kinect for Windows SDK includes runtime btw)
+- ⚠️ **Visual Studio 2019 redistribuables** ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe))
 
 # To do
 
@@ -68,6 +68,8 @@ Open the project workspace/solution (located in build/<actionfolder>) and build 
 ## I copied the files and the source doesn't show up
 
 Did you install every dependency, including Kinect Runtime (or SDK) and Visual Studio 2019 redistribuables?
+Are you using OBS Studio 25.0 or newer? Since 0.3 this plugins no longer works with OBS Studio 24.0 (this is because of source icons OBS-Studio added in v25, I can build the plugin for OBS 24 if upgrading is an issue for you).
+
 Links are in the "requirement" and "how to use" parts, right above.
 
 ## I have a Kinect source but there are no device in the list
@@ -89,7 +91,7 @@ Yes! 0.3 added the support for it!
 
 ## Does this plugin supports Azure Kinect (v3)
 
-Nope, since I don't have the money to buy one.
+Not yet, because I don't have one to test it. If you have an Azure Kinect and are willing to help, let me know!
 
 ## I have a Kinect for Xbox One, how can I use it on my computer?
 
@@ -146,6 +148,13 @@ This is a limitation of the Kinect v1, infrared replaces the color stream which 
 
 Kinect v2 doesn't have this limitation.
 
+## (KinectV1) It takes a lot of time to show something
+
+Kinect v1 takes indeed a lot of time to initialize itself and to change the running mode. As far as I know this is from the Kinect/Microsoft SDK and I can't do much against it.
+As far as my tests went, it may take up to 10-15s before showing up something.
+
+Note: if you enabled the green-screen effect with a body filter, try to move away from the Kinect to let it detect your body and then come back.
+
 ## Can I have multiple Kinect source at the same time?
 
 Yes!
@@ -176,7 +185,7 @@ Since version 0.3 you can allow some "depth-lag", which means the plugin is allo
 
 ## Why do closes object disappears before reaching the min distance?
 
-Kinect cannot read depth below 50cm in front of it and invalid depth are discarded.
+Kinect cannot read depth below 40cm (v1) / 50cm (v2) in front of it and invalid depth are discarded.
 Try moving your Kinect further away from the object/person you want to film.
 
 ## Can I use this with VR (since SteamVR lighthouses use infrared too)?
@@ -187,7 +196,7 @@ I tested it with the HTC Vive base stations (SteamVR 1.0) and didn't have any is
 
 ## Why is it called a "green screen" even though there's no green involved
 
-I'm lacking a better name, being a developper implies I sucks at naming things.
+I'm lacking a better name, being a developper implies I suck at naming things.
 
 ## Why didn't you buy a real green screen instead of a Kinect?
 
@@ -205,9 +214,9 @@ Fork this project, improve it and make a [pull request](https://github.com/SirLy
 
 ## Why isn't my language available?
 
-Because I don't speak it, I could only do the english and french translations, but you can make it available by making a [pull request](https://github.com/SirLynix/obs-kinect/pulls) with your language file!
+That's probably because I don't speak it, I can only do the english and french translations, but you can translate this plugin [pull request](https://github.com/SirLynix/obs-kinect/pulls) with your language file!
 
-Thanks to @pucgenie for the german translation.
+Thanks to @pucgenie and @saphir1997 for the german translation.
 
 ## What's the "GPU depth mapping/Use GPU to fetch color-to-depth values" option?
 
@@ -225,6 +234,6 @@ This helps with flickering but also introduces a "movement shadow", which may or
 
 ## Does this plugin supports other devices than Kinect?
 
-Nope, and I doubt it will as this is the only depth camera I have.
+Nope, and I doubt it will as theses are the only depth camera I have.
 
-If you're looking for Intel Realsense support (which seems to be a way better device than Kinect today), [OBS has builtin support for this](https://youtu.be/wW4HiiksDcU)
+If you're looking for Intel Realsense support (which seems to be a way better device than KinectV2 today), [OBS has builtin support for this](https://youtu.be/wW4HiiksDcU)
