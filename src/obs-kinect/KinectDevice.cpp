@@ -322,7 +322,7 @@ void KinectDevice::SetSupportedSources(SourceFlags enabledSources)
 
 void KinectDevice::SetUniqueName(std::string uniqueName)
 {
-	assert(m_uniqueName.empty()); //< Multiple calls are not allowed
+	assert(m_uniqueName == "Unnamed device"); //< Multiple calls are not allowed
 	m_uniqueName = std::move(uniqueName);
 }
 
