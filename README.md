@@ -44,6 +44,8 @@ You can/must install both if you want to support both Kinect versions.
 
 Download the [latest release](https://github.com/SirLynix/obs-kinect/releases) and copy the files in your OBS folder, restart OBS and you should have a "Kinect source" available
 
+⚠️ Don't forget to install the Visual Studio 2019 redistribuables ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe)).
+
 # How to build (for people wanting to contribute)
 
 Clone and build OBS-studio first.
@@ -80,11 +82,11 @@ Did you download Kinect for Windows runtime for your Kinect version (see "How to
 If yes, please download Kinect for Windows SDK (see "How to build") and try to run Kinect examples from it.
 If Kinect examples are running but this plugins doesn't work, please [create an issue](https://github.com/SirLynix/obs-kinect/issues) and post your OBS Studio logs with it.
 
-## The plugin works but I have "LoadLibrary failed for obs-kinect-XXX"
+## The plugin works but I have "LoadLibrary failed for obs-kinect-XXX" in OBS logs
 
 This happens because the plugins tries to load all known backend, which may fail if you don't have some of their dependencies (like the Kinect for Windows runtime associated with it). Don't care too much about it, it's a normal thing.
 
-Developer note: a way to fix that warning would be to load kinect runtime dynamically in obs-kinect backends, instead of linking them (this is already done with KinectBackgroundRemoval dll, so heh, why not)
+Developer note: a way to fix that warning would be to load kinect runtime dynamically in obs-kinect backends, instead of linking them (this is already done with KinectBackgroundRemoval dll, so heh, why not).
 
 ## Does it work on Linux/macOS?
 
@@ -103,9 +105,11 @@ Yes! I added support for the Kinect v1 in 0.3!
 
 Not yet, because I don't have one to test it. If you have an Azure Kinect and are willing to help, let me know!
 
-## I have a Kinect for Xbox One, how can I use it on my computer?
+## My Kinect cannot be plugged by USB, how can I use it on Windows?
 
-Unfortunately, Microsoft used a proprietary port on the Xbox One. You have to buy a USB 3.0 and AC adapter to use it on your computer (search for PeakLead Kinect to USB on Amazon).
+Unfortunately, Microsoft used a proprietary port on the Xbox 360/One.
+For the Kinect v1, you have to buy a Kinect to USB 2.0 and AC adapter to use it on your computer (search for Microsoft Xbox 360 Kinect Sensor Mains Power Supply Adapter on Amazon).
+For the Kinect v2, you have to buy a Kinect to USB 3.0 and AC adapter to use it on your computer (search for PeakLead Kinect to USB on Amazon).
 
 Don't forget to install the [Kinect for Windows runtime](https://www.microsoft.com/en-us/download/details.aspx?id=44559) before using this plugin.
 
