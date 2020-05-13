@@ -18,7 +18,7 @@ This plugins allows you to access a Kinect v1 (for Xbox 360) and Kinect v2 (for 
 - If your Kinect isn't pluggable to your computer: a Kinect to USB adapter (search for PeakLead Kinect to USB on Amazon).
 - Not running on a potato computer, Kinect itself requires a little bit of CPU power, especially when using the faux green screen effect (I'm trying to improve that) because of the color-to-depth mapping (which is done on the CPU). The plugin itself runs on the GPU.
 - ⚠️ OBS Studio >= 25.0 (since 0.3 this plugins no longer works on OBS Studio 24.0, if upgrading is a problem let me know).
-- ⚠️ **Kinect for Windows runtime** (links in "How to use", Kinect for Windows SDK includes runtime btw)
+- ⚠️ **Kinect for Windows runtime** (links in "How to use", note that Kinect for Windows SDK includes runtime)
 - ⚠️ **Visual Studio 2019 redistribuables** ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe))
 
 # To do
@@ -42,7 +42,7 @@ This plugins allows you to access a Kinect v1 (for Xbox 360) and Kinect v2 (for 
 
 You can/must install both if you want to support both Kinect versions.
 
-Download the [latest releases](https://github.com/SirLynix/obs-kinect/releases) and copy the files in your OBS folder, restart OBS and you should have a "Kinect source" available
+Download the [latest release](https://github.com/SirLynix/obs-kinect/releases) and copy the files in your OBS folder, restart OBS and you should have a "Kinect source" available
 
 # How to build (for people wanting to contribute)
 
@@ -86,14 +86,18 @@ This happens because the plugins tries to load all known backend, which may fail
 
 Developer note: a way to fix that warning would be to load kinect runtime dynamically in obs-kinect backends, instead of linking them (this is already done with KinectBackgroundRemoval dll, so heh, why not)
 
-## Does it works on Linux/macOS?
+## Does it work on Linux/macOS?
 
 Not yet, I still have to try to use libfreenect(2) for that.
 Unfortunately since some of the features this plugin provides (like body indexing and dedicated background removal) are based on Windows Kinect SDK features, theses will probably never be available to other systems.
 
+## Does it work with Streamlabs OBS?
+
+Unfortunately as far as I know Streamlabs OBS doesn't support thirdparty plugins, so nope.
+
 ## Does this plugin works for the Kinect v1 (Xbox 360 version)?
 
-Yes! 0.3 added the support for it!
+Yes! I added support for the Kinect v1 in 0.3!
 
 ## Does this plugin supports Azure Kinect (v3)
 
