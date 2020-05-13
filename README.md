@@ -38,7 +38,7 @@ This plugins allows you to access a Kinect v1 (for Xbox 360) and Kinect v2 (for 
 - Download and install [**Kinect for Windows runtime v1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40277)
 
 **If you want to have support for the Kinect v2 (xbox one version)**
-- Download and install [**Kinect for Windows runtime v2.0**](https://www.microsoft.com/en-us/download/details.aspx?id=44559)
+- Download and install [**Kinect for Windows runtime v2.2**](https://www.microsoft.com/en-us/download/details.aspx?id=100067)
 
 You can/must install both if you want to support both Kinect versions.
 
