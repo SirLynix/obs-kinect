@@ -80,6 +80,12 @@ Did you download Kinect for Windows runtime for your Kinect version (see "How to
 If yes, please download Kinect for Windows SDK (see "How to build") and try to run Kinect examples from it.
 If Kinect examples are running but this plugins doesn't work, please [create an issue](https://github.com/SirLynix/obs-kinect/issues) and post your OBS Studio logs with it.
 
+## The plugin works but I have "LoadLibrary failed for obs-kinect-XXX"
+
+This happens because the plugins tries to load all known backend, which may fail if you don't have some of their dependencies (like the Kinect for Windows runtime associated with it). Don't care too much about it, it's a normal thing.
+
+Developer note: a way to fix that warning would be to load kinect runtime dynamically in obs-kinect backends, instead of linking them (this is already done with KinectBackgroundRemoval dll, so heh, why not)
+
 ## Does it works on Linux/macOS?
 
 Not yet, I still have to try to use libfreenect(2) for that.
@@ -232,7 +238,7 @@ With the 0.3 release I introduced "depth-lagging frames" to helps with flickerin
 
 This helps with flickering but also introduces a "movement shadow", which may or may not be okay according to what you do.
 
-## Does this plugin supports other devices than Kinect?
+## Does this plugin support other devices than Kinect?
 
 Nope, and I doubt it will as theses are the only depth camera I have.
 
