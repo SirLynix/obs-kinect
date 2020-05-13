@@ -478,7 +478,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 				}
 				catch (const std::exception& e)
 				{
-					blog(LOG_ERROR, "%s", e.what());
+					error("%s", e.what());
 
 					os_sleep_ms(10);
 					continue;
@@ -721,14 +721,14 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 		}
 		catch (const std::exception& e)
 		{
-			blog(LOG_ERROR, "%s", e.what());
+			error("%s", e.what());
 
 			// Force sleep to prevent log spamming
 			os_sleep_ms(100);
 		}
 	}
 
-	blog(LOG_INFO, "exiting thread");
+	info("exiting thread");
 }
 
 DepthMappingFrameData KinectSdk10Device::BuildDepthMappingFrame(INuiSensor* sensor, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, std::vector<std::uint8_t>& tempMemory)
