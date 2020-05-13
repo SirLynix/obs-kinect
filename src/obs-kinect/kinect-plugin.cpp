@@ -39,9 +39,9 @@ struct Source
 
 static std::array<Source, 3> sources = {
 	{
-		{ obs_module_text("ObsKinect.Source_Color"), KinectSource::SourceType::Color, Source_Color },
-		{ obs_module_text("ObsKinect.Source_Depth"), KinectSource::SourceType::Depth, Source_Depth },
-		{ obs_module_text("ObsKinect.Source_Infrared"), KinectSource::SourceType::Infrared, Source_Infrared }
+		{ "ObsKinect.Source_Color", KinectSource::SourceType::Color, Source_Color },
+		{ "ObsKinect.Source_Depth", KinectSource::SourceType::Depth, Source_Depth },
+		{ "ObsKinect.Source_Infrared", KinectSource::SourceType::Infrared, Source_Infrared }
 	}
 };
 
@@ -55,11 +55,11 @@ struct GreenScreenType
 
 static std::array<GreenScreenType, 5> greenscreenTypes = {
 	{
-		{ obs_module_text("ObsKinect.GreenScreenType_Body"), KinectSource::GreenScreenType::Body, Source_Body, Source_Color | Source_Depth | Source_Infrared },
-		{ obs_module_text("ObsKinect.GreenScreenType_Depth"), KinectSource::GreenScreenType::Depth, Source_Depth, Source_Color | Source_Depth | Source_Infrared },
-		{ obs_module_text("ObsKinect.GreenScreenType_BodyOrDepth"), KinectSource::GreenScreenType::BodyOrDepth, Source_Body | Source_Depth, Source_Color | Source_Depth | Source_Infrared },
-		{ obs_module_text("ObsKinect.GreenScreenType_BodyWithinDepth"), KinectSource::GreenScreenType::BodyWithinDepth, Source_Body | Source_Depth, Source_Color | Source_Depth | Source_Infrared },
-		{ obs_module_text("ObsKinect.GreenScreenType_Dedicated"), KinectSource::GreenScreenType::Dedicated, Source_BackgroundRemoval, Source_Color }
+		{ "ObsKinect.GreenScreenType_Body", KinectSource::GreenScreenType::Body, Source_Body, Source_Color | Source_Depth | Source_Infrared },
+		{ "ObsKinect.GreenScreenType_Depth", KinectSource::GreenScreenType::Depth, Source_Depth, Source_Color | Source_Depth | Source_Infrared },
+		{ "ObsKinect.GreenScreenType_BodyOrDepth", KinectSource::GreenScreenType::BodyOrDepth, Source_Body | Source_Depth, Source_Color | Source_Depth | Source_Infrared },
+		{ "ObsKinect.GreenScreenType_BodyWithinDepth", KinectSource::GreenScreenType::BodyWithinDepth, Source_Body | Source_Depth, Source_Color | Source_Depth | Source_Infrared },
+		{ "ObsKinect.GreenScreenType_Dedicated", KinectSource::GreenScreenType::Dedicated, Source_BackgroundRemoval, Source_Color }
 	}
 };
 
@@ -289,7 +289,7 @@ static obs_properties_t* kinect_source_properties(void *unused)
 	// Source selection
 	p = obs_properties_add_list(props, "source", obs_module_text("ObsKinect.Source"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	for (const Source& sourceData : sources)
-		obs_property_list_add_int(p, sourceData.text, static_cast<int>(sourceData.value));
+		obs_property_list_add_int(p, obs_module_text(sourceData.text), static_cast<int>(sourceData.value));
 
 	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
 	{
@@ -324,7 +324,7 @@ static obs_properties_t* kinect_source_properties(void *unused)
 
 	p = obs_properties_add_list(greenscreenProps, "greenscreen_type", obs_module_text("ObsKinect.GreenScreenType"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	for (const GreenScreenType& greenscreen : greenscreenTypes)
-		obs_property_list_add_int(p, greenscreen.text, static_cast<int>(greenscreen.value));
+		obs_property_list_add_int(p, obs_module_text(greenscreen.text), static_cast<int>(greenscreen.value));
 
 	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
 	{
