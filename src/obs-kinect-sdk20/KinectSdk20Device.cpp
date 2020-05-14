@@ -558,4 +558,4 @@ void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 	info("exiting thread");
 }
 
-ProcessPriority KinectSdk20Device::s_servicePriority = Normal;
+ProcessPriority KinectSdk20Device::s_servicePriority = ProcessPriority::Normal;
