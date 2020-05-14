@@ -99,7 +99,7 @@ namespace
 			case E_NUI_INSUFFICIENTBANDWIDTH: return "Insufficient USB bandwidth";
 			case E_NUI_NOTSUPPORTED: return "Not supported";
 			case E_NUI_DEVICE_IN_USE: return "Device is already in use";
-			case E_NUI_HARDWARE_FEATURE_UNAVAILABLE: return "The requested feateure is not available on this version of the hardware";
+			case E_NUI_HARDWARE_FEATURE_UNAVAILABLE: return "The requested feature is not available on this version of the hardware";
 			case E_NUI_NOTCONNECTED: return "The hub is no longer connected to the machine";
 			case E_NUI_NOTREADY: return "Some part of the device is not connected";
 			case E_NUI_SKELETAL_ENGINE_BUSY: return "Skeletal engine is already in use";
@@ -414,7 +414,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 			{
 				hr = m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_DEPTH_AND_PLAYER_INDEX, NUI_IMAGE_RESOLUTION_640x480, NUI_IMAGE_STREAM_FLAG_ENABLE_NEAR_MODE, 2, depthEvent.get(), &depthStream);
 				if (FAILED(hr))
-					throw std::runtime_error("failed to open color stream: " + ErrToString(hr));
+					throw std::runtime_error("failed to open body and depth stream: " + ErrToString(hr));
 
 				depthTimestamp = 0;
 			}
@@ -422,7 +422,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 			{
 				hr = m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_DEPTH, NUI_IMAGE_RESOLUTION_640x480, NUI_IMAGE_STREAM_FLAG_ENABLE_NEAR_MODE, 2, depthEvent.get(), &depthStream);
 				if (FAILED(hr))
-					throw std::runtime_error("failed to open color stream: " + ErrToString(hr));
+					throw std::runtime_error("failed to open depth stream: " + ErrToString(hr));
 
 				depthTimestamp = 0;
 			}
