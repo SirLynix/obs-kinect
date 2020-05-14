@@ -4,7 +4,7 @@ OBS Plugin to access Kinect data (and setup a virtual green screen based on dept
 
 # Features
 
-This plugins allows you to access a Kinect v1 (for Xbox 360) and Kinect v2 (for Xbox One) streams and setup a "virtual green screen effect" based on depth/body data.
+This plugins allows you to access a Kinect v1 (for Xbox 360 or Kinect for Windows) and Kinect v2 (for Xbox One) streams and setup a "virtual green screen effect" based on depth/body data.
 
 ![Example of a virtual Green screen made by obs-kinect](https://files.digitalpulsesoftware.net/obs-kinect.png)
 
@@ -14,7 +14,7 @@ This plugins allows you to access a Kinect v1 (for Xbox 360) and Kinect v2 (for 
 # Requirement
 
 - Windows. For now this plugin is only compatible with Windows as it uses the official Kinect for Windows API (may change in the future).
-- A Kinect (obviously), v1 (xbox 360) and v2 (xbox one) are supported (but v2 has better quality), they're *relatively* cheap on eBay (between 50€ and 100€).
+- A Kinect (obviously), v1 (Xbox 360 or kinect for windows) and v2 (Xbox one) are supported (but v2 has better quality), they're *relatively* cheap on eBay (between 50€ and 100€).
 - If your Kinect isn't pluggable to your computer: a Kinect to USB adapter (search for PeakLead Kinect to USB on Amazon).
 - Not running on a potato computer, Kinect itself requires a little bit of CPU power, especially when using the faux green screen effect (I'm trying to improve that) because of the color-to-depth mapping (which is done on the CPU). The plugin itself runs on the GPU.
 - ⚠️ OBS Studio >= 25.0 (since 0.3 this plugins no longer works on OBS Studio 24.0, if upgrading is a problem let me know).
@@ -34,10 +34,10 @@ This plugins allows you to access a Kinect v1 (for Xbox 360) and Kinect v2 (for 
 
 # How to use (for end-users, you probably want this)
 
-**If you want to have support for the Kinect v1 (xbox 360 version)**
+**If you want to have support for the Kinect v1 (Xbox 360 or Kinect for Windows version)**
 - Download and install [**Kinect for Windows runtime v1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40277)
 
-**If you want to have support for the Kinect v2 (xbox one version)**
+**If you want to have support for the Kinect v2 (Xbox one version)**
 - Download and install [**Kinect for Windows runtime v2.2**](https://www.microsoft.com/en-us/download/details.aspx?id=100067)
 
 You can/must install both if you want to support both Kinect versions.
@@ -50,11 +50,11 @@ Download the [latest release](https://github.com/SirLynix/obs-kinect/releases) a
 
 Clone and build OBS-studio first.
 
-**If you want to have support for the Kinect v1 (xbox 360 version)**
+**If you want to have support for the Kinect v1 (Xbox 360 or Kinect for Windows version)**
 - Download and install [**Kinect for Windows SDK 1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40278)
 - (Optional) Download and install [**Kinect for Windows Developer Toolkit v1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40276), this is required for dedicated background support!
 
-**If you want to have support for the Kinect v2 (xbox one version)**
+**If you want to have support for the Kinect v2 (Xbox one version)**
 - Download and install [**Kinect for Windows SDK v2.0**](https://www.microsoft.com/en-us/download/details.aspx?id=44561)
 
 You can/must install both if you want to support both Kinect versions.
@@ -97,7 +97,7 @@ Unfortunately since some of the features this plugin provides (like body indexin
 
 Unfortunately as far as I know Streamlabs OBS doesn't support thirdparty plugins, so nope.
 
-## Does this plugin works for the Kinect v1 (Xbox 360 version)?
+## Does this plugin works for the Kinect v1 (Xbox 360 or Kinect for Windows version)?
 
 Yes! I added support for the Kinect v1 in 0.3!
 
