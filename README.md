@@ -150,11 +150,15 @@ Kinect v2 does that kinda well but v1 may struggle at the beginning, try to move
 
 ## I have to get really far away from the Kinect for the green screen to work!
 
-Kinect v1 depth range is about 80-400cm in front of it, but you can enable near mode to bring it to 40-200cm
+Kinect v1 depth range is about 80-400cm in front of it, but if you have a Kinect for Windows you can enable near mode to bring it to 40-200cm.
 
 Kinect v2 depth range is about 50-500cm in front of it.
 
 This range is a physical limitation, there's not much I can do about it.
+
+## (KinectV1) Near mode doesn't change anything
+
+It seems Kinect for 360 doesn't support near mode, as it was introduced by Kinect for Windows. There's not much I can do about it.
 
 ## (KinectV1) Having both a color and a infrared source at the same time doesn't seem to work, my color source look weird
 
