@@ -357,9 +357,9 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 	HandlePtr depthEvent(CreateEvent(nullptr, TRUE, FALSE, nullptr));
 	HandlePtr irEvent(CreateEvent(nullptr, TRUE, FALSE, nullptr));
 
-	HANDLE colorStream;
-	HANDLE depthStream;
-	HANDLE irStream;
+	HANDLE colorStream = INVALID_HANDLE_VALUE;
+	HANDLE depthStream = INVALID_HANDLE_VALUE;
+	HANDLE irStream = INVALID_HANDLE_VALUE;
 
 	std::int64_t colorTimestamp = 0;
 	std::int64_t depthTimestamp = 0;
@@ -429,6 +429,11 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 			ResetEvent(colorEvent.get());
 			ResetEvent(depthEvent.get());
+			ResetEvent(irEvent.get());
+
+			colorStream = INVALID_HANDLE_VALUE;
+			depthStream = INVALID_HANDLE_VALUE;
+			irStream = INVALID_HANDLE_VALUE;
 
 			if (newFrameSourcesTypes & NUI_INITIALIZE_FLAG_USES_COLOR)
 			{
@@ -469,6 +474,9 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 			}
 
 #if HAS_BACKGROUND_REMOVAL
+			ResetEvent(skeletonEvent.get());
+			ResetEvent(backgroundRemovalEvent.get());
+
 			if (enabledSources & Source_BackgroundRemoval && m_NuiCreateBackgroundRemovedColorStream)
 			{
 				hr = m_kinectSensor->NuiSkeletonTrackingEnable(skeletonEvent.get(), NUI_SKELETON_TRACKING_FLAG_ENABLE_IN_NEAR_RANGE);
@@ -764,7 +772,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 					if (enabledSourceFlags & Source_ColorToDepthMapping)
 						nextFramePtr->depthMappingFrame = BuildDepthMappingFrame(openedSensor.get(), *nextFramePtr->colorFrame, depthFrame, tempMemory);
 					
-					// "Fix" depth frame
+					// "Fix" depth frame by removing body information
 					ExtractDepth(depthFrame);
 				}
 
@@ -952,6 +960,7 @@ ColorFrameData KinectSdk10Device::RetrieveColorFrame(INuiSensor* sensor, HANDLE 
 
 	NUI_IMAGE_FRAME colorFrame;
 
+	assert(colorStream != INVALID_HANDLE_VALUE);
 	hr = sensor->NuiImageStreamGetNextFrame(colorStream, 1, &colorFrame);
 	if (FAILED(hr))
 		throw std::runtime_error("failed to access next frame: " + ErrToString(hr));
@@ -1025,6 +1034,7 @@ DepthFrameData KinectSdk10Device::RetrieveDepthFrame(INuiSensor* sensor, HANDLE 
 
 	NUI_IMAGE_FRAME depthFrame;
 
+	assert(depthStream != INVALID_HANDLE_VALUE);
 	hr = sensor->NuiImageStreamGetNextFrame(depthStream, 1, &depthFrame);
 	if (FAILED(hr))
 		throw std::runtime_error("failed to access next frame: " + ErrToString(hr));
@@ -1087,6 +1097,7 @@ InfraredFrameData KinectSdk10Device::RetrieveInfraredFrame(INuiSensor* sensor, H
 
 	NUI_IMAGE_FRAME irFrame;
 
+	assert(irStream != INVALID_HANDLE_VALUE);
 	hr = sensor->NuiImageStreamGetNextFrame(irStream, 1, &irFrame);
 	if (FAILED(hr))
 		throw std::runtime_error("failed to access next frame: " + ErrToString(hr));

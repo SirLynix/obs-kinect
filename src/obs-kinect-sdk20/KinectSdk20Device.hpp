@@ -25,7 +25,7 @@
 
 #include <Kinect.h>
 
-class KinectSdk20Device : public KinectDevice
+class KinectSdk20Device final : public KinectDevice
 {
 	public:
 		KinectSdk20Device();

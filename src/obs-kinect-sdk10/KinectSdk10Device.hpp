@@ -33,7 +33,7 @@
 #define HAS_BACKGROUND_REMOVAL 0
 #endif
 
-class KinectSdk10Device : public KinectDevice
+class KinectSdk10Device final : public KinectDevice
 {
 	public:
 		KinectSdk10Device(int sensorId);
