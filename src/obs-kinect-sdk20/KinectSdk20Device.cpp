@@ -79,6 +79,9 @@ bool KinectSdk20Device::MapColorToDepth(const std::uint16_t* depthValues, std::s
 
 void KinectSdk20Device::SetServicePriority(ProcessPriority priority)
 {
+	if (s_servicePriority == priority)
+		return;
+
 	DWORD priorityClass;
 	switch (priority)
 	{
@@ -160,6 +163,8 @@ void KinectSdk20Device::SetServicePriority(ProcessPriority priority)
 					warn("failed to update process priority");
 					return;
 				}
+
+				s_servicePriority = priority;
 
 				info("KinectService.exe priority updated successfully to %s", ProcessPriorityToString(priority));
 				return;
@@ -552,3 +557,5 @@ void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 	info("exiting thread");
 }
+
+ProcessPriority KinectSdk20Device::s_servicePriority = Normal;

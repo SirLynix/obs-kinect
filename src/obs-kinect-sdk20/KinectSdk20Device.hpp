@@ -49,6 +49,8 @@ class KinectSdk20Device : public KinectDevice
 
 		ReleasePtr<IKinectSensor> m_kinectSensor;
 		ReleasePtr<ICoordinateMapper> m_coordinateMapper;
+
+		static ProcessPriority s_servicePriority;
 };
 
 #endif
