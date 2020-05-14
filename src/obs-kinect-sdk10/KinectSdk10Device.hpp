@@ -78,6 +78,8 @@ class KinectSdk10Device : public KinectDevice
 		ObsLibPtr m_backgroundRemovalLib;
 		HandlePtr m_elevationUpdateEvent;
 		HandlePtr m_exitElevationThreadEvent;
+		std::atomic_bool m_kinectHighRes;
+		std::atomic_bool m_kinectNearMode;
 		std::atomic<LONG> m_kinectElevation;
 		std::thread m_elevationThread;
 };

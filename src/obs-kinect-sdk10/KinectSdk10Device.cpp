@@ -120,6 +120,8 @@ namespace
 }
 
 KinectSdk10Device::KinectSdk10Device(int sensorId) :
+m_kinectHighRes(false),
+m_kinectNearMode(false),
 m_kinectElevation(0)
 #if HAS_BACKGROUND_REMOVAL
 , m_trackedSkeleton(NUI_SKELETON_INVALID_TRACKING_ID)
@@ -205,6 +207,11 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 	constexpr double FrameIntervalMin = 0.0;
 
 	obs_properties_t* props = obs_properties_create();
+	p = obs_properties_add_bool(props, "sdk10_near_mode", Translate("ObsKinectV1.NearMode"));
+	obs_property_set_long_description(p, Translate("ObsKinectV1.NearModeDesc"));
+	p = obs_properties_add_bool(props, "sdk10_high_res", Translate("ObsKinectV1.HighRes"));
+	obs_property_set_long_description(p, Translate("ObsKinectV1.HighResDesc"));
+
 	p = obs_properties_add_bool(props, "sdk10_auto_exposure", Translate("ObsKinectV1.AutoExposure"));
 	p = obs_properties_add_float_slider(props, "sdk10_brightness", Translate("ObsKinectV1.Brightness"), BrignessMin, BrignessMax, 0.05);
 	p = obs_properties_add_float_slider(props, "sdk10_exposure_time", Translate("ObsKinectV1.Exposure"), ExposureMin, ExposureMax, 20.0);
@@ -269,6 +276,13 @@ void KinectSdk10Device::HandleBoolParameterUpdate(const std::string& parameterNa
 {
 	if (parameterName == "sdk10_auto_exposure")
 		m_cameraSettings->SetAutoExposure(value);
+	else if (parameterName == "sdk10_near_mode")
+		m_kinectNearMode.store(value, std::memory_order_relaxed);
+	else if (parameterName == "sdk10_high_res")
+	{
+		m_kinectHighRes.store(value);
+		TriggerSourceFlagsUpdate();
+	}
 }
 
 void KinectSdk10Device::HandleDoubleParameterUpdate(const std::string& parameterName, double value)
@@ -300,6 +314,9 @@ void KinectSdk10Device::RegisterParameters()
 
 		return b;
 	});
+
+	RegisterBoolParameter("sdk10_near_mode", false, [](bool a, bool b) { return a || b; });
+	RegisterBoolParameter("sdk10_high_res", false, [](bool a, bool b) { return a || b; });
 
 	INuiColorCameraSettings* pNuiCameraSettings;
 	if (SUCCEEDED(m_kinectSensor->NuiGetColorCameraSettings(&pNuiCameraSettings)))
@@ -366,8 +383,10 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 	DWORD enabledFrameSourceTypes = 0;
 
 	InitializedNuiSensorPtr<INuiSensor> openedSensor;
+	bool colorHighRes = m_kinectHighRes.load();
+	bool depthNearMode = false; //< near mode is always enabled after stream retrieval
 
-	auto UpdateMultiSourceFrameReader = [&](SourceFlags enabledSources)
+	auto UpdateKinectStreams = [&](SourceFlags enabledSources)
 	{
 		bool forceReset = (openedSensor == nullptr);
 		DWORD newFrameSourcesTypes = 0;
@@ -379,13 +398,23 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 		if (enabledSources & (Source_Color | Source_ColorToDepthMapping | Source_Infrared)) //< Yup, IR requires color
 		{
 			newFrameSourcesTypes |= NUI_INITIALIZE_FLAG_USES_COLOR;
-		
+
 			/*
 			Kinect v1 doesn't like to output both color and infrared at the same time, we have to force reset the device when switching
 			from color to infrared or vice-versa to prevent frame corruption/frame without data
 			*/
 			if ((enabledSourceFlags & (Source_Color | Source_Infrared)) != (enabledSources & (Source_Color | Source_Infrared)))
 				forceReset = true;
+		}
+
+		if (enabledSources & Source_Color)
+		{
+			bool highRes = m_kinectHighRes.load();
+			if (colorHighRes != highRes)
+			{
+				colorHighRes = highRes;
+				forceReset = true;
+			}
 		}
 
 		if (forceReset || newFrameSourcesTypes != enabledFrameSourceTypes)
@@ -403,7 +432,8 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 			if (newFrameSourcesTypes & NUI_INITIALIZE_FLAG_USES_COLOR)
 			{
-				hr = m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_COLOR, NUI_IMAGE_RESOLUTION_640x480, 0, 2, colorEvent.get(), &colorStream);
+				NUI_IMAGE_RESOLUTION colorRes = (colorHighRes) ? NUI_IMAGE_RESOLUTION_1280x960 : NUI_IMAGE_RESOLUTION_640x480;
+				hr = m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_COLOR, colorRes, 0, 2, colorEvent.get(), &colorStream);
 				if (FAILED(hr))
 					throw std::runtime_error("failed to open color stream: " + ErrToString(hr));
 
@@ -412,18 +442,20 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 			if (newFrameSourcesTypes & NUI_INITIALIZE_FLAG_USES_DEPTH_AND_PLAYER_INDEX)
 			{
-				hr = m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_DEPTH_AND_PLAYER_INDEX, NUI_IMAGE_RESOLUTION_640x480, NUI_IMAGE_STREAM_FLAG_ENABLE_NEAR_MODE, 2, depthEvent.get(), &depthStream);
+				hr = m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_DEPTH_AND_PLAYER_INDEX, NUI_IMAGE_RESOLUTION_640x480, 0, 2, depthEvent.get(), &depthStream);
 				if (FAILED(hr))
 					throw std::runtime_error("failed to open body and depth stream: " + ErrToString(hr));
 
+				depthNearMode = false;
 				depthTimestamp = 0;
 			}
 			else if (newFrameSourcesTypes & NUI_INITIALIZE_FLAG_USES_DEPTH)
 			{
-				hr = m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_DEPTH, NUI_IMAGE_RESOLUTION_640x480, NUI_IMAGE_STREAM_FLAG_ENABLE_NEAR_MODE, 2, depthEvent.get(), &depthStream);
+				hr = m_kinectSensor->NuiImageStreamOpen(NUI_IMAGE_TYPE_DEPTH, NUI_IMAGE_RESOLUTION_640x480, 0, 2, depthEvent.get(), &depthStream);
 				if (FAILED(hr))
 					throw std::runtime_error("failed to open depth stream: " + ErrToString(hr));
 
+				depthNearMode = false;
 				depthTimestamp = 0;
 			}
 
@@ -480,20 +512,18 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 	while (IsRunning())
 	{
+		if (auto sourceFlagUpdate = GetSourceFlagsUpdate())
 		{
-			if (auto sourceFlagUpdate = GetSourceFlagsUpdate())
+			try
 			{
-				try
-				{
-					UpdateMultiSourceFrameReader(sourceFlagUpdate.value());
-				}
-				catch (const std::exception& e)
-				{
-					error("%s", e.what());
+				UpdateKinectStreams(sourceFlagUpdate.value());
+			}
+			catch (const std::exception& e)
+			{
+				error("%s", e.what());
 
-					os_sleep_ms(10);
-					continue;
-				}
+				os_sleep_ms(10);
+				continue;
 			}
 		}
 
@@ -501,6 +531,21 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 		{
 			os_sleep_ms(100);
 			continue;
+		}
+
+		if (depthStream != INVALID_HANDLE_VALUE)
+		{
+			bool nearMode = m_kinectNearMode.load(std::memory_order_relaxed);
+			if (depthNearMode != nearMode)
+			{
+				HRESULT hr = m_kinectSensor->NuiImageStreamSetImageFrameFlags(depthStream, (nearMode) ? NUI_IMAGE_STREAM_FLAG_ENABLE_NEAR_MODE : 0);
+				if (SUCCEEDED(hr))
+					info("%s near mode successfully", (nearMode) ? "enabled" : "disabled");
+				else
+					warn("failed to %s near mode: %s", (nearMode) ? "enable" : "disable", ErrToString(hr).c_str());
+
+				depthNearMode = nearMode;
+			}
 		}
 
 		try

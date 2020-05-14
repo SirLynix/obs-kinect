@@ -74,6 +74,7 @@ class OBSKINECT_API KinectDevice
 		void RegisterIntParameter(std::string parameterName, long long defaultValue, std::function<long long(long long, long long)> combinator);
 		void SetSupportedSources(SourceFlags enabledSources);
 		void SetUniqueName(std::string uniqueName);
+		void TriggerSourceFlagsUpdate();
 		void UpdateFrame(KinectFramePtr kinectFrame);
 
 		virtual void HandleBoolParameterUpdate(const std::string& parameterName, bool value);

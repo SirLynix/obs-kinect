@@ -326,6 +326,12 @@ void KinectDevice::SetUniqueName(std::string uniqueName)
 	m_uniqueName = std::move(uniqueName);
 }
 
+void KinectDevice::TriggerSourceFlagsUpdate()
+{
+	std::unique_lock<std::mutex> lock(m_deviceSourceLock);
+	m_deviceSourceUpdated = false;
+}
+
 void KinectDevice::UpdateFrame(KinectFramePtr kinectFrame)
 {
 	std::lock_guard<std::mutex> lock(m_lastFrameLock);
