@@ -54,11 +54,17 @@ std::uint32_t KinectSource::GetWidth() const
 
 void KinectSource::OnVisibilityUpdate(bool isVisible)
 {
-	m_isVisible = isVisible || !m_stopOnHide;
-	RefreshDeviceAccess();
+	if (!m_stopOnHide)
+		isVisible = true;
 
-	if (!m_isVisible)
-		m_finalTexture.reset(); //< Free some memory
+	if (m_isVisible != isVisible)
+	{
+		m_isVisible = isVisible;
+		RefreshDeviceAccess();
+
+		if (!m_isVisible)
+			m_finalTexture.reset(); //< Free some memory
+	}
 }
 
 void KinectSource::SetSourceType(SourceType sourceType)
