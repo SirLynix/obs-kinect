@@ -205,7 +205,7 @@ static void kinect_source_update(void* data, obs_data_t* settings)
 
 static void* kinect_source_create(obs_data_t* settings, obs_source_t* source)
 {
-	KinectSource* kinect = new KinectSource(*s_deviceRegistry);
+	KinectSource* kinect = new KinectSource(*s_deviceRegistry, source);
 	kinect_source_update(kinect, settings);
 
 	kinect->OnVisibilityUpdate(obs_source_showing(source));

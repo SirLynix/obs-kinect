@@ -49,7 +49,7 @@ class KinectSource
 		struct GreenScreenSettings;
 		struct InfraredToColorSettings;
 
-		KinectSource(KinectDeviceRegistry& registry);
+		KinectSource(KinectDeviceRegistry& registry, const obs_source_t* source);
 		~KinectSource();
 
 		std::uint32_t GetHeight() const;
@@ -145,6 +145,7 @@ class KinectSource
 		ObsTexturePtr m_depthTexture;
 		ObsTexturePtr m_infraredTexture;
 		SourceType m_sourceType;
+		const obs_source_t* m_source;
 		std::string m_deviceName;
 		std::uint32_t m_height;
 		std::uint32_t m_width;

@@ -24,10 +24,11 @@
 #include <numeric>
 #include <optional>
 
-KinectSource::KinectSource(KinectDeviceRegistry& registry) :
+KinectSource::KinectSource(KinectDeviceRegistry& registry, const obs_source_t* source) :
 m_gaussianBlur(GS_RGBA),
 m_registry(registry),
 m_sourceType(SourceType::Color),
+m_source(source),
 m_height(0),
 m_width(0),
 m_lastFrameIndex(KinectDevice::InvalidFrameIndex),
@@ -528,14 +529,19 @@ SourceFlags KinectSource::ComputeEnabledSourceFlags() const
 
 std::optional<KinectDeviceAccess> KinectSource::OpenAccess(KinectDevice& device)
 {
+	obs_data_t* settings = obs_source_get_settings(m_source);
+
 	try
 	{
 		KinectDeviceAccess deviceAccess = device.AcquireAccess(ComputeEnabledSourceFlags());
+		deviceAccess.UpdateDeviceParameters(settings);
 
 		return deviceAccess;
 	}
 	catch (const std::exception& e)
 	{
+		obs_data_release(settings);
+
 		warn("failed to access kinect device: %s", e.what());
 		return {};
 	}
