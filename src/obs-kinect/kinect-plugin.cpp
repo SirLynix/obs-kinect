@@ -342,8 +342,11 @@ static obs_properties_t* kinect_source_properties(void *unused)
 	obs_property_int_set_suffix(p, obs_module_text("ObsKinect.GreenScreenDistUnit"));
 
 	obs_properties_add_int_slider(greenscreenProps, "greenscreen_blurpasses", obs_module_text("ObsKinect.GreenScreenBlurPassCount"), 0, 20, 1);
-	obs_properties_add_int_slider(greenscreenProps, "greenscreen_maxdirtydepth", obs_module_text("ObsKinect.GreenScreenMaxDirtyDepth"), 0, 30, 1);
-	obs_properties_add_bool(greenscreenProps, "greenscreen_gpudepthmapping", obs_module_text("ObsKinect.GreenScreenGpuDepthMapping"));
+	p = obs_properties_add_int_slider(greenscreenProps, "greenscreen_maxdirtydepth", obs_module_text("ObsKinect.GreenScreenMaxDirtyDepth"), 0, 30, 1);
+	obs_property_set_long_description(p, obs_module_text("ObsKinect.GreenScreenMaxDirtyDepthDesc"));
+
+	p = obs_properties_add_bool(greenscreenProps, "greenscreen_gpudepthmapping", obs_module_text("ObsKinect.GreenScreenGpuDepthMapping"));
+	obs_property_set_long_description(p, obs_module_text("ObsKinect.GreenScreenGpuDepthMappingDesc"));
 
 	obs_properties_add_group(props, "greenscreen", obs_module_text("ObsKinect.GreenScreen"), OBS_GROUP_NORMAL, greenscreenProps);
 
