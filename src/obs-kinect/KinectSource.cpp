@@ -530,6 +530,8 @@ SourceFlags KinectSource::ComputeEnabledSourceFlags() const
 std::optional<KinectDeviceAccess> KinectSource::OpenAccess(KinectDevice& device)
 {
 	obs_data_t* settings = obs_source_get_settings(m_source);
+	auto ReleaseSettings = [](obs_data_t* settings) { obs_data_release(settings); };
+	std::unique_ptr<obs_data_t, decltype(ReleaseSettings)> unlockRect(settings, ReleaseSettings);
 
 	try
 	{
@@ -540,8 +542,6 @@ std::optional<KinectDeviceAccess> KinectSource::OpenAccess(KinectDevice& device)
 	}
 	catch (const std::exception& e)
 	{
-		obs_data_release(settings);
-
 		warn("failed to access kinect device: %s", e.what());
 		return {};
 	}
