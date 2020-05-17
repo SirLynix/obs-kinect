@@ -37,7 +37,7 @@ KinectSdk20Device::KinectSdk20Device()
 	SetSupportedSources(Source_Body | Source_Color | Source_ColorToDepthMapping | Source_Depth | Source_Infrared);
 	SetUniqueName("Default Kinect");
 
-	RegisterIntParameter("sdk20_service_priority", static_cast<int>(ProcessPriority::Normal), [](long long a, long long b)
+	RegisterIntParameter("sdk20_service_priority", static_cast<long long>(ProcessPriority::Normal), [](long long a, long long b)
 	{
 		return std::max(a, b);
 	});
