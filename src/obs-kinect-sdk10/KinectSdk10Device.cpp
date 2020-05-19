@@ -122,10 +122,11 @@ namespace
 KinectSdk10Device::KinectSdk10Device(int sensorId) :
 m_kinectHighRes(false),
 m_kinectNearMode(false),
-m_kinectElevation(0)
+m_kinectElevation(0),
 #if HAS_BACKGROUND_REMOVAL
-, m_trackedSkeleton(NUI_SKELETON_INVALID_TRACKING_ID)
+m_trackedSkeleton(NUI_SKELETON_INVALID_TRACKING_ID),
 #endif
+m_hasColorSettings(false)
 {
 	HRESULT hr;
 
@@ -212,11 +213,15 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 	p = obs_properties_add_bool(props, "sdk10_high_res", Translate("ObsKinectV1.HighRes"));
 	obs_property_set_long_description(p, Translate("ObsKinectV1.HighResDesc"));
 
-	p = obs_properties_add_bool(props, "sdk10_auto_exposure", Translate("ObsKinectV1.AutoExposure"));
-	p = obs_properties_add_float_slider(props, "sdk10_brightness", Translate("ObsKinectV1.Brightness"), BrignessMin, BrignessMax, 0.05);
-	p = obs_properties_add_float_slider(props, "sdk10_exposure_time", Translate("ObsKinectV1.Exposure"), ExposureMin, ExposureMax, 20.0);
-	p = obs_properties_add_float_slider(props, "sdk10_frame_interval", Translate("ObsKinectV1.FrameInterval"), ExposureMin, ExposureMax, 20.0);
-	p = obs_properties_add_float_slider(props, "sdk10_gain", Translate("ObsKinectV1.Gain"), GainMin, GainMax, 0.1);
+	if (m_hasColorSettings)
+	{
+		p = obs_properties_add_bool(props, "sdk10_auto_exposure", Translate("ObsKinectV1.AutoExposure"));
+		p = obs_properties_add_float_slider(props, "sdk10_brightness", Translate("ObsKinectV1.Brightness"), BrignessMin, BrignessMax, 0.05);
+		p = obs_properties_add_float_slider(props, "sdk10_exposure_time", Translate("ObsKinectV1.Exposure"), ExposureMin, ExposureMax, 20.0);
+		p = obs_properties_add_float_slider(props, "sdk10_frame_interval", Translate("ObsKinectV1.FrameInterval"), ExposureMin, ExposureMax, 20.0);
+		p = obs_properties_add_float_slider(props, "sdk10_gain", Translate("ObsKinectV1.Gain"), GainMin, GainMax, 0.1);
+	}
+
 	p = obs_properties_add_int_slider(props, "sdk10_camera_elevation", Translate("ObsKinectV1.CameraElevation"), NUI_CAMERA_ELEVATION_MINIMUM, NUI_CAMERA_ELEVATION_MAXIMUM, 1);
 	obs_property_int_set_suffix(p, "°");
 
@@ -321,6 +326,8 @@ void KinectSdk10Device::RegisterParameters()
 	INuiColorCameraSettings* pNuiCameraSettings;
 	if (SUCCEEDED(m_kinectSensor->NuiGetColorCameraSettings(&pNuiCameraSettings)))
 	{
+		m_hasColorSettings = true;
+
 		m_cameraSettings.reset(pNuiCameraSettings);
 
 		double brightness = 0.5;

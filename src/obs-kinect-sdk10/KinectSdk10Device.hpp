@@ -82,6 +82,7 @@ class KinectSdk10Device final : public KinectDevice
 		std::atomic_bool m_kinectNearMode;
 		std::atomic<LONG> m_kinectElevation;
 		std::thread m_elevationThread;
+		bool m_hasColorSettings;
 };
 
 #endif
