@@ -280,7 +280,10 @@ void KinectSdk10Device::ElevationThreadFunc()
 void KinectSdk10Device::HandleBoolParameterUpdate(const std::string& parameterName, bool value)
 {
 	if (parameterName == "sdk10_auto_exposure")
+	{
+		assert(m_cameraSettings);
 		m_cameraSettings->SetAutoExposure(value);
+	}
 	else if (parameterName == "sdk10_near_mode")
 		m_kinectNearMode.store(value, std::memory_order_relaxed);
 	else if (parameterName == "sdk10_high_res")
@@ -292,6 +295,8 @@ void KinectSdk10Device::HandleBoolParameterUpdate(const std::string& parameterNa
 
 void KinectSdk10Device::HandleDoubleParameterUpdate(const std::string& parameterName, double value)
 {
+	assert(m_cameraSettings);
+
 	if (parameterName == "sdk10_brightness")
 		m_cameraSettings->SetBrightness(value);
 	else if (parameterName == "sdk10_exposure_time")
@@ -498,6 +503,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 				backgroundRemovalStream.reset(backgroundRemovedColorStream);
 				hr = backgroundRemovalStream->Enable(NUI_IMAGE_RESOLUTION_640x480, NUI_IMAGE_RESOLUTION_640x480, backgroundRemovalEvent.get());
 				if (FAILED(hr))
+					throw std::runtime_error("failed to enable background removing stream: " + ErrToString(hr));
 
 				backgroundRemovalTimestamp = 0;
 			}
