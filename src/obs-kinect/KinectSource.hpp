@@ -112,6 +112,9 @@ class KinectSource
 			float standardDeviation = 3.f;
 		};
 
+		static bool DoesRequireBodyFrame(GreenScreenType greenscreenType);
+		static bool DoesRequireDepthFrame(GreenScreenType greenscreenType);
+
 	private:
 		struct DynamicValues
 		{
@@ -127,6 +130,8 @@ class KinectSource
 		static DynamicValues ComputeDynamicValues(const std::uint16_t* values, std::size_t valueCount);
 
 		std::optional<KinectDeviceAccess> m_deviceAccess;
+		std::vector<std::uint8_t> m_bodyMappingMemory;
+		std::vector<std::uint8_t> m_bodyMappingDirtyCounter;
 		std::vector<std::uint8_t> m_depthMappingMemory;
 		std::vector<std::uint8_t> m_depthMappingDirtyCounter;
 		AlphaMaskEffect m_alphaMaskFilter;

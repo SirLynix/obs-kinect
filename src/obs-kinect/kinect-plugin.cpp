@@ -142,10 +142,10 @@ void update_greenscreen_visibility(obs_properties_t* props, obs_data_t* s)
 	set_property_visibility(props, "greenscreen_fadedist", depthSettingsVisible);
 	set_property_visibility(props, "greenscreen_maxdist", depthSettingsVisible);
 	set_property_visibility(props, "greenscreen_mindist", depthSettingsVisible);
-	set_property_visibility(props, "greenscreen_maxdirtydepth", depthSettingsVisible);
 
 	bool blurSettingsVisible = (enabled && type != KinectSource::GreenScreenType::Dedicated);
 
+	set_property_visibility(props, "greenscreen_maxdirtydepth", blurSettingsVisible);
 	set_property_visibility(props, "greenscreen_blurpasses", blurSettingsVisible);
 	set_property_visibility(props, "greenscreen_gpudepthmapping", blurSettingsVisible);
 };
