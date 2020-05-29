@@ -32,7 +32,7 @@ class GaussianBlurEffect
 		gs_texture_t* Blur(gs_texture_t* source, std::size_t count);
 
 	private:
-		gs_effect_t* m_blurEffect;
+		gs_effect_t* m_effect;
 		gs_eparam_t* m_blurEffect_Filter;
 		gs_eparam_t* m_blurEffect_Image;
 		gs_eparam_t* m_blurEffect_InvImageSize;

@@ -20,55 +20,16 @@
 #include <string>
 #include <stdexcept>
 
-static const char* colorMultiplierEffect = R"(
-uniform float4x4 ViewProj;
-uniform texture2d ColorImage;
-uniform float ColorMultiplier;
-
-sampler_state textureSampler {
-	Filter   = Linear;
-	AddressU = Clamp;
-	AddressV = Clamp;
-};
-
-struct VertData {
-	float4 pos : POSITION;
-	float2 uv : TEXCOORD0;
-};
-
-VertData VSDefault(VertData vert_in)
-{
-	VertData vert_out;
-	vert_out.pos = mul(float4(vert_in.pos.xyz, 1.0), ViewProj);
-	vert_out.uv = vert_in.uv;
-	return vert_out;
-}
-
-float4 PSColorFilterRGBA(VertData vert_in) : TARGET
-{
-	float color = ColorImage.Sample(textureSampler, vert_in.uv).r;
-	color *= ColorMultiplier;
-
-	return float4(color, color, color, 1.0);
-}
-
-technique Draw
-{
-	pass
-	{
-		vertex_shader = VSDefault(vert_in);
-		pixel_shader = PSColorFilterRGBA(vert_in);
-	}
-}
-)";
-
 ConvertDepthIRToColorEffect::ConvertDepthIRToColorEffect()
 {
+	ObsMemoryPtr<char> effectFilename(obs_module_file("color_multiplier.effect"));
+
 	ObsGraphics gfx;
 
-	char* errStr;
+	char* errStr = nullptr;
+	m_effect = gs_effect_create_from_file(effectFilename.get(), &errStr);
+	ObsMemoryPtr<char> errStrOwner(errStr);
 
-	m_effect = gs_effect_create(colorMultiplierEffect, "color_multiplier.effect", &errStr);
 	if (m_effect)
 	{
 		m_params_ColorImage = gs_effect_get_param_by_name(m_effect, "ColorImage");
@@ -81,7 +42,6 @@ ConvertDepthIRToColorEffect::ConvertDepthIRToColorEffect()
 	{
 		std::string err("failed to create effect: ");
 		err.append((errStr) ? errStr : "shader error");
-		bfree(errStr);
 
 		throw std::runtime_error(err);
 	}

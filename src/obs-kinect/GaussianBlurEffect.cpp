@@ -20,72 +20,22 @@
 #include <string>
 #include <stdexcept>
 
-static const char* gaussianBlurEffect = R"(
-uniform float4x4 ViewProj;
-uniform texture2d Image;
-uniform float2 Filter;
-uniform float2 InvImageSize;
-
-sampler_state textureSampler {
-	Filter   = Linear;
-	AddressU = Clamp;
-	AddressV = Clamp;
-};
-
-struct VertData {
-	float4 pos : POSITION;
-	float2 uv : TEXCOORD0;
-};
-
-VertData VSDefault(VertData vert_in)
-{
-	VertData vert_out;
-	vert_out.pos = mul(float4(vert_in.pos.xyz, 1.0), ViewProj);
-	vert_out.uv = vert_in.uv;
-	return vert_out;
-}
-
-float4 PSColorFilterRGBA(VertData vert_in) : TARGET
-{
-	static const float KernelOffsets[3] = { 0.0f, 1.3846153846f, 3.2307692308f };
-	static const float BlurWeights[3] = { 0.2270270270f, 0.3162162162f, 0.0702702703f };
-
-	/* Grab the current pixel to perform operations on. */
-	float3 color = Image.Sample(textureSampler, vert_in.uv).xyz * BlurWeights[0];
-
-	for (int i = 1; i < 3; ++i)
-	{
-		float2 offset = InvImageSize * Filter * KernelOffsets[i];
-		color += BlurWeights[i] * (Image.Sample(textureSampler, vert_in.uv + offset).xyz +
-		                           Image.Sample(textureSampler, vert_in.uv - offset).xyz);
-	}
-
-	return float4(color, 1.0);
-}
-
-technique Draw
-{
-	pass
-	{
-		vertex_shader = VSDefault(vert_in);
-		pixel_shader = PSColorFilterRGBA(vert_in);
-	}
-}
-)";
-
 GaussianBlurEffect::GaussianBlurEffect(gs_color_format colorFormat)
 {
+	ObsMemoryPtr<char> effectFilename(obs_module_file("gaussian_blur.effect"));
+
 	ObsGraphics gfx;
 
-	char* errStr;
+	char* errStr = nullptr;
+	m_effect = gs_effect_create_from_file(effectFilename.get(), &errStr);
+	ObsMemoryPtr<char> errStrOwner(errStr);
 
-	m_blurEffect = gs_effect_create(gaussianBlurEffect, "gaussian_blur.effect", &errStr);
-	if (m_blurEffect)
+	if (m_effect)
 	{
-		m_blurEffect_Filter = gs_effect_get_param_by_name(m_blurEffect, "Filter");
-		m_blurEffect_Image = gs_effect_get_param_by_name(m_blurEffect, "Image");
-		m_blurEffect_InvImageSize = gs_effect_get_param_by_name(m_blurEffect, "InvImageSize");
-		m_blurEffect_DrawTech = gs_effect_get_technique(m_blurEffect, "Draw");
+		m_blurEffect_Filter = gs_effect_get_param_by_name(m_effect, "Filter");
+		m_blurEffect_Image = gs_effect_get_param_by_name(m_effect, "Image");
+		m_blurEffect_InvImageSize = gs_effect_get_param_by_name(m_effect, "InvImageSize");
+		m_blurEffect_DrawTech = gs_effect_get_technique(m_effect, "Draw");
 
 		m_workTextureA = gs_texrender_create(colorFormat, GS_ZS_NONE);
 		m_workTextureB = gs_texrender_create(colorFormat, GS_ZS_NONE);
@@ -94,7 +44,6 @@ GaussianBlurEffect::GaussianBlurEffect(gs_color_format colorFormat)
 	{
 		std::string err("failed to create effect: ");
 		err.append((errStr) ? errStr : "shader error");
-		bfree(errStr);
 
 		throw std::runtime_error(err);
 	}
@@ -104,7 +53,7 @@ GaussianBlurEffect::~GaussianBlurEffect()
 {
 	ObsGraphics gfx;
 
-	gs_effect_destroy(m_blurEffect);
+	gs_effect_destroy(m_effect);
 	gs_texrender_destroy(m_workTextureA);
 	gs_texrender_destroy(m_workTextureB);
 }

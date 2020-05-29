@@ -20,56 +20,16 @@
 #include <string>
 #include <stdexcept>
 
-static const char* alphaMaskEffect = R"(
-uniform float4x4 ViewProj;
-uniform texture2d ColorImage;
-uniform texture2d MaskImage;
-
-sampler_state textureSampler {
-	Filter   = Linear;
-	AddressU = Clamp;
-	AddressV = Clamp;
-};
-
-struct VertData {
-	float4 pos : POSITION;
-	float2 uv : TEXCOORD0;
-};
-
-VertData VSDefault(VertData vert_in)
-{
-	VertData vert_out;
-	vert_out.pos = mul(float4(vert_in.pos.xyz, 1.0), ViewProj);
-	vert_out.uv = vert_in.uv;
-	return vert_out;
-}
-
-float4 PSColorFilterRGBA(VertData vert_in) : TARGET
-{
-	float4 color = ColorImage.Sample(textureSampler, vert_in.uv);
-	float alpha = MaskImage.Sample(textureSampler, vert_in.uv).r;
-	color.a *= alpha;
-
-	return color;
-}
-
-technique Draw
-{
-	pass
-	{
-		vertex_shader = VSDefault(vert_in);
-		pixel_shader = PSColorFilterRGBA(vert_in);
-	}
-}
-)";
-
 AlphaMaskEffect::AlphaMaskEffect()
 {
+	ObsMemoryPtr<char> effectFilename(obs_module_file("alpha_mask.effect"));
+
 	ObsGraphics gfx;
 
-	char* errStr;
+	char* errStr = nullptr;
+	m_effect = gs_effect_create_from_file(effectFilename.get(), &errStr);
+	ObsMemoryPtr<char> errStrOwner(errStr);
 
-	m_effect = gs_effect_create(alphaMaskEffect, "alpha_mask.effect", &errStr);
 	if (m_effect)
 	{
 		m_params_ColorImage = gs_effect_get_param_by_name(m_effect, "ColorImage");
@@ -82,7 +42,6 @@ AlphaMaskEffect::AlphaMaskEffect()
 	{
 		std::string err("failed to create effect: ");
 		err.append((errStr) ? errStr : "shader error");
-		bfree(errStr);
 
 		throw std::runtime_error(err);
 	}

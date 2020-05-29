@@ -50,16 +50,24 @@
 #define info(format, ...) blog(LOG_INFO, format, ##__VA_ARGS__)
 #define warn(format, ...) blog(LOG_WARNING, format, ##__VA_ARGS__)
 
-template<typename T>
 struct DummyDeleter
 {
-	template<typename U>
-	void operator()(U*) const
+	void operator()(void*) const
 	{
 	}
 };
 
-template<typename T> using ObserverPtr = std::unique_ptr<T, DummyDeleter<T>>;
+template<typename T> using ObserverPtr = std::unique_ptr<T, DummyDeleter>;
+
+struct ObsBFreeDeleter
+{
+	void operator()(void* ptr) const
+	{
+		bfree(ptr);
+	}
+};
+
+template<typename T> using ObsMemoryPtr = std::unique_ptr<T, ObsBFreeDeleter>;
 
 struct ObsGraphics
 {

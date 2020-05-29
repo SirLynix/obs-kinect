@@ -1,0 +1,222 @@
+uniform float4x4 ViewProj;
+uniform texture2d BodyIndexImage;
+uniform texture2d DepthImage;
+uniform texture2d DepthMappingImage;
+uniform float2 InvDepthImageSize;
+uniform float InvDepthProgressive;
+uniform float MaxDepth;
+uniform float MinDepth;
+
+sampler_state textureSampler {
+	Filter   = Linear;
+	AddressU = Clamp;
+	AddressV = Clamp;
+};
+
+sampler_state depthSampler {
+	Filter   = Point;
+	AddressU = Clamp;
+	AddressV = Clamp;
+};
+
+struct VertData {
+	float4 pos : POSITION;
+	float2 uv : TEXCOORD0;
+};
+
+VertData VSDefault(VertData vert_in)
+{
+	VertData vert_out;
+	vert_out.pos = mul(float4(vert_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv = vert_in.uv;
+
+	return vert_out;
+}
+
+float ComputeBodyValue(float bodyIndex)
+{
+	bool check = (bodyIndex < 0.1);
+	return (check) ? 1.0 : 0.0;
+}
+
+float ComputeBodyValueMapped(float bodyIndex, float2 texCoords)
+{
+	bool check = (texCoords.x > 0.0 && texCoords.y > 0.0 && texCoords.x < 1.0 && texCoords.y < 1.0) &&
+	             (bodyIndex < 0.1);
+
+	return (check) ? 1.0 : 0.0;
+}
+
+float ComputeDepthValue(float depth)
+{
+	bool check = (depth > MinDepth && depth < MaxDepth);
+	return (check) ? saturate((MaxDepth - depth) * InvDepthProgressive) : 0.0;
+}
+
+float ComputeDepthValueMapped(float depth, float2 texCoords)
+{
+	bool check = (texCoords.x > 0.0 && texCoords.y > 0.0 && texCoords.x < 1.0 && texCoords.y < 1.0) &&
+	             (depth > MinDepth && depth < MaxDepth);
+
+	return (check) ? saturate((MaxDepth - depth) * InvDepthProgressive) : 0.0;
+}
+
+float4 PSBodyOnlyWithDepthCorrection(VertData vert_in) : TARGET
+{
+	float2 texCoords = DepthMappingImage.Sample(textureSampler, vert_in.uv).xy * InvDepthImageSize;
+	float bodyIndex = BodyIndexImage.Sample(depthSampler, texCoords).r;
+
+	float value = ComputeBodyValueMapped(bodyIndex);
+
+	return float4(value, value, value, value);
+}
+
+float4 PSBodyOnlyWithoutDepthCorrection(VertData vert_in) : TARGET
+{
+	float bodyIndex = BodyIndexImage.Sample(depthSampler, vert_in.uv).r;
+
+	float value = ComputeBodyValue(bodyIndex);
+
+	return float4(value, value, value, value);
+}
+
+float4 PSBodyOrDepthWithDepthCorrection(VertData vert_in) : TARGET
+{
+	float2 texCoords = DepthMappingImage.Sample(textureSampler, vert_in.uv).xy * InvDepthImageSize;
+	float bodyIndex = BodyIndexImage.Sample(depthSampler, texCoords).r;
+	float depth = DepthImage.Sample(depthSampler, texCoords).r;
+
+	float bodyValue = ComputeBodyValueMapped(bodyIndex);
+	float depthValue = ComputeDepthValueMapped(depth, texCoords);
+	float value = max(bodyValue, depthValue);
+
+	return float4(value, value, value, value);
+}
+
+float4 PSBodyOrDepthWithoutDepthCorrection(VertData vert_in) : TARGET
+{
+	float bodyIndex = BodyIndexImage.Sample(depthSampler, vert_in.uv).r;
+	float depth = DepthImage.Sample(depthSampler, vert_in.uv).r;
+
+	float bodyValue = ComputeBodyValue(bodyIndex);
+	float depthValue = ComputeDepthValue(depth);
+	float value = max(bodyValue, depthValue);
+
+	return float4(value, value, value, value);
+}
+
+float4 PSBodyWithinDepthWithDepthCorrection(VertData vert_in) : TARGET
+{
+	float2 texCoords = DepthMappingImage.Sample(textureSampler, vert_in.uv).xy * InvDepthImageSize;
+	float bodyIndex = BodyIndexImage.Sample(depthSampler, texCoords).r;
+	float depth = DepthImage.Sample(depthSampler, texCoords).r;
+
+	float bodyValue = ComputeBodyValueMapped(bodyIndex);
+	float depthValue = ComputeDepthValueMapped(depth, texCoords);
+	float value = min(bodyValue, depthValue);
+
+	return float4(value, value, value, value);
+}
+
+float4 PSBodyWithinDepthWithoutDepthCorrection(VertData vert_in) : TARGET
+{
+	float bodyIndex = BodyIndexImage.Sample(depthSampler, vert_in.uv).r;
+	float depth = DepthImage.Sample(depthSampler, vert_in.uv).r;
+
+	float bodyValue = ComputeBodyValue(bodyIndex);
+	float depthValue = ComputeDepthValue(depth);
+	float value = min(bodyValue, depthValue);
+
+	return float4(value, value, value, value);
+}
+
+float4 PSDepthOnlyWithDepthCorrection(VertData vert_in) : TARGET
+{
+	float2 texCoords = DepthMappingImage.Sample(textureSampler, vert_in.uv).xy * InvDepthImageSize;
+	float depth = DepthImage.Sample(depthSampler, texCoords).r;
+
+	float value = ComputeDepthValueMapped(depth, texCoords);
+
+	return float4(value, value, value, value);
+}
+
+float4 PSDepthOnlyWithoutDepthCorrection(VertData vert_in) : TARGET
+{
+	float depth = DepthImage.Sample(depthSampler, vert_in.uv).r;
+
+	float value = ComputeDepthValue(depth);
+
+	return float4(value, value, value, value);
+}
+
+technique BodyOnlyWithDepthCorrection
+{
+	pass
+	{
+		vertex_shader = VSDefault(vert_in);
+		pixel_shader = PSBodyOnlyWithDepthCorrection(vert_in);
+	}
+}
+
+technique BodyOnlyWithoutDepthCorrection
+{
+	pass
+	{
+		vertex_shader = VSDefault(vert_in);
+		pixel_shader = PSBodyOnlyWithoutDepthCorrection(vert_in);
+	}
+}
+
+technique BodyOrDepthWithDepthCorrection
+{
+	pass
+	{
+		vertex_shader = VSDefault(vert_in);
+		pixel_shader = PSBodyOrDepthWithDepthCorrection(vert_in);
+	}
+}
+
+technique BodyOrDepthWithoutDepthCorrection
+{
+	pass
+	{
+		vertex_shader = VSDefault(vert_in);
+		pixel_shader = PSBodyOrDepthWithoutDepthCorrection(vert_in);
+	}
+}
+
+technique BodyWithinDepthWithDepthCorrection
+{
+	pass
+	{
+		vertex_shader = VSDefault(vert_in);
+		pixel_shader = PSBodyWithinDepthWithDepthCorrection(vert_in);
+	}
+}
+
+technique BodyWithinDepthWithoutDepthCorrection
+{
+	pass
+	{
+		vertex_shader = VSDefault(vert_in);
+		pixel_shader = PSBodyWithinDepthWithoutDepthCorrection(vert_in);
+	}
+}
+
+technique DepthOnlyWithDepthCorrection
+{
+	pass
+	{
+		vertex_shader = VSDefault(vert_in);
+		pixel_shader = PSDepthOnlyWithDepthCorrection(vert_in);
+	}
+}
+
+technique DepthOnlyWithoutDepthCorrection
+{
+	pass
+	{
+		vertex_shader = VSDefault(vert_in);
+		pixel_shader = PSDepthOnlyWithoutDepthCorrection(vert_in);
+	}
+}
