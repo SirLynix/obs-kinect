@@ -363,7 +363,7 @@ static void kinect_source_defaults(obs_data_t* settings)
 	});
 
 	obs_data_set_default_int(settings, "source", static_cast<int>(KinectSource::SourceType::Color));
-	obs_data_set_default_bool(settings, "invisible_shutdown", false);
+	obs_data_set_default_bool(settings, "invisible_shutdown", true);
 	obs_data_set_default_double(settings, "depth_average", 0.015);
 	obs_data_set_default_bool(settings, "depth_dynamic", false);
 	obs_data_set_default_double(settings, "depth_standard_deviation", 3);
