@@ -18,24 +18,26 @@ This plugins allows you to access a Kinect v1 (for Xbox 360 or Kinect for Window
 - If your Kinect isn't pluggable to your computer: a Kinect to USB adapter (search for PeakLead Kinect to USB on Amazon).
 - Not running on a potato computer, Kinect itself requires a little bit of CPU power, especially when using the faux green screen effect (I'm trying to improve that) because of the color-to-depth mapping (which is done on the CPU). The plugin itself runs on the GPU.
 - ⚠️ OBS Studio >= 25.0 (since 0.3 this plugins no longer works on OBS Studio 24.0, if upgrading is a problem let me know).
-- ⚠️ **Kinect for Windows runtime** (links in "How to use", note that Kinect for Windows SDK includes runtime)
+- ⚠️ **Kinect for Windows runtime or SDK** (links in "How to use", note that Kinect for Windows SDK includes runtime)
 - ⚠️ **Visual Studio 2019 redistribuables** ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe))
 
 # To do
 
-- ~~Improve green-screen filtering using gaussian blur~~
-- Optimize green-screen filtering effect (especially the color-to-depth mapping part, if possible)
 - ~~Add support for Kinect v1~~
-- Add support for Linux and macOS (using [libfreenect](https://github.com/OpenKinect/libfreenect) and [libfreenect2](https://github.com/OpenKinect/libfreenect2))
+- ~~Improve green-screen filtering using gaussian blur~~
 - ~~Use shaders to do faux green-screen processing. 1080p pixel processing is a really heavy CPU task and would benefit a lot to run on the GPU~~
-- Add more fun effects (use issues to post your ideas)
 - ~~Add possibility to use body index masking (pixels identified by Kinect SDK to be you)~~
+- Optimize green-screen filtering effect (especially the color-to-depth mapping part, if possible)
+- Add support for Linux and macOS (using [libfreenect](https://github.com/OpenKinect/libfreenect) and [libfreenect2](https://github.com/OpenKinect/libfreenect2))
+- Add more fun effects (use issues to post your ideas)
 - Support audio?
 
 # How to use (for end-users, you probably want this)
 
 **If you want to have support for the Kinect v1 (Xbox 360 or Kinect for Windows version)**
-- Download and install [**Kinect for Windows runtime v1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40277)
+- Download and install [**Kinect for Windows runtime v1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40277) or download and install [**Kinect for Windows SDK 1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40278).
+
+⚠️ Some Kinects seem to work only with the SDK installed ("Not supported" error showing up in the logs), installing the SDK seems to fix this.
 
 **If you want to have support for the Kinect v2 (Xbox one version)**
 - Download and install [**Kinect for Windows runtime v2.2**](https://www.microsoft.com/en-us/download/details.aspx?id=100067)
@@ -69,8 +71,9 @@ Open the project workspace/solution (located in build/<actionfolder>) and build 
 
 ## I copied the files and the source doesn't show up
 
-Did you install every dependency, including Kinect Runtime (or SDK) and Visual Studio 2019 redistribuables?
-Are you using OBS Studio 25.0 or newer? Since 0.3 this plugins no longer works with OBS Studio 24.0 (this is because of source icons OBS-Studio added in v25, I can build the plugin for OBS 24 if upgrading is an issue for you).
+Did you install every dependency, including Kinect Runtime (or SDK) and Visual Studio 2019 redistribuables?  
+Are you using OBS Studio 25.0 or newer?  
+Since 0.3 this plugins no longer works with OBS Studio 24.0 (this is because of source icons OBS-Studio added in v25, I can build the plugin for OBS 24 if upgrading is an issue for you).
 
 Links are in the "requirement" and "how to use" parts, right above.
 
