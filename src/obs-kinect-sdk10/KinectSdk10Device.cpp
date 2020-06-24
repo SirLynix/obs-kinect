@@ -439,6 +439,8 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 			if (FAILED(hr))
 				throw std::runtime_error("failed to initialize Kinect: " + ErrToString(hr));
 
+			InitializedNuiSensorPtr<INuiSensor> tempOpenedSensor(m_kinectSensor.get());
+
 			ResetEvent(colorEvent.get());
 			ResetEvent(depthEvent.get());
 			ResetEvent(irEvent.get());
@@ -511,7 +513,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 				m_kinectSensor->NuiSkeletonTrackingDisable();
 #endif
 
-			openedSensor.reset(m_kinectSensor.get());
+			openedSensor = std::move(tempOpenedSensor);
 		}
 
 		enabledFrameSourceTypes = newFrameSourcesTypes;
