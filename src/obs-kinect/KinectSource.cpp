@@ -527,7 +527,7 @@ void KinectSource::Update(float /*seconds*/)
 	}
 	catch (const std::exception& e)
 	{
-		warn("an error occurred: %s", e.what());
+		warnlog("an error occurred: %s", e.what());
 	}
 }
 
@@ -636,7 +636,7 @@ std::optional<KinectDeviceAccess> KinectSource::OpenAccess(KinectDevice& device)
 	}
 	catch (const std::exception& e)
 	{
-		warn("failed to access kinect device: %s", e.what());
+		warnlog("failed to access kinect device: %s", e.what());
 		return {};
 	}
 }

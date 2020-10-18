@@ -90,7 +90,7 @@ void KinectSdk20Device::SetServicePriority(ProcessPriority priority)
 		case ProcessPriority::Normal:      priorityClass = NORMAL_PRIORITY_CLASS; break;
 
 		default:
-			warn("unknown process priority %d", int(priority));
+			warnlog("unknown process priority %d", int(priority));
 			return;
 	}
 
@@ -100,7 +100,7 @@ void KinectSdk20Device::SetServicePriority(ProcessPriority priority)
 		LUID luid;
 		if (!LookupPrivilegeValue(nullptr, SE_INC_BASE_PRIORITY_NAME, &luid))
 		{
-			warn("failed to get privilege SE_INC_BASE_PRIORITY_NAME");
+			warnlog("failed to get privilege SE_INC_BASE_PRIORITY_NAME");
 			return;
 		}
 
@@ -112,25 +112,25 @@ void KinectSdk20Device::SetServicePriority(ProcessPriority priority)
 		HANDLE token;
 		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token))
 		{
-			warn("failed to open processor token");
+			warnlog("failed to open processor token");
 			return;
 		}
 		HandlePtr tokenOwner(token);
 
 		if (!AdjustTokenPrivileges(token, FALSE, &tkp, sizeof(tkp), nullptr, nullptr))
 		{
-			warn("failed to adjust token privileges");
+			warnlog("failed to adjust token privileges");
 			return;
 		}
 
-		info("adjusted token privileges successfully");
+		infolog("adjusted token privileges successfully");
 		hasRequestedPrivileges = true;
 	}
 
 	HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 	if (snapshot == INVALID_HANDLE_VALUE)
 	{
-		warn("failed to retrieve processes snapshot");
+		warnlog("failed to retrieve processes snapshot");
 		return;
 	}
 	HandlePtr snapshotOwner(snapshot);
@@ -148,32 +148,32 @@ void KinectSdk20Device::SetServicePriority(ProcessPriority priority)
 			if (strcmp(entry.szExeFile, "KinectService.exe") == 0)
 #endif
 			{
-				info("found KinectService.exe, trying to update its priority...");
+				infolog("found KinectService.exe, trying to update its priority...");
 
 				HANDLE process = OpenProcess(PROCESS_SET_INFORMATION, FALSE, entry.th32ProcessID);
 				if (!process)
 				{
-					warn("failed to open process");
+					warnlog("failed to open process");
 					return;
 				}
 				HandlePtr processOwner(process);
 
 				if (!SetPriorityClass(process, priorityClass))
 				{
-					warn("failed to update process priority");
+					warnlog("failed to update process priority");
 					return;
 				}
 
 				s_servicePriority = priority;
 
-				info("KinectService.exe priority updated successfully to %s", ProcessPriorityToString(priority));
+				infolog("KinectService.exe priority updated successfully to %s", ProcessPriorityToString(priority));
 				return;
 			}
 		}
 		while (Process32Next(snapshot, &entry));
 	}
 
-	warn("KinectService.exe not found");
+	warnlog("KinectService.exe not found");
 }
 
 auto KinectSdk20Device::RetrieveBodyIndexFrame(IMultiSourceFrame* multiSourceFrame) -> BodyIndexFrameData
@@ -447,7 +447,7 @@ void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 		enabledFrameSourceTypes = newFrameSourcesTypes;
 		enabledSourceFlags = enabledSources;
 
-		info("Kinect active sources: %s", EnabledSourceToString(enabledSourceFlags).c_str());
+		infolog("Kinect active sources: %s", EnabledSourceToString(enabledSourceFlags).c_str());
 	};
 
 	try
@@ -463,7 +463,7 @@ void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 		std::array<char, wideId.size()> id = { "<failed to get id>" };
 		WideCharToMultiByte(CP_UTF8, 0, wideId.data(), int(wideId.size()), id.data(), int(id.size()), nullptr, nullptr);
 
-		info("found kinect sensor (%s)", id.data());
+		infolog("found kinect sensor (%s)", id.data());
 	}
 	catch (const std::exception&)
 	{
@@ -494,7 +494,7 @@ void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 				}
 				catch (const std::exception& e)
 				{
-					error("%s", e.what());
+					errorlog("%s", e.what());
 
 					os_sleep_ms(10);
 					continue;
@@ -519,7 +519,7 @@ void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 				continue;
 			}
 
-			warn("failed to acquire latest frame: %d", HRESULT_CODE(acquireResult));
+			warnlog("failed to acquire latest frame: %d", HRESULT_CODE(acquireResult));
 			continue;
 		}
 
@@ -548,14 +548,14 @@ void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 		}
 		catch (const std::exception& e)
 		{
-			error("%s", e.what());
+			errorlog("%s", e.what());
 
 			// Force sleep to prevent log spamming
 			os_sleep_ms(100);
 		}
 	}
 
-	info("exiting thread");
+	infolog("exiting thread");
 }
 
 ProcessPriority KinectSdk20Device::s_servicePriority = ProcessPriority::Normal;

@@ -40,13 +40,13 @@ std::vector<std::unique_ptr<KinectDevice>> KinectSdk10Plugin::Refresh() const
 			}
 			catch (const std::exception& e)
 			{
-				warn("failed to open Kinect #%d: %s", i, e.what());
+				warnlog("failed to open Kinect #%d: %s", i, e.what());
 			}
 		}
 	}
 	catch (const std::exception& e)
 	{
-		warn("%s", e.what());
+		warnlog("%s", e.what());
 	}
 
 	return devices;

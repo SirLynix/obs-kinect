@@ -34,7 +34,7 @@ std::vector<std::unique_ptr<KinectDevice>> KinectSdk20Plugin::Refresh() const
 	}
 	catch (const std::exception& e)
 	{
-		warn("%s", e.what());
+		warnlog("%s", e.what());
 	}
 
 	return devices;

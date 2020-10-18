@@ -420,7 +420,7 @@ bool obs_module_load()
 {
 	if (obs_get_version() < MAKE_SEMANTIC_VERSION(25, 0, 0))
 	{
-		error("this plugins requires a least OBS 25 to work, please upgrade or create a GitHub issue if upgrading is not an option");
+		errorlog("this plugins requires a least OBS 25 to work, please upgrade or create a GitHub issue if upgrading is not an option");
 		return false;
 	}
 

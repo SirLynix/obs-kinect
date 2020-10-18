@@ -24,7 +24,7 @@ extern "C"
 	{
 		if (version != OBSKINECT_VERSION)
 		{
-			warn("Kinect plugin incompatibilities (obs-kinect version: %d, plugin version: %d)", OBSKINECT_VERSION, version);
+			warnlog("Kinect plugin incompatibilities (obs-kinect version: %d, plugin version: %d)", OBSKINECT_VERSION, version);
 			return nullptr;
 		}
 

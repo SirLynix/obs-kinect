@@ -51,14 +51,14 @@ bool KinectPlugin::Open(const char* path)
 	CreatePlugin createImpl = static_cast<CreatePlugin>(os_dlsym(lib.get(), "ObsKinect_CreatePlugin"));
 	if (!createImpl)
 	{
-		warn("failed to get ObsKinect_CreatePlugin symbol, dismissing %s", path);
+		warnlog("failed to get ObsKinect_CreatePlugin symbol, dismissing %s", path);
 		return false;
 	}
 
 	m_impl.reset(createImpl(OBSKINECT_VERSION));
 	if (!m_impl)
 	{
-		warn("failed to get plugin implementation for %s, dismissing", path);
+		warnlog("failed to get plugin implementation for %s, dismissing", path);
 		return false;
 	}
 

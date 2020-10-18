@@ -249,7 +249,7 @@ void KinectSdk10Device::ElevationThreadFunc()
 				ResetEvent(m_elevationUpdateEvent.get());
 				LONG newElevation = m_kinectElevation.load(std::memory_order_relaxed);
 
-				info("setting elevation angle to %d", int(newElevation));
+				infolog("setting elevation angle to %d", int(newElevation));
 				HRESULT hr = m_kinectSensor->NuiCameraElevationSetAngle(newElevation);
 				if (FAILED(hr))
 				{
@@ -263,7 +263,7 @@ void KinectSdk10Device::ElevationThreadFunc()
 							break;
 
 						default:
-							warn("failed to change Kinect elevation: %s", ErrToString(hr).c_str());
+							warnlog("failed to change Kinect elevation: %s", ErrToString(hr).c_str());
 							break;
 					}
 				}
@@ -519,7 +519,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 		enabledFrameSourceTypes = newFrameSourcesTypes;
 		enabledSourceFlags = enabledSources;
 
-		info("Kinect active sources: %s", EnabledSourceToString(enabledSourceFlags).c_str());
+		infolog("Kinect active sources: %s", EnabledSourceToString(enabledSourceFlags).c_str());
 	};
 
 	{
@@ -543,7 +543,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 			}
 			catch (const std::exception& e)
 			{
-				error("%s", e.what());
+				errorlog("%s", e.what());
 
 				os_sleep_ms(10);
 				continue;
@@ -563,9 +563,9 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 			{
 				HRESULT hr = m_kinectSensor->NuiImageStreamSetImageFrameFlags(depthStream, (nearMode) ? NUI_IMAGE_STREAM_FLAG_ENABLE_NEAR_MODE : 0);
 				if (SUCCEEDED(hr))
-					info("%s near mode successfully", (nearMode) ? "enabled" : "disabled");
+					infolog("%s near mode successfully", (nearMode) ? "enabled" : "disabled");
 				else
-					warn("failed to %s near mode: %s", (nearMode) ? "enable" : "disable", ErrToString(hr).c_str());
+					warnlog("failed to %s near mode: %s", (nearMode) ? "enable" : "disable", ErrToString(hr).c_str());
 
 				depthNearMode = nearMode;
 			}
@@ -611,13 +611,13 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 						time.QuadPart = colorTimestamp;
 						HRESULT hr = backgroundRemovalStream->ProcessColor(byteCount, reinterpret_cast<const BYTE*>(nextFramePtr->colorFrame->ptr.get()), time);
 						if (FAILED(hr))
-							warn("dedicated background removal: failed to process color: %s", ErrToString(hr).c_str());
+							warnlog("dedicated background removal: failed to process color: %s", ErrToString(hr).c_str());
 					}
 #endif
 				}
 				catch (const std::exception& e)
 				{
-					warn("failed to retrieve color frame: %s", e.what());
+					warnlog("failed to retrieve color frame: %s", e.what());
 				}
 			}
 
@@ -660,7 +660,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 							}
 							catch (const std::exception& e)
 							{
-								warn("dedicated background removal: %s", e.what());
+								warnlog("dedicated background removal: %s", e.what());
 							}
 						};
 					}
@@ -670,7 +670,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 				}
 				catch (const std::exception& e)
 				{
-					warn("failed to retrieve depth frame: %s", e.what());
+					warnlog("failed to retrieve depth frame: %s", e.what());
 				}
 			}
 
@@ -683,7 +683,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 				}
 				catch (const std::exception& e)
 				{
-					warn("failed to retrieve infrared frame: %s", e.what());
+					warnlog("failed to retrieve infrared frame: %s", e.what());
 				}
 			}
 
@@ -704,7 +704,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 						DWORD bestSkeleton = ChooseSkeleton(skeletonFrame, m_trackedSkeleton);
 						if (bestSkeleton != m_trackedSkeleton && bestSkeleton != NUI_SKELETON_INVALID_TRACKING_ID)
 						{
-							info("dedicated background removal: now tracking player %lu", static_cast<unsigned long>(bestSkeleton));
+							infolog("dedicated background removal: now tracking player %lu", static_cast<unsigned long>(bestSkeleton));
 							hr = backgroundRemovalStream->SetTrackedPlayer(bestSkeleton);
 							if (FAILED(hr))
 								throw std::runtime_error("failed to set tracked player: " + ErrToString(hr));
@@ -714,11 +714,11 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 						hr = backgroundRemovalStream->ProcessSkeleton(NUI_SKELETON_COUNT, skeletonFrame.SkeletonData, skeletonFrame.liTimeStamp);
 						if (FAILED(hr))
-							warn("dedicated background removal: failed to process skeleton: %s", ErrToString(hr).c_str());
+							warnlog("dedicated background removal: failed to process skeleton: %s", ErrToString(hr).c_str());
 					}
 					catch (const std::exception& e)
 					{
-						warn("failed to retrieve skeleton frame: %s", e.what());
+						warnlog("failed to retrieve skeleton frame: %s", e.what());
 					}
 				}
 
@@ -730,7 +730,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 					}
 					catch (const std::exception& e)
 					{
-						warn("failed to retrieve background removed frame: %s", e.what());
+						warnlog("failed to retrieve background removed frame: %s", e.what());
 					}
 				}
 			}
@@ -800,14 +800,14 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 		}
 		catch (const std::exception& e)
 		{
-			error("%s", e.what());
+			errorlog("%s", e.what());
 
 			// Force sleep to prevent log spamming
 			os_sleep_ms(100);
 		}
 	}
 
-	info("exiting thread");
+	infolog("exiting thread");
 }
 
 DepthMappingFrameData KinectSdk10Device::BuildDepthMappingFrame(INuiSensor* sensor, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, std::vector<std::uint8_t>& tempMemory)
