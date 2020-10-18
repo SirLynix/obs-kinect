@@ -300,92 +300,50 @@ void KinectSource::Update(float /*seconds*/)
 
 			if (m_sourceType == SourceType::Color)
 			{
-				if (!frameData->depthMappingFrame)
+				if (!frameData->depthMappingFrame && !frameData->mappedDepthFrame)
 					return;
 
-				const DepthMappingFrameData& depthMappingFrame = *frameData->depthMappingFrame;
-
-				if (softwareDepthMapping)
+				if (frameData->mappedDepthFrame)
 				{
-					if (!frameData->colorFrame || !frameData->depthFrame)
-						return;
+					const DepthFrameData& mappedDepthFrame = *frameData->mappedDepthFrame;
 
-					const ColorFrameData& colorFrame = *frameData->colorFrame;
-					const DepthFrameData& depthFrame = *frameData->depthFrame;
-
-					constexpr float InvalidDepth = -std::numeric_limits<float>::infinity();
-
-					const DepthMappingFrameData::DepthCoordinates* depthMapping = reinterpret_cast<const DepthMappingFrameData::DepthCoordinates*>(depthMappingFrame.ptr.get());
-
-					constexpr std::uint16_t InvalidDepthOutput = 0;
-
-					m_depthMappingMemory.resize(colorFrame.width* colorFrame.height * sizeof(std::uint16_t), InvalidDepthOutput);
-					m_depthMappingDirtyCounter.resize(colorFrame.width * colorFrame.height, 0);
-					std::uint16_t* depthOutput = reinterpret_cast<std::uint16_t*>(m_depthMappingMemory.data());
-
-					for (std::size_t y = 0; y < colorFrame.height; ++y)
-					{
-						for (std::size_t x = 0; x < colorFrame.width; ++x)
-						{
-							std::uint8_t& dirtyCounter = m_depthMappingDirtyCounter[y * colorFrame.width + x];
-							std::uint16_t* output = &depthOutput[y * colorFrame.width + x];
-							const auto& depthCoordinates = depthMapping[y * depthMappingFrame.width + x];
-							if (depthCoordinates.x == InvalidDepth || depthCoordinates.y == InvalidDepth)
-							{
-								if (++dirtyCounter > m_greenScreenSettings.maxDirtyDepth)
-									*output = InvalidDepthOutput;
-
-								continue;
-							}
-
-							int dX = static_cast<int>(depthCoordinates.x + 0.5f);
-							int dY = static_cast<int>(depthCoordinates.y + 0.5f);
-
-							if (dX < 0 || dX >= int(depthFrame.width) ||
-							    dY < 0 || dY >= int(depthFrame.height))
-							{
-								if (++dirtyCounter > m_greenScreenSettings.maxDirtyDepth)
-									*output = InvalidDepthOutput;
-
-								continue;
-							}
-
-							*output = depthFrame.ptr[depthFrame.width * dY + dX];
-							dirtyCounter = 0;
-						}
-					}
-
-					UpdateTexture(m_depthMappingTexture, GS_R16, colorFrame.width, colorFrame.height, colorFrame.width * sizeof(std::uint16_t), m_depthMappingMemory.data());
+					UpdateTexture(m_depthTexture, GS_R16, mappedDepthFrame.width, mappedDepthFrame.height, mappedDepthFrame.width * sizeof(std::uint16_t), mappedDepthFrame.ptr.get());
 					depthMappingTexture = nullptr;
-					depthTexture = m_depthMappingTexture.get();
+					depthTexture = m_depthTexture.get();
+				}
+				else
+				{
+					const DepthMappingFrameData& depthMappingFrame = *frameData->depthMappingFrame;
 
-					if (DoesRequireBodyFrame(m_greenScreenSettings.type))
+					if (softwareDepthMapping)
 					{
-						if (!frameData->bodyIndexFrame)
+						if (!frameData->colorFrame || !frameData->depthFrame)
 							return;
 
-						// Map body info as well
-						const BodyIndexFrameData& bodyIndexFrame = *frameData->bodyIndexFrame;
+						const ColorFrameData& colorFrame = *frameData->colorFrame;
+						const DepthFrameData& depthFrame = *frameData->depthFrame;
 
-						const std::uint16_t* depthPixels = reinterpret_cast<const std::uint16_t*>(bodyIndexFrame.ptr.get());
+						constexpr float InvalidDepth = -std::numeric_limits<float>::infinity();
 
-						constexpr std::uint8_t InvalidBodyIndexOutput = 255;
+						const DepthMappingFrameData::DepthCoordinates* depthMapping = reinterpret_cast<const DepthMappingFrameData::DepthCoordinates*>(depthMappingFrame.ptr.get());
 
-						m_bodyMappingMemory.resize(colorFrame.width * colorFrame.height * sizeof(std::uint8_t), InvalidBodyIndexOutput);
-						m_bodyMappingDirtyCounter.resize(colorFrame.width * colorFrame.height, 0);
-						std::uint8_t* bodyIndexOutput = m_bodyMappingMemory.data();
+						constexpr std::uint16_t InvalidDepthOutput = 0;
+
+						m_depthMappingMemory.resize(colorFrame.width * colorFrame.height * sizeof(std::uint16_t), InvalidDepthOutput);
+						m_depthMappingDirtyCounter.resize(colorFrame.width * colorFrame.height, 0);
+						std::uint16_t* depthOutput = reinterpret_cast<std::uint16_t*>(m_depthMappingMemory.data());
 
 						for (std::size_t y = 0; y < colorFrame.height; ++y)
 						{
 							for (std::size_t x = 0; x < colorFrame.width; ++x)
 							{
-								std::uint8_t& dirtyCounter = m_bodyMappingDirtyCounter[y * colorFrame.width + x];
-								std::uint8_t* output = &bodyIndexOutput[y * colorFrame.width + x];
+								std::uint8_t& dirtyCounter = m_depthMappingDirtyCounter[y * colorFrame.width + x];
+								std::uint16_t* output = &depthOutput[y * colorFrame.width + x];
 								const auto& depthCoordinates = depthMapping[y * depthMappingFrame.width + x];
 								if (depthCoordinates.x == InvalidDepth || depthCoordinates.y == InvalidDepth)
 								{
 									if (++dirtyCounter > m_greenScreenSettings.maxDirtyDepth)
-										*output = InvalidBodyIndexOutput;
+										*output = InvalidDepthOutput;
 
 									continue;
 								}
@@ -397,18 +355,80 @@ void KinectSource::Update(float /*seconds*/)
 									dY < 0 || dY >= int(depthFrame.height))
 								{
 									if (++dirtyCounter > m_greenScreenSettings.maxDirtyDepth)
-										*output = InvalidBodyIndexOutput;
+										*output = InvalidDepthOutput;
 
 									continue;
 								}
 
-								*output = bodyIndexFrame.ptr[depthFrame.width * dY + dX];
+								*output = depthFrame.ptr[depthFrame.width * dY + dX];
 								dirtyCounter = 0;
 							}
 						}
 
-						UpdateTexture(m_bodyIndexTexture, GS_R8, colorFrame.width, colorFrame.height, colorFrame.width * sizeof(std::uint8_t), m_bodyMappingMemory.data());
-						bodyIndexTexture = m_bodyIndexTexture.get();
+						UpdateTexture(m_depthMappingTexture, GS_R16, colorFrame.width, colorFrame.height, colorFrame.width * sizeof(std::uint16_t), m_depthMappingMemory.data());
+						depthMappingTexture = nullptr;
+						depthTexture = m_depthMappingTexture.get();
+
+						if (DoesRequireBodyFrame(m_greenScreenSettings.type))
+						{
+							if (!frameData->bodyIndexFrame)
+								return;
+
+							// Map body info as well
+							const BodyIndexFrameData& bodyIndexFrame = *frameData->bodyIndexFrame;
+
+							const std::uint16_t* depthPixels = reinterpret_cast<const std::uint16_t*>(bodyIndexFrame.ptr.get());
+
+							constexpr std::uint8_t InvalidBodyIndexOutput = 255;
+
+							m_bodyMappingMemory.resize(colorFrame.width * colorFrame.height * sizeof(std::uint8_t), InvalidBodyIndexOutput);
+							m_bodyMappingDirtyCounter.resize(colorFrame.width * colorFrame.height, 0);
+							std::uint8_t* bodyIndexOutput = m_bodyMappingMemory.data();
+
+							for (std::size_t y = 0; y < colorFrame.height; ++y)
+							{
+								for (std::size_t x = 0; x < colorFrame.width; ++x)
+								{
+									std::uint8_t& dirtyCounter = m_bodyMappingDirtyCounter[y * colorFrame.width + x];
+									std::uint8_t* output = &bodyIndexOutput[y * colorFrame.width + x];
+									const auto& depthCoordinates = depthMapping[y * depthMappingFrame.width + x];
+									if (depthCoordinates.x == InvalidDepth || depthCoordinates.y == InvalidDepth)
+									{
+										if (++dirtyCounter > m_greenScreenSettings.maxDirtyDepth)
+											*output = InvalidBodyIndexOutput;
+
+										continue;
+									}
+
+									int dX = static_cast<int>(depthCoordinates.x + 0.5f);
+									int dY = static_cast<int>(depthCoordinates.y + 0.5f);
+
+									if (dX < 0 || dX >= int(depthFrame.width) ||
+										dY < 0 || dY >= int(depthFrame.height))
+									{
+										if (++dirtyCounter > m_greenScreenSettings.maxDirtyDepth)
+											*output = InvalidBodyIndexOutput;
+
+										continue;
+									}
+
+									*output = bodyIndexFrame.ptr[depthFrame.width * dY + dX];
+									dirtyCounter = 0;
+								}
+							}
+
+							UpdateTexture(m_bodyIndexTexture, GS_R8, colorFrame.width, colorFrame.height, colorFrame.width * sizeof(std::uint8_t), m_bodyMappingMemory.data());
+							bodyIndexTexture = m_bodyIndexTexture.get();
+						}
+						else
+						{
+							// Reclaim some memory
+							m_bodyMappingMemory.clear();
+							m_bodyMappingMemory.shrink_to_fit();
+
+							m_bodyMappingDirtyCounter.clear();
+							m_bodyMappingDirtyCounter.shrink_to_fit();
+						}
 					}
 					else
 					{
@@ -418,25 +438,16 @@ void KinectSource::Update(float /*seconds*/)
 
 						m_bodyMappingDirtyCounter.clear();
 						m_bodyMappingDirtyCounter.shrink_to_fit();
+
+						m_depthMappingMemory.clear();
+						m_depthMappingMemory.shrink_to_fit();
+
+						m_depthMappingDirtyCounter.clear();
+						m_depthMappingDirtyCounter.shrink_to_fit();
+
+						UpdateTexture(m_depthMappingTexture, GS_RG32F, depthMappingFrame.width, depthMappingFrame.height, depthMappingFrame.pitch, depthMappingFrame.ptr.get());
+						depthMappingTexture = m_depthMappingTexture.get();
 					}
-				}
-				else
-				{
-					// Reclaim some memory
-					m_bodyMappingMemory.clear();
-					m_bodyMappingMemory.shrink_to_fit();
-
-					m_bodyMappingDirtyCounter.clear();
-					m_bodyMappingDirtyCounter.shrink_to_fit();
-
-					m_depthMappingMemory.clear();
-					m_depthMappingMemory.shrink_to_fit();
-
-					m_depthMappingDirtyCounter.clear();
-					m_depthMappingDirtyCounter.shrink_to_fit();
-
-					UpdateTexture(m_depthMappingTexture, GS_RG32F, depthMappingFrame.width, depthMappingFrame.height, depthMappingFrame.pitch, depthMappingFrame.ptr.get());
-					depthMappingTexture = m_depthMappingTexture.get();
 				}
 			}
 
