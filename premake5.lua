@@ -38,7 +38,7 @@ table.insert(projects, {
 })
 
 if (Config.KinectSdk10) then
-	table.insert(projects, {
+	local project = {
 		Name = "obs-kinect-sdk10",
 		Defines = {"WIN32", "_WINDOWS"},
 		Files = { 
@@ -52,26 +52,38 @@ if (Config.KinectSdk10) then
 			assert(Config.KinectSdk10.Include, "Missing KinectSdk10 include dir"),
 			Config.KinectSdk10Toolkit and Config.KinectSdk10Toolkit.Include or nil
 		},
-		LibDir32 = {
-			obslib32,
-			assert(Config.KinectSdk10.Lib32, "Missing KinectSdk10 lib dir (x86)")
-		},
-		LibDir64 = {
-			obslib64,
-			assert(Config.KinectSdk10.Lib64, "Missing KinectSdk10 lib dir (x86_64)")
-		},
 		Links = {
 			"obs-kinect",
 			"obs",
 			"Kinect10"
 		}
-	})
+	}
+
+	if (Config.KinectSdk10.Lib32) then
+		project.LibDir32 = {
+			obslib32,
+			Config.KinectSdk10.Lib32
+		}
+	else
+		print("Missing KinectSdk10 lib dir (x86)")
+	end
+
+	if (Config.KinectSdk10.Lib64) then
+		project.LibDir64 = {
+			obslib64,
+			Config.KinectSdk10.Lib64
+		}
+	else
+		print("Missing KinectSdk10 lib dir (x86_64)")
+	end
+
+	table.insert(projects, project)
 else
 	print("Skipping KinectSdk10 backend")
 end
 
 if (Config.KinectSdk20) then
-	table.insert(projects, {
+	local project = {
 		Name = "obs-kinect-sdk20",
 		Files = { 
 			"src/obs-kinect-sdk20/**.hpp", 
@@ -83,20 +95,32 @@ if (Config.KinectSdk20) then
 			"include/obs-kinect",
 			assert(Config.KinectSdk20.Include, "Missing KinectSdk20 include dir")
 		},
-		LibDir32 = {
-			obslib32,
-			assert(Config.KinectSdk20.Lib32, "Missing KinectSdk20 lib dir (x86)")
-		},
-		LibDir64 = {
-			obslib64,
-			assert(Config.KinectSdk20.Lib64, "Missing KinectSdk20 lib dir (x86_64)")
-		},
 		Links = {
 			"obs-kinect",
 			"obs",
 			"kinect20"
 		}
-	})
+	}
+
+	if (Config.KinectSdk20.Lib32) then
+		project.LibDir32 = {
+			obslib32,
+			Config.KinectSdk20.Lib32
+		}
+	else
+		print("Missing KinectSdk20 lib dir (x86)")
+	end
+
+	if (Config.KinectSdk20.Lib64) then
+		project.LibDir64 = {
+			obslib64,
+			Config.KinectSdk20.Lib64
+		}
+	else
+		print("Missing KinectSdk20 lib dir (x86_64)")
+	end
+
+	table.insert(projects, project)
 else
 	print("Skipping KinectSdk20 backend")
 end
@@ -128,6 +152,14 @@ workspace("obs-kinect")
 
 			includedirs(proj.Include)
 			links(proj.Links)
+
+			if (proj.LibDir32 and proj.LibDir64) then
+				platforms { "x86", "x86_64" }
+			elseif (proj.LibDir64) then
+				platforms "x86_64"
+			else
+				platforms "x86"
+			end
 
 			filter("action:vs*")
 				defines("_ENABLE_ATOMIC_ALIGNMENT_FIX")
