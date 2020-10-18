@@ -66,7 +66,7 @@ float4 PSBodyOnlyWithDepthCorrection(VertData vert_in) : TARGET
 	float2 texCoords = DepthMappingImage.Sample(textureSampler, vert_in.uv).xy * InvDepthImageSize;
 	float bodyIndex = BodyIndexImage.Sample(depthSampler, texCoords).r;
 
-	float value = ComputeBodyValueMapped(bodyIndex);
+	float value = ComputeBodyValueMapped(bodyIndex, texCoords);
 
 	return float4(value, value, value, value);
 }
@@ -86,7 +86,7 @@ float4 PSBodyOrDepthWithDepthCorrection(VertData vert_in) : TARGET
 	float bodyIndex = BodyIndexImage.Sample(depthSampler, texCoords).r;
 	float depth = DepthImage.Sample(depthSampler, texCoords).r;
 
-	float bodyValue = ComputeBodyValueMapped(bodyIndex);
+	float bodyValue = ComputeBodyValueMapped(bodyIndex, texCoords);
 	float depthValue = ComputeDepthValueMapped(depth, texCoords);
 	float value = max(bodyValue, depthValue);
 
@@ -111,7 +111,7 @@ float4 PSBodyWithinDepthWithDepthCorrection(VertData vert_in) : TARGET
 	float bodyIndex = BodyIndexImage.Sample(depthSampler, texCoords).r;
 	float depth = DepthImage.Sample(depthSampler, texCoords).r;
 
-	float bodyValue = ComputeBodyValueMapped(bodyIndex);
+	float bodyValue = ComputeBodyValueMapped(bodyIndex, texCoords);
 	float depthValue = ComputeDepthValueMapped(depth, texCoords);
 	float value = min(bodyValue, depthValue);
 
