@@ -399,7 +399,7 @@ auto KinectSdk20Device::RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFram
 	frameData.width = width;
 	frameData.height = height;
 	frameData.pitch = width * bytePerPixel;
-	frameData.ptr.reset(frameData.memory.data());
+	frameData.ptr.reset(reinterpret_cast<std::uint16_t*>(frameData.memory.data()));
 
 	return frameData;
 }
