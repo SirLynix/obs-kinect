@@ -24,13 +24,23 @@
 #include "Win32Helper.hpp"
 #include <k4a/k4a.hpp>
 
+enum class ColorResolution
+{
+	R1280x720  = 0,
+	R1920x1080 = 1,
+	R2560x1440 = 2,
+	R2048x1536 = 3,
+	R3840x2160 = 4,
+	R4096x3072 = 5
+};
+
 enum class DepthMode
 {
-	Passive = 0,
-	NFOVUnbinned = 1,
-	NFOV2x2Binned = 2,
-	WFOVUnbinned = 3,
-	WFOV2x2Binned = 4
+	Passive        = 0,
+	NFOVUnbinned   = 1,
+	NFOV2x2Binned  = 2,
+	WFOVUnbinned   = 3,
+	WFOV2x2Binned  = 4
 };
 
 class AzureKinectDevice final : public KinectDevice
@@ -51,6 +61,7 @@ class AzureKinectDevice final : public KinectDevice
 		static InfraredFrameData ToInfraredFrame(const k4a::image& image);
 
 		k4a::device m_device;
+		std::atomic<ColorResolution> m_colorResolution;
 		std::atomic<DepthMode> m_depthMode;
 };
 

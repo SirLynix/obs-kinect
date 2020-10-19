@@ -23,7 +23,7 @@
 
 namespace
 {
-	k4a_device_configuration_t BuildConfiguration(SourceFlags enabledSources, DepthMode depthMode)
+	k4a_device_configuration_t BuildConfiguration(SourceFlags enabledSources, ColorResolution colorRes, DepthMode depthMode)
 	{
 		k4a_device_configuration_t deviceConfig;
 		deviceConfig.wired_sync_mode = K4A_WIRED_SYNC_MODE_STANDALONE;
@@ -33,7 +33,33 @@ namespace
 		if (enabledSources & Source_Color)
 		{
 			deviceConfig.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32;
-			deviceConfig.color_resolution = K4A_COLOR_RESOLUTION_1080P; //< TODO: Allow to change
+			switch (colorRes)
+			{
+				case ColorResolution::R1280x720:
+					deviceConfig.color_resolution = K4A_COLOR_RESOLUTION_720P;
+					break;
+
+				default:
+				case ColorResolution::R1920x1080:
+					deviceConfig.color_resolution = K4A_COLOR_RESOLUTION_1080P;
+					break;
+
+				case ColorResolution::R2560x1440:
+					deviceConfig.color_resolution = K4A_COLOR_RESOLUTION_1440P;
+					break;
+
+				case ColorResolution::R2048x1536:
+					deviceConfig.color_resolution = K4A_COLOR_RESOLUTION_1536P;
+					break;
+
+				case ColorResolution::R3840x2160:
+					deviceConfig.color_resolution = K4A_COLOR_RESOLUTION_2160P;
+					break;
+
+				case ColorResolution::R4096x3072:
+					deviceConfig.color_resolution = K4A_COLOR_RESOLUTION_3072P;
+					break;
+			}
 		}
 		else
 		{
@@ -126,6 +152,7 @@ namespace
 }
 
 AzureKinectDevice::AzureKinectDevice(std::uint32_t deviceIndex) :
+m_colorResolution(ColorResolution::R1920x1080),
 m_depthMode(DepthMode::NFOVUnbinned)
 {
 	m_device = k4a::device::open(deviceIndex);
@@ -133,7 +160,12 @@ m_depthMode(DepthMode::NFOVUnbinned)
 	SetUniqueName("#" + std::to_string(deviceIndex) + ": " + m_device.get_serialnum());
 	SetSupportedSources(Source_Color | Source_Depth | Source_Infrared | Source_ColorToDepthMapping);
 
-	RegisterIntParameter("azuresdk_depth_mode", static_cast<long long>(DepthMode::NFOVUnbinned), [](long long a, long long b)
+	RegisterIntParameter("azuresdk_color_resolution", static_cast<long long>(m_colorResolution.load()), [](long long a, long long b)
+	{
+		return std::max(a, b);
+	});
+
+	RegisterIntParameter("azuresdk_depth_mode", static_cast<long long>(m_depthMode.load()), [](long long a, long long b)
 	{
 		return std::max(a, b);
 	});
@@ -149,19 +181,32 @@ obs_properties_t* AzureKinectDevice::CreateProperties() const
 	obs_property_t* p;
 
 	obs_properties_t* props = obs_properties_create();
+	p = obs_properties_add_list(props, "azuresdk_color_resolution", Translate("ObsKinectAzure.ColorResolution"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(p, Translate("ObsKinectAzure.ColorResolution_1280x720"),  static_cast<int>(ColorResolution::R1280x720));
+	obs_property_list_add_int(p, Translate("ObsKinectAzure.ColorResolution_1920x1080"), static_cast<int>(ColorResolution::R1920x1080));
+	obs_property_list_add_int(p, Translate("ObsKinectAzure.ColorResolution_2560x1440"), static_cast<int>(ColorResolution::R2560x1440));
+	obs_property_list_add_int(p, Translate("ObsKinectAzure.ColorResolution_2048x1536"), static_cast<int>(ColorResolution::R2048x1536));
+	obs_property_list_add_int(p, Translate("ObsKinectAzure.ColorResolution_3840x2160"), static_cast<int>(ColorResolution::R3840x2160));
+	obs_property_list_add_int(p, Translate("ObsKinectAzure.ColorResolution_4096x3072"), static_cast<int>(ColorResolution::R4096x3072));
+
 	p = obs_properties_add_list(props, "azuresdk_depth_mode", Translate("ObsKinectAzure.DepthMode"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	obs_property_list_add_int(p, Translate("ObsKinectAzure.DepthMode_NFOV_Unbinned"), static_cast<int>(DepthMode::NFOVUnbinned));
+	obs_property_list_add_int(p, Translate("ObsKinectAzure.DepthMode_NFOV_Unbinned"),  static_cast<int>(DepthMode::NFOVUnbinned));
 	obs_property_list_add_int(p, Translate("ObsKinectAzure.DepthMode_NFOV_2x2Binned"), static_cast<int>(DepthMode::NFOV2x2Binned));
-	obs_property_list_add_int(p, Translate("ObsKinectAzure.DepthMode_WFOV_Unbinned"), static_cast<int>(DepthMode::WFOVUnbinned));
+	obs_property_list_add_int(p, Translate("ObsKinectAzure.DepthMode_WFOV_Unbinned"),  static_cast<int>(DepthMode::WFOVUnbinned));
 	obs_property_list_add_int(p, Translate("ObsKinectAzure.DepthMode_WFOV_2x2Binned"), static_cast<int>(DepthMode::WFOV2x2Binned));
-	obs_property_list_add_int(p, Translate("ObsKinectAzure.DepthMode_Passive"), static_cast<int>(DepthMode::Passive));
+	obs_property_list_add_int(p, Translate("ObsKinectAzure.DepthMode_Passive"),        static_cast<int>(DepthMode::Passive));
 
 	return props;
 }
 
 void AzureKinectDevice::HandleIntParameterUpdate(const std::string& parameterName, long long value)
 {
-	if (parameterName == "azuresdk_depth_mode")
+	if (parameterName == "azuresdk_color_resolution")
+	{
+		m_colorResolution.store(static_cast<ColorResolution>(value));
+		TriggerSourceFlagsUpdate();
+	}
+	else if (parameterName == "azuresdk_depth_mode")
 	{
 		m_depthMode.store(static_cast<DepthMode>(value));
 		TriggerSourceFlagsUpdate();
@@ -174,12 +219,12 @@ void AzureKinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 	std::optional<k4a::transformation> transformation;
 
-	k4a_device_configuration_t activeConfig = BuildConfiguration(0, m_depthMode.load());
+	k4a_device_configuration_t activeConfig = BuildConfiguration(0, m_colorResolution.load(), m_depthMode.load());
 	SourceFlags enabledSourceFlags = 0;
 	bool cameraStarted = false;
 	auto UpdateKinectStreams = [&](SourceFlags enabledSources)
 	{
-		k4a_device_configuration_t newConfig = BuildConfiguration(enabledSources, m_depthMode.load());
+		k4a_device_configuration_t newConfig = BuildConfiguration(enabledSources, m_colorResolution.load(), m_depthMode.load());
 		if (!CompareConfig(newConfig, activeConfig))
 		{
 			// Restart cameras only if configuration changed
