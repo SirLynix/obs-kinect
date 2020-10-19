@@ -55,6 +55,7 @@ namespace
 					else
 						[[fallthrough]];
 
+				default:
 				case DepthMode::NFOVUnbinned:
 					deviceConfig.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED;
 					break;
@@ -69,9 +70,6 @@ namespace
 
 				case DepthMode::WFOV2x2Binned:
 					deviceConfig.depth_mode = K4A_DEPTH_MODE_WFOV_2X2BINNED;
-					break;
-
-				default:
 					break;
 			}
 		}
