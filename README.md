@@ -15,10 +15,10 @@ This plugins allows you to access a Kinect v1 (for Xbox 360 or Kinect for Window
 
 - Windows. For now this plugin is only compatible with Windows as it uses the official Kinect for Windows API (may change in the future).
 - A Kinect (obviously), all known models are supported:
-   * Kinect for 360 - original Kinect which I call (v1)
-   * Kinect for Windows - same as Kinect for 360 but with support for camera controls and a "near mode" (v1+)
-   * Kinect for Xbox One and Kinect 2 for Windows (v2)
-   * Azure Kinect (v3)
+   * **Kinect for 360** - original Kinect (v1)
+   * **Kinect for Windows** - same as Kinect for 360 but with support for camera controls and a "near mode" (v1+)
+   * **Kinect for Xbox One** and **Kinect 2 for Windows** (v2)
+   * **Azure Kinect** (v3)
 
 - If your Kinect isn't pluggable to your computer: a Kinect to USB adapter (search for PeakLead Kinect to USB on Amazon).
 - Not running on a potato computer, Kinect itself requires a little bit of CPU power, especially when using the faux green screen effect (I'm trying to improve that) because of the color-to-depth mapping (which is done on the CPU). The plugin itself runs on the GPU.
@@ -29,6 +29,7 @@ This plugins allows you to access a Kinect v1 (for Xbox 360 or Kinect for Window
 # To do
 
 - ~~Add support for Kinect v1~~
+- ~~Add support for Azure Kinect~~
 - ~~Improve green-screen filtering using gaussian blur~~
 - ~~Use shaders to do faux green-screen processing. 1080p pixel processing is a really heavy CPU task and would benefit a lot to run on the GPU~~
 - ~~Add possibility to use body index masking (pixels identified by Kinect SDK to be you)~~
@@ -81,14 +82,14 @@ Clone and build OBS-studio first.
 
 **If you want to have support for the Kinect v1 (Xbox 360 or Kinect for Windows)**
 - Download and install [**Kinect for Windows SDK 1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40278)
-- (Optional) Download and install [**Kinect for Windows Developer Toolkit v1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40276), this is required for dedicated background support!
+- (Optional) Download and install [**Kinect for Windows Developer Toolkit v1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40276), this is required for dedicated background support.
 
 **If you want to have support for the Kinect v2 (Xbox One or Kinect 2 for Windows)**
 - Download and install [**Kinect for Windows SDK v2.0**](https://www.microsoft.com/en-us/download/details.aspx?id=44561)
 
 **If you want to have support for the Kinect v3 (Azure Kinect)**
 - Download and install [**Azure Kinect Sensor SDK**](https://docs.microsoft.com/en-us/azure/kinect-dk/sensor-sdk-download)
-- (Optional) Download and install [**Azure Kinect Body Tracking SDK**](https://docs.microsoft.com/en-us/azure/kinect-dk/body-sdk-download), this is required for body filter support!
+- (Optional) Download and install [**Azure Kinect Body Tracking SDK**](https://docs.microsoft.com/en-us/azure/kinect-dk/body-sdk-download), this is required for body filter support.
 
 You can/must install all SDK if you want to support all Kinect versions (recommended to redistribute).
 
@@ -124,7 +125,7 @@ Developer note: a way to fix that warning would be to load kinect runtime dynami
 
 ## Does it work on Linux/macOS?
 
-Not yet, I still have to try to use libfreenect(2) for that.
+Not yet, I still have to try to use libfreenect(2) for that.  
 Unfortunately since some of the features this plugin provides (like body indexing and dedicated background removal) are based on Windows Kinect SDK features, theses will probably never be available to other systems.
 
 ## Does it work with Streamlabs OBS?
@@ -142,9 +143,10 @@ Yes! Azure Kinect is supported since 0.3, thanks to Microsoft which sent me one 
 ## My Kinect cannot be plugged by USB, how can I use it on Windows?
 
 Unfortunately, Microsoft used a proprietary port on the Xbox 360/One.
-For the Kinect v1, you have to buy a Kinect to USB 2.0 and AC adapter to use it on your computer (search for Microsoft Xbox 360 Kinect Sensor Mains Power Supply Adapter on Amazon).
-For the Kinect v2, you have to buy a Kinect to USB 3.0 and AC adapter to use it on your computer (search for PeakLead Kinect to USB on Amazon).
-For the Kinect v3, you can plug it to your computer using the provided USB C cable.
+
+For the Kinect v1, you have to buy a Kinect to USB 2.0 and AC adapter to use it on your computer (search for Microsoft Xbox 360 Kinect Sensor Mains Power Supply Adapter on Amazon).  
+For the Kinect v2, you have to buy a Kinect to USB 3.0 and AC adapter to use it on your computer (search for PeakLead Kinect to USB on Amazon).  
+For the Kinect v3, you can plug it to your computer using the provided USB C cable.  
 
 Don't forget to install the runtime files (see "How to use") before using this plugin.
 
@@ -233,7 +235,8 @@ You can also try changing the depth mode (see "What are depth modes?")
 
 ## (KinectV3) The greenscreen gives me holes in clothes / headset / black hair
 
-Azure Kinect depth sensor quality is really good but it has some troubles with black surfaces like headsets and hair for some people (like me), and cannot read depth for thoses pixels. I'm trying to improve that on my side (along with transparency shadows). I don't know yet if Azure Kinect team can fix this or not, as it may be a software or hardware issue
+Azure Kinect depth sensor quality is really good but it has some troubles with black surfaces like headsets and hair for some people (like me), and cannot read depth for thoses pixels.  
+I'm trying to improve that on my side (along with transparency shadows). I don't know yet if Azure Kinect team can fix this or not, as it may be a software or hardware issue
 
 ## What is the maximum color resolution I can have @30Hz?
 
