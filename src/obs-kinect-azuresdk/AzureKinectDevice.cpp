@@ -349,10 +349,15 @@ void AzureKinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 								assert(transformation);
 								if (k4a::image bodyIndexMap = bodyTrackingFrame.get_body_index_map())
 								{
-									auto [mappedDepth, mappedBodyIndexImage] = transformation->depth_image_to_color_camera_custom(depthImage, bodyIndexMap, K4A_TRANSFORMATION_INTERPOLATION_TYPE_NEAREST, K4ABT_BODY_INDEX_MAP_BACKGROUND);
-									mappedDepthImage = std::move(mappedDepth);
+									if (enabledSourceFlags & Source_ColorToDepthMapping)
+									{
+										auto [mappedDepth, mappedBodyIndexImage] = transformation->depth_image_to_color_camera_custom(depthImage, bodyIndexMap, K4A_TRANSFORMATION_INTERPOLATION_TYPE_NEAREST, K4ABT_BODY_INDEX_MAP_BACKGROUND);
+										mappedDepthImage = std::move(mappedDepth);
 
-									framePtr->bodyIndexFrame = ToBodyIndexFrame(mappedBodyIndexImage);
+										framePtr->bodyIndexFrame = ToBodyIndexFrame(mappedBodyIndexImage);
+									}
+									else
+										framePtr->bodyIndexFrame = ToBodyIndexFrame(bodyIndexMap);
 								}
 
 							}
