@@ -27,6 +27,7 @@
 #include "GaussianBlurEffect.hpp"
 #include "GreenScreenFilterEffect.hpp"
 #include "KinectDeviceAccess.hpp"
+#include "TextureLerpEffect.hpp"
 #include <obs-module.h>
 #include <atomic>
 #include <condition_variable>
@@ -43,7 +44,7 @@ class KinectSource
 	friend KinectDeviceRegistry;
 
 	public:
-		enum class GreenScreenType;
+		enum class GreenScreenFilterType;
 		enum class SourceType;
 		struct DepthToColorSettings;
 		struct GreenScreenSettings;
@@ -70,13 +71,20 @@ class KinectSource
 		void UpdateGreenScreen(GreenScreenSettings greenScreen);
 		void UpdateInfraredToColor(InfraredToColorSettings infraredToColor);
 
-		enum class GreenScreenType
+		enum class GreenScreenFilterType
 		{
 			Body = 0,            //< Requires Source_Body (| Source_ColorToDepthMapping if color source is used)
 			BodyOrDepth = 2,     //< Requires Source_Body | Source_Depth (| Source_ColorToDepthMapping if color source is used)
 			BodyWithinDepth = 3, //< Requires Source_Body | Source_Depth (| Source_ColorToDepthMapping if color source is used)
 			Dedicated = 4,       //< Requires Source_BackgroundRemoval
 			Depth = 1            //< Requires Source_Depth (| Source_ColorToDepthMapping if color source is used)
+		};
+
+		enum class GreenScreenEffect
+		{
+			RemoveBackground = 0,
+			BlurBackground   = 1,
+			BlurForeground   = 2
 		};
 
 		enum class SourceType
@@ -95,9 +103,11 @@ class KinectSource
 
 		struct GreenScreenSettings
 		{
-			GreenScreenType type = GreenScreenType::Depth;
+			GreenScreenEffect effectType = GreenScreenEffect::BlurBackground;
+			GreenScreenFilterType filterType = GreenScreenFilterType::Depth;
 			bool enabled = true;
 			bool gpuDepthMapping = true;
+			std::size_t backgroundBlurPassCount = 10;
 			std::size_t blurPassCount = 3;
 			std::uint16_t depthMax = 1200;
 			std::uint16_t depthMin = 1;
@@ -112,8 +122,8 @@ class KinectSource
 			float standardDeviation = 3.f;
 		};
 
-		static bool DoesRequireBodyFrame(GreenScreenType greenscreenType);
-		static bool DoesRequireDepthFrame(GreenScreenType greenscreenType);
+		static bool DoesRequireBodyFrame(GreenScreenFilterType greenscreenType);
+		static bool DoesRequireDepthFrame(GreenScreenFilterType greenscreenType);
 
 	private:
 		struct DynamicValues
@@ -136,12 +146,14 @@ class KinectSource
 		std::vector<std::uint8_t> m_depthMappingDirtyCounter;
 		AlphaMaskEffect m_alphaMaskFilter;
 		ConvertDepthIRToColorEffect m_depthIRConvertEffect;
-		GaussianBlurEffect m_gaussianBlur;
+		GaussianBlurEffect m_backgroundBlur;
+		GaussianBlurEffect m_filterBlur;
 		GreenScreenFilterEffect m_greenScreenFilterEffect;
 		ObserverPtr<gs_texture_t> m_finalTexture;
 		DepthToColorSettings m_depthToColorSettings;
 		GreenScreenSettings m_greenScreenSettings;
 		InfraredToColorSettings m_infraredToColorSettings;
+		TextureLerpEffect m_textureLerpEffect;
 		KinectDeviceRegistry& m_registry;
 		ObsTexturePtr m_backgroundRemovalTexture;
 		ObsTexturePtr m_bodyIndexTexture;

@@ -15,27 +15,29 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "KinectSdk20Plugin.hpp"
-#include "KinectSdk20Device.hpp"
+#pragma once
 
-std::string KinectSdk20Plugin::GetUniqueName() const
+#ifndef OBS_KINECT_PLUGIN_TEXTURELERPEFFECT
+#define OBS_KINECT_PLUGIN_TEXTURELERPEFFECT
+
+#include <obs-module.h>
+#include <cstddef>
+
+class TextureLerpEffect
 {
-	return "KinectV2";
-}
+	public:
+		TextureLerpEffect();
+		~TextureLerpEffect();
 
-std::vector<std::unique_ptr<KinectDevice>> KinectSdk20Plugin::Refresh() const
-{
-	std::vector<std::unique_ptr<KinectDevice>> devices;
+		gs_texture_t* Lerp(gs_texture_t* from, gs_texture_t* to, gs_texture_t* factor);
 
-	try
-	{
-		// We have only one device: the default one
-		devices.emplace_back(std::make_unique<KinectSdk20Device>());
-	}
-	catch (const std::exception& e)
-	{
-		warnlog("%s", e.what());
-	}
+	private:
+		gs_effect_t* m_effect;
+		gs_eparam_t* m_params_FactorImage;
+		gs_eparam_t* m_params_FromImage;
+		gs_eparam_t* m_params_ToImage;
+		gs_technique_t* m_tech_Draw;
+		gs_texrender_t* m_workTexture;
+};
 
-	return devices;
-}
+#endif

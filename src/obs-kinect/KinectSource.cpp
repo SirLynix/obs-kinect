@@ -25,7 +25,8 @@
 #include <optional>
 
 KinectSource::KinectSource(KinectDeviceRegistry& registry, const obs_source_t* source) :
-m_gaussianBlur(GS_RGBA),
+m_backgroundBlur(GS_RGBA),
+m_filterBlur(GS_RGBA),
 m_registry(registry),
 m_sourceType(SourceType::Color),
 m_source(source),
@@ -284,7 +285,7 @@ void KinectSource::Update(float /*seconds*/)
 		if (m_greenScreenSettings.enabled)
 		{
 			// All green screen types (except depth/dedicated) require body index texture
-			if (!softwareDepthMapping && DoesRequireBodyFrame(m_greenScreenSettings.type))
+			if (!softwareDepthMapping && DoesRequireBodyFrame(m_greenScreenSettings.filterType))
 			{
 				if (!frameData->bodyIndexFrame)
 					return;
@@ -315,7 +316,7 @@ void KinectSource::Update(float /*seconds*/)
 				{
 					const DepthMappingFrameData& depthMappingFrame = *frameData->depthMappingFrame;
 
-					if (softwareDepthMapping)
+					if (DoesRequireBodyFrame(m_greenScreenSettings.filterType))
 					{
 						if (!frameData->colorFrame || !frameData->depthFrame)
 							return;
@@ -453,7 +454,7 @@ void KinectSource::Update(float /*seconds*/)
 
 			// Apply green screen filtering
 			gs_texture_t* filterTexture = nullptr;
-			if (m_greenScreenSettings.type == GreenScreenType::Dedicated)
+			if (m_greenScreenSettings.filterType == GreenScreenFilterType::Dedicated)
 			{
 				if (!frameData->backgroundRemovalFrame)
 					return;
@@ -467,9 +468,9 @@ void KinectSource::Update(float /*seconds*/)
 			{
 				m_backgroundRemovalTexture.reset(); //< Release some memory
 
-				switch (m_greenScreenSettings.type)
+				switch (m_greenScreenSettings.filterType)
 				{
-					case GreenScreenType::Body:
+					case GreenScreenFilterType::Body:
 					{
 						GreenScreenFilterEffect::BodyFilterParams filterParams;
 						filterParams.bodyIndexTexture = bodyIndexTexture;
@@ -479,7 +480,7 @@ void KinectSource::Update(float /*seconds*/)
 						break;
 					}
 
-					case GreenScreenType::BodyOrDepth:
+					case GreenScreenFilterType::BodyOrDepth:
 					{
 						GreenScreenFilterEffect::BodyOrDepthFilterParams filterParams;
 						filterParams.bodyIndexTexture = bodyIndexTexture;
@@ -493,7 +494,7 @@ void KinectSource::Update(float /*seconds*/)
 						break;
 					}
 
-					case GreenScreenType::BodyWithinDepth:
+					case GreenScreenFilterType::BodyWithinDepth:
 					{
 						GreenScreenFilterEffect::BodyWithinDepthFilterParams filterParams;
 						filterParams.bodyIndexTexture = bodyIndexTexture;
@@ -507,7 +508,7 @@ void KinectSource::Update(float /*seconds*/)
 						break;
 					}
 
-					case GreenScreenType::Depth:
+					case GreenScreenFilterType::Depth:
 					{
 						GreenScreenFilterEffect::DepthFilterParams filterParams;
 						filterParams.colorToDepthTexture = depthMappingTexture;
@@ -525,13 +526,36 @@ void KinectSource::Update(float /*seconds*/)
 					return;
 
 				if (m_greenScreenSettings.blurPassCount > 0)
-					filterTexture = m_gaussianBlur.Blur(filterTexture, m_greenScreenSettings.blurPassCount);
+					filterTexture = m_filterBlur.Blur(filterTexture, m_greenScreenSettings.blurPassCount);
 			}
 
+			switch (m_greenScreenSettings.effectType)
+			{
+				case GreenScreenEffect::BlurBackground:
+				case GreenScreenEffect::BlurForeground:
+				{
+					if (m_greenScreenSettings.backgroundBlurPassCount > 0)
+					{
+						gs_texture_t* blurredBackground = m_backgroundBlur.Blur(sourceTexture, m_greenScreenSettings.backgroundBlurPassCount);
+						gs_texture_t* from = blurredBackground;
+						gs_texture_t* to = sourceTexture;
+						if (m_greenScreenSettings.effectType == GreenScreenEffect::BlurForeground)
+							std::swap(from, to);
 
-			gs_texture_t* filteredTexture = m_alphaMaskFilter.Filter(sourceTexture, filterTexture);
+						m_finalTexture.reset(m_textureLerpEffect.Lerp(from, to, filterTexture));
+					}
+					else
+						m_finalTexture.reset(sourceTexture);
+					break;
+				}
 
-			m_finalTexture.reset(filteredTexture);
+				case GreenScreenEffect::RemoveBackground:
+				{
+					m_finalTexture.reset(m_alphaMaskFilter.Filter(sourceTexture, filterTexture));
+					break;
+				}
+			}
+
 		}
 		else
 			m_finalTexture.reset(sourceTexture);
@@ -557,34 +581,34 @@ void KinectSource::UpdateDeviceParameters(obs_data_t* settings)
 		m_deviceAccess->UpdateDeviceParameters(settings);
 }
 
-bool KinectSource::DoesRequireBodyFrame(GreenScreenType greenscreenType)
+bool KinectSource::DoesRequireBodyFrame(GreenScreenFilterType greenscreenType)
 {
 	switch (greenscreenType)
 	{
-		case GreenScreenType::Body:
-		case GreenScreenType::BodyOrDepth:
-		case GreenScreenType::BodyWithinDepth:
+		case GreenScreenFilterType::Body:
+		case GreenScreenFilterType::BodyOrDepth:
+		case GreenScreenFilterType::BodyWithinDepth:
 			return true;
 
-		case GreenScreenType::Dedicated:
-		case GreenScreenType::Depth:
+		case GreenScreenFilterType::Dedicated:
+		case GreenScreenFilterType::Depth:
 			return false;
 	}
 
 	return false;
 }
 
-bool KinectSource::DoesRequireDepthFrame(GreenScreenType greenscreenType)
+bool KinectSource::DoesRequireDepthFrame(GreenScreenFilterType greenscreenType)
 {
 	switch (greenscreenType)
 	{
-		case GreenScreenType::BodyOrDepth:
-		case GreenScreenType::BodyWithinDepth:
-		case GreenScreenType::Depth:
+		case GreenScreenFilterType::BodyOrDepth:
+		case GreenScreenFilterType::BodyWithinDepth:
+		case GreenScreenFilterType::Depth:
 			return true;
 
-		case GreenScreenType::Body:
-		case GreenScreenType::Dedicated:
+		case GreenScreenFilterType::Body:
+		case GreenScreenFilterType::Dedicated:
 			return false;
 	}
 
@@ -619,13 +643,13 @@ SourceFlags KinectSource::ComputeEnabledSourceFlags() const
 		if (m_sourceType == SourceType::Color)
 			flags |= Source_ColorToDepthMapping;
 
-		if (DoesRequireBodyFrame(m_greenScreenSettings.type))
+		if (DoesRequireBodyFrame(m_greenScreenSettings.filterType))
 			flags |= Source_Body;
 
-		if (DoesRequireDepthFrame(m_greenScreenSettings.type))
+		if (DoesRequireDepthFrame(m_greenScreenSettings.filterType))
 			flags |= Source_Depth;
 
-		if (m_greenScreenSettings.type == GreenScreenType::Dedicated)
+		if (m_greenScreenSettings.filterType == GreenScreenFilterType::Dedicated)
 			flags |= Source_BackgroundRemoval;
 	}
 
