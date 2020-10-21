@@ -72,7 +72,7 @@ You can also get thoses files (possibly even a more recent version) from the [**
 
  to `obs-studio/bin/[32|64]bits folder`, next to obs(64) executable.
 
-AKBT SDK redistributable are pretty big (~600MB) so I don't include them with every release.
+AKBT SDK redistributable are pretty big (~600MB) so I don't include them with obs-kinect releases.
 
 ⚠️ Don't forget to install the Visual Studio 2019 redistributables ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe)).
 
@@ -240,9 +240,9 @@ I'm trying to improve that on my side (along with transparency shadows). I don't
 
 ## What is the maximum color resolution I can have @30Hz?
 
-For the Kinect v1 it's 480p (640x480), but it can output 1280x960@15Hz.
-For the Kinect v2 it's 1080p (1920x1080), which is the only resolution available.
-For the Kinect v3 it's 4K (3840x2160), but it can output 4096x3072@15Hz (4:3).
+For the Kinect v1 it's 480p (640x480), but it can output 1280x960@15Hz.  
+For the Kinect v2 it's 1080p (1920x1080), which is the only resolution available.  
+For the Kinect v3 it's 4K (3840x2160), but it can output 4096x3072@15Hz (4:3).  
 
 ## Can I have multiple Kinect source at the same time?
 
