@@ -110,7 +110,7 @@ namespace
 		if ((enabledSources & Source_Color) && (enabledSources & Source_Depth))
 		{
 			deviceConfig.synchronized_images_only = true;
-			deviceConfig.depth_delay_off_color_usec = -160;
+			deviceConfig.depth_delay_off_color_usec = 0;
 		}
 		else
 		{
