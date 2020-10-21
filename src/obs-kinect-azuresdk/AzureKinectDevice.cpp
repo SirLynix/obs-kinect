@@ -388,7 +388,12 @@ void AzureKinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 	}
 
 	if (cameraStarted)
+	{
+#if HAS_BODY_TRACKING
+		bodyTracker.reset();
+#endif
 		m_device.stop_cameras();
+	}
 
 	infolog("exiting thread");
 }
