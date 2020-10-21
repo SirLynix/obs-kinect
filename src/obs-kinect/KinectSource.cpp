@@ -195,7 +195,7 @@ void KinectSource::Update(float /*seconds*/)
 
 		bool softwareDepthMapping = (!m_greenScreenSettings.gpuDepthMapping || m_greenScreenSettings.maxDirtyDepth > 0);
 
-		if ((m_greenScreenSettings.enabled && !softwareDepthMapping) || m_sourceType == SourceType::Depth)
+		if ((m_greenScreenSettings.enabled && DoesRequireDepthFrame(m_greenScreenSettings.type) && !softwareDepthMapping) || m_sourceType == SourceType::Depth)
 		{
 			if (!frameData->depthFrame)
 				return;
