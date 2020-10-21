@@ -55,7 +55,7 @@ class AzureKinectDevice final : public KinectDevice
 		void HandleIntParameterUpdate(const std::string& parameterName, long long value);
 		void ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr) override;
 
-		static DepthFrameData MapDepthToColorSpace(const k4a::transformation& transformation, const k4a::image& depthImage);
+		static BodyIndexFrameData ToBodyIndexFrame(const k4a::image& image);
 		static ColorFrameData ToColorFrame(const k4a::image& image);
 		static DepthFrameData ToDepthFrame(const k4a::image& image);
 		static InfraredFrameData ToInfraredFrame(const k4a::image& image);

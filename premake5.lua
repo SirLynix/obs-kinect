@@ -163,6 +163,12 @@ if (Config.AzureKinectSdk) then
 		print("Missing AzureKinectSdk lib dir (x86_64)")
 	end
 
+	if (Config.AzureKinectBodyTrackingSdk) then
+		table.insert(project.Include, Config.AzureKinectBodyTrackingSdk.Include)
+	else
+		print("Warning: AzureKinectSdk will not have body tracking support")
+	end
+
 	table.insert(projects, project)
 else
 	print("Skipping AzureKinectSdk backend")

@@ -16,10 +16,15 @@
 ******************************************************************************/
 
 #include "AzureKinectDevice.hpp"
+#include "AzureKinectPlugin.hpp"
 #include <util/threading.h>
 #include <array>
 #include <optional>
 #include <tlhelp32.h>
+
+#if HAS_BODY_TRACKING
+#include <k4abt.hpp>
+#endif
 
 namespace
 {
@@ -67,7 +72,7 @@ namespace
 			deviceConfig.color_resolution = K4A_COLOR_RESOLUTION_OFF;
 		}
 
-		if (enabledSources & (Source_Depth | Source_ColorToDepthMapping | Source_Infrared))
+		if (enabledSources & (Source_Body | Source_Depth | Source_ColorToDepthMapping | Source_Infrared))
 		{
 			switch (depthMode)
 			{
@@ -112,7 +117,7 @@ namespace
 			deviceConfig.synchronized_images_only = false;
 			deviceConfig.depth_delay_off_color_usec = 0;
 		}
-		
+
 		if (deviceConfig.depth_mode == K4A_DEPTH_MODE_WFOV_UNBINNED || deviceConfig.color_resolution == K4A_COLOR_RESOLUTION_3072P)
 			deviceConfig.camera_fps = K4A_FRAMES_PER_SECOND_15;
 		else
@@ -158,7 +163,15 @@ m_depthMode(DepthMode::NFOVUnbinned)
 	m_device = k4a::device::open(deviceIndex);
 
 	SetUniqueName("#" + std::to_string(deviceIndex) + ": " + m_device.get_serialnum());
-	SetSupportedSources(Source_Color | Source_Depth | Source_Infrared | Source_ColorToDepthMapping);
+
+	SourceFlags supportedSources = Source_Color | Source_Depth | Source_Infrared | Source_ColorToDepthMapping;
+
+#if HAS_BODY_TRACKING
+	if (IsBodyTrackingSdkLoaded())
+		supportedSources |= Source_Body;
+#endif
+
+	SetSupportedSources(supportedSources);
 
 	RegisterIntParameter("azuresdk_color_resolution", static_cast<long long>(m_colorResolution.load()), [](long long a, long long b)
 	{
@@ -217,9 +230,14 @@ void AzureKinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 {
 	os_set_thread_name("AzureKinectDevice");
 
+	k4a::calibration calibration;
 	std::optional<k4a::transformation> transformation;
 
-	k4a_device_configuration_t activeConfig = BuildConfiguration(0, m_colorResolution.load(), m_depthMode.load());
+#if HAS_BODY_TRACKING
+	std::optional<k4abt::tracker> bodyTracker;
+#endif
+
+	k4a_device_configuration_t activeConfig = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
 	SourceFlags enabledSourceFlags = 0;
 	bool cameraStarted = false;
 	auto UpdateKinectStreams = [&](SourceFlags enabledSources)
@@ -236,15 +254,29 @@ void AzureKinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 			m_device.start_cameras(&newConfig);
 			cameraStarted = true;
+			calibration = m_device.get_calibration(newConfig.depth_mode, newConfig.color_resolution);
 		}
 
-		if (enabledSources & Source_ColorToDepthMapping)
+		if (enabledSources & (Source_Body | Source_ColorToDepthMapping))
 		{
 			if (!transformation || activeConfig.depth_mode != newConfig.depth_mode || activeConfig.color_resolution != newConfig.color_resolution)
-				transformation = k4a::transformation(m_device.get_calibration(newConfig.depth_mode, newConfig.color_resolution));
+				transformation = k4a::transformation(calibration);
 		}
 		else
 			transformation.reset();
+
+#if HAS_BODY_TRACKING
+		if ((enabledSources & Source_Body) && IsBodyTrackingSdkLoaded())
+		{
+			if (!bodyTracker || activeConfig.depth_mode != newConfig.depth_mode || activeConfig.color_resolution != newConfig.color_resolution)
+			{
+				bodyTracker.reset(); //< Only one body tracker can exist at a given time in a process
+				bodyTracker = k4abt::tracker::create(calibration);
+			}
+		}
+		else
+			bodyTracker.reset();
+#endif
 
 		activeConfig = newConfig;
 		enabledSourceFlags = enabledSources;
@@ -277,26 +309,72 @@ void AzureKinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 				}
 			}
 
+			if (!cameraStarted)
+			{
+				os_sleep_ms(10);
+				continue;
+			}
+
 			// Wait until a capture is available
 			k4a::capture capture;
 			m_device.get_capture(&capture);
 
 			KinectFramePtr framePtr = std::make_shared<KinectFrame>();
 			if (enabledSourceFlags & Source_Color)
-				framePtr->colorFrame = ToColorFrame(capture.get_color_image());
-
-			if (enabledSourceFlags & (Source_Depth | Source_ColorToDepthMapping))
 			{
-				k4a::image depthImage = capture.get_depth_image();
-				if (enabledSourceFlags & Source_Depth)
-					framePtr->depthFrame = ToDepthFrame(depthImage);
+				if (k4a::image colorImage = capture.get_color_image())
+					framePtr->colorFrame = ToColorFrame(colorImage);
+			}
 
-				if (enabledSourceFlags & Source_ColorToDepthMapping)
-					framePtr->mappedDepthFrame = MapDepthToColorSpace(*transformation, depthImage);
+			if (enabledSourceFlags & (Source_Body | Source_Depth | Source_ColorToDepthMapping))
+			{
+				if (k4a::image depthImage = capture.get_depth_image())
+				{
+					if (enabledSourceFlags & Source_Depth)
+						framePtr->depthFrame = ToDepthFrame(depthImage);
+
+					if (enabledSourceFlags & (Source_Body | Source_ColorToDepthMapping))
+					{
+						k4a::image mappedDepthImage;
+
+#if HAS_BODY_TRACKING
+						if ((enabledSourceFlags & Source_Body) && bodyTracker)
+						{
+							// Process bodies (TODO: Add possibility to do this asynchronously?)
+							bodyTracker->enqueue_capture(capture);
+							k4abt::frame bodyTrackingFrame = bodyTracker->pop_result();
+
+							if (bodyTrackingFrame)
+							{
+								assert(transformation);
+								if (k4a::image bodyIndexMap = bodyTrackingFrame.get_body_index_map())
+								{
+									auto [mappedDepth, mappedBodyIndexImage] = transformation->depth_image_to_color_camera_custom(depthImage, bodyIndexMap, K4A_TRANSFORMATION_INTERPOLATION_TYPE_NEAREST, K4ABT_BODY_INDEX_MAP_BACKGROUND);
+									mappedDepthImage = std::move(mappedDepth);
+
+									framePtr->bodyIndexFrame = ToBodyIndexFrame(mappedBodyIndexImage);
+								}
+
+							}
+						}
+#endif
+
+						if (enabledSourceFlags & Source_ColorToDepthMapping)
+						{
+							if (!mappedDepthImage)
+								mappedDepthImage = transformation->depth_image_to_color_camera(depthImage);
+						
+							framePtr->mappedDepthFrame = ToDepthFrame(mappedDepthImage);
+						}
+					}
+				}
 			}
 
 			if (enabledSourceFlags & Source_Infrared)
-				framePtr->infraredFrame = ToInfraredFrame(capture.get_ir_image());
+			{
+				if (k4a::image infraredImage = capture.get_ir_image())
+					framePtr->infraredFrame = ToInfraredFrame(infraredImage);
+			}
 
 			UpdateFrame(std::move(framePtr));
 		}
@@ -315,10 +393,38 @@ void AzureKinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 	infolog("exiting thread");
 }
 
-DepthFrameData AzureKinectDevice::MapDepthToColorSpace(const k4a::transformation& transformation, const k4a::image& depthImage)
+BodyIndexFrameData AzureKinectDevice::ToBodyIndexFrame(const k4a::image& image)
 {
-	k4a::image mappedDepthImage = transformation.depth_image_to_color_camera(depthImage);
-	return ToDepthFrame(mappedDepthImage);
+	constexpr std::size_t bpp = 1; //< Color is stored as R8
+
+	BodyIndexFrameData bodyIndexFrame;
+	bodyIndexFrame.width = image.get_width_pixels();
+	bodyIndexFrame.height = image.get_height_pixels();
+
+	std::size_t memSize = bodyIndexFrame.width * bodyIndexFrame.height * bpp;
+	bodyIndexFrame.memory.resize(memSize);
+	std::uint8_t* memPtr = bodyIndexFrame.memory.data();
+
+	bodyIndexFrame.ptr.reset(memPtr);
+	bodyIndexFrame.pitch = bodyIndexFrame.width * bpp;
+
+	const uint8_t* imageBuffer = image.get_buffer();
+	int imagePitch = image.get_stride_bytes();
+	if (bodyIndexFrame.pitch == imagePitch)
+		std::memcpy(memPtr, imageBuffer, bodyIndexFrame.pitch * bodyIndexFrame.height);
+	else
+	{
+		std::uint32_t bestPitch = std::min<std::uint32_t>(bodyIndexFrame.pitch, imagePitch);
+		for (std::size_t y = 0; y < bodyIndexFrame.height; ++y)
+		{
+			const std::uint8_t* input = &imageBuffer[y * imagePitch];
+			std::uint8_t* output = memPtr + y * bodyIndexFrame.pitch;
+
+			std::memcpy(output, input, bestPitch);
+		}
+	}
+
+	return bodyIndexFrame;
 }
 
 ColorFrameData AzureKinectDevice::ToColorFrame(const k4a::image& image)

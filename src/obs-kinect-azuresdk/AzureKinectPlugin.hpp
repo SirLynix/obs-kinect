@@ -21,7 +21,15 @@
 #define OBS_KINECT_PLUGIN_AZUREKINECT
 
 #include "Enums.hpp"
+#include "Helper.hpp"
 #include "KinectPluginImpl.hpp"
+
+#if __has_include(<k4abt.hpp>)
+#define HAS_BODY_TRACKING 1
+#include "AzureKinectBodyTrackingDynFuncs.hpp"
+#else
+#define HAS_BODY_TRACKING 0
+#endif
 
 class AzureKinectPlugin : public KinectPluginImpl
 {
@@ -37,6 +45,11 @@ class AzureKinectPlugin : public KinectPluginImpl
 
 		AzureKinectPlugin& operator=(const AzureKinectPlugin&) = delete;
 		AzureKinectPlugin& operator=(AzureKinectPlugin&&) = delete;
+
+	private:
+#if HAS_BODY_TRACKING
+		ObsLibPtr m_bodyTrackingLib;
+#endif
 };
 
 #endif

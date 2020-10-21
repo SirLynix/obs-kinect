@@ -54,6 +54,16 @@ AzureKinectPlugin::AzureKinectPlugin()
 #endif
 
 	k4a_set_debug_message_handler(&ErrorCallback, nullptr, logLevel);
+
+#if HAS_BODY_TRACKING
+	ObsLibPtr bodyTrackingLib(os_dlopen("k4abt"));
+
+	if (bodyTrackingLib)
+	{
+		if (LoadBodyTrackingSdk(bodyTrackingLib.get()))
+			m_bodyTrackingLib = std::move(bodyTrackingLib);
+	}
+#endif
 }
 
 AzureKinectPlugin::~AzureKinectPlugin()
