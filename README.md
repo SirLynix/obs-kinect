@@ -61,7 +61,7 @@ Download the [latest release](https://github.com/SirLynix/obs-kinect/releases) a
 - Along with obs-kinect files on GitHub you will find Azure Kinect SDK redistributables, download them and put them in your `obs-studio/bin/[32|64]bits folder`, next to obs(64) executable (the package distributed here already has the right arborescence, just copy it to obs-studio folder).  
 You can also get thoses files (possibly even a more recent version) from the [**Azure Kinect Sensor SDK**](https://docs.microsoft.com/en-us/azure/kinect-dk/sensor-sdk-download).
 
-- **To enable body filter support** you have to download [**Azure Kinect Body Tracking SDK**](https://docs.microsoft.com/en-us/azure/kinect-dk/body-sdk-download) from Microsoft and copy theses files from `Azure Kinect Body Tracking SDK\sdk\windows-desktop\amd64\release\bin` folder:
+- **To enable body filter support** you have to download [**Azure Kinect Body Tracking SDK**](https://docs.microsoft.com/en-us/azure/kinect-dk/body-sdk-download) from Microsoft and copy theses files from `Azure Kinect SDK v1.4.1\tools` folder:
    * cublas64_100.dll
    * cudart64_100.dll
    * cudnn64_7.dll
