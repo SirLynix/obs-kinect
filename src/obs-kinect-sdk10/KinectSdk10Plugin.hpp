@@ -21,14 +21,33 @@
 #define OBS_KINECT_PLUGIN_KINECTSDK10PLUGIN
 
 #include "KinectPluginImpl.hpp"
+#include "Win32Helper.hpp"
+#include <combaseapi.h>
+#include <NuiApi.h>
+
+#if __has_include(<KinectBackgroundRemoval.h>)
+#define HAS_BACKGROUND_REMOVAL 1
+#include <KinectBackgroundRemoval.h>
+#else
+#define HAS_BACKGROUND_REMOVAL 0
+#endif
+
+namespace Dyn
+{
+#if HAS_BACKGROUND_REMOVAL
+	using NuiCreateBackgroundRemovedColorStreamPtr = decltype(&::NuiCreateBackgroundRemovedColorStream);
+
+	extern NuiCreateBackgroundRemovedColorStreamPtr NuiCreateBackgroundRemovedColorStream;
+#endif
+}
 
 class KinectSdk10Plugin : public KinectPluginImpl
 {
 	public:
-		KinectSdk10Plugin() = default;
+		KinectSdk10Plugin();
 		KinectSdk10Plugin(const KinectSdk10Plugin&) = delete;
 		KinectSdk10Plugin(KinectSdk10Plugin&&) = delete;
-		~KinectSdk10Plugin() = default;
+		~KinectSdk10Plugin();
 
 		std::string GetUniqueName() const override;
 
@@ -36,6 +55,11 @@ class KinectSdk10Plugin : public KinectPluginImpl
 
 		KinectSdk10Plugin& operator=(const KinectSdk10Plugin&) = delete;
 		KinectSdk10Plugin& operator=(KinectSdk10Plugin&&) = delete;
+
+	private:
+#if HAS_BACKGROUND_REMOVAL
+		ObsLibPtr m_backgroundRemovalLib;
+#endif
 };
 
 #endif

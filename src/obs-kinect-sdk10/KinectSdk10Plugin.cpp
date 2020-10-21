@@ -18,6 +18,29 @@
 #include "KinectSdk10Plugin.hpp"
 #include "KinectSdk10Device.hpp"
 
+KinectSdk10Plugin::KinectSdk10Plugin()
+{
+#if HAS_BACKGROUND_REMOVAL
+#ifdef _WIN64
+	m_backgroundRemovalLib.reset(os_dlopen("KinectBackgroundRemoval180_64"));
+#else
+	m_backgroundRemovalLib.reset(os_dlopen("KinectBackgroundRemoval180_32"));
+#endif
+
+	if (m_backgroundRemovalLib)
+		Dyn::NuiCreateBackgroundRemovedColorStream = reinterpret_cast<Dyn::NuiCreateBackgroundRemovedColorStreamPtr>(os_dlsym(m_backgroundRemovalLib.get(), "NuiCreateBackgroundRemovedColorStream"));
+	else
+		Dyn::NuiCreateBackgroundRemovedColorStream = nullptr;
+#endif
+}
+
+KinectSdk10Plugin::~KinectSdk10Plugin()
+{
+#if HAS_BACKGROUND_REMOVAL
+	Dyn::NuiCreateBackgroundRemovedColorStream = nullptr;
+#endif
+}
+
 std::string KinectSdk10Plugin::GetUniqueName() const
 {
 	return "KinectV1";
@@ -50,4 +73,11 @@ std::vector<std::unique_ptr<KinectDevice>> KinectSdk10Plugin::Refresh() const
 	}
 
 	return devices;
+}
+
+namespace Dyn
+{
+#if HAS_BACKGROUND_REMOVAL
+	NuiCreateBackgroundRemovedColorStreamPtr NuiCreateBackgroundRemovedColorStream = nullptr;
+#endif
 }

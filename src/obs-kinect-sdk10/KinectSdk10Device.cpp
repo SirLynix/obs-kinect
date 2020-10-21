@@ -162,20 +162,8 @@ m_hasColorSettings(false)
 	SourceFlags supportedSources = Source_Body | Source_Color | Source_ColorToDepthMapping | Source_Depth | Source_Infrared;
 
 #if HAS_BACKGROUND_REMOVAL
-#ifdef _WIN64
-	m_backgroundRemovalLib.reset(os_dlopen("KinectBackgroundRemoval180_64"));
-#else
-	m_backgroundRemovalLib.reset(os_dlopen("KinectBackgroundRemoval180_32"));
-#endif
-
-	if (m_backgroundRemovalLib)
-	{
-		m_NuiCreateBackgroundRemovedColorStream = reinterpret_cast<NuiCreateBackgroundRemovedColorStreamPtr>(os_dlsym(m_backgroundRemovalLib.get(), "NuiCreateBackgroundRemovedColorStream"));
-
+	if (Dyn::NuiCreateBackgroundRemovedColorStream)
 		supportedSources |= Source_BackgroundRemoval;
-	}
-	else
-		m_NuiCreateBackgroundRemovedColorStream = nullptr;
 #endif
 
 	SetSupportedSources(supportedSources);
@@ -380,7 +368,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 #if HAS_BACKGROUND_REMOVAL
 	HandlePtr backgroundRemovalEvent;
 	HandlePtr skeletonEvent;
-	if (m_NuiCreateBackgroundRemovedColorStream)
+	if (Dyn::NuiCreateBackgroundRemovedColorStream)
 	{
 		backgroundRemovalEvent.reset(CreateEvent(nullptr, TRUE, FALSE, nullptr));
 		skeletonEvent.reset(CreateEvent(nullptr, TRUE, FALSE, nullptr));
@@ -491,14 +479,14 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 			ResetEvent(skeletonEvent.get());
 			ResetEvent(backgroundRemovalEvent.get());
 
-			if (enabledSources & Source_BackgroundRemoval && m_NuiCreateBackgroundRemovedColorStream)
+			if (enabledSources & Source_BackgroundRemoval && Dyn::NuiCreateBackgroundRemovedColorStream)
 			{
 				hr = m_kinectSensor->NuiSkeletonTrackingEnable(skeletonEvent.get(), NUI_SKELETON_TRACKING_FLAG_ENABLE_IN_NEAR_RANGE);
 				if (FAILED(hr))
 					throw std::runtime_error("failed to enable skeleton tracking: " + ErrToString(hr));
 
 				INuiBackgroundRemovedColorStream* backgroundRemovedColorStream;
-				hr = m_NuiCreateBackgroundRemovedColorStream(m_kinectSensor.get(), &backgroundRemovedColorStream);
+				hr = Dyn::NuiCreateBackgroundRemovedColorStream(m_kinectSensor.get(), &backgroundRemovedColorStream);
 				if (FAILED(hr))
 					throw std::runtime_error("failed to create background removing stream: " + ErrToString(hr));
 

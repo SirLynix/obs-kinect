@@ -21,17 +21,8 @@
 #define OBS_KINECT_PLUGIN_KINECTDEVICESDK10
 
 #include "KinectDevice.hpp"
-#include "Win32Helper.hpp"
-#include <combaseapi.h>
-#include <NuiApi.h>
+#include "KinectSdk10Plugin.hpp"
 #include <functional>
-
-#if __has_include(<KinectBackgroundRemoval.h>)
-#define HAS_BACKGROUND_REMOVAL 1
-#include <KinectBackgroundRemoval.h>
-#else
-#define HAS_BACKGROUND_REMOVAL 0
-#endif
 
 class KinectSdk10Device final : public KinectDevice
 {
@@ -67,15 +58,11 @@ class KinectSdk10Device final : public KinectDevice
 		static void ExtractDepth(DepthFrameData& depthFrame);
 
 #if HAS_BACKGROUND_REMOVAL
-		using NuiCreateBackgroundRemovedColorStreamPtr = decltype(&NuiCreateBackgroundRemovedColorStream);
-
-		NuiCreateBackgroundRemovedColorStreamPtr m_NuiCreateBackgroundRemovedColorStream;
 		DWORD m_trackedSkeleton;
 #endif
 		ReleasePtr<INuiColorCameraSettings> m_cameraSettings;
 		ReleasePtr<INuiCoordinateMapper> m_coordinateMapper;
 		ReleasePtr<INuiSensor> m_kinectSensor;
-		ObsLibPtr m_backgroundRemovalLib;
 		HandlePtr m_elevationUpdateEvent;
 		HandlePtr m_exitElevationThreadEvent;
 		std::atomic_bool m_kinectHighRes;
