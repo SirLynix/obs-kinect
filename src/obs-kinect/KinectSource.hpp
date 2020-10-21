@@ -27,6 +27,7 @@
 #include "GaussianBlurEffect.hpp"
 #include "GreenScreenFilterEffect.hpp"
 #include "KinectDeviceAccess.hpp"
+#include "TextureLerpEffect.hpp"
 #include <obs-module.h>
 #include <atomic>
 #include <condition_variable>
@@ -79,6 +80,13 @@ class KinectSource
 			Depth = 1            //< Requires Source_Depth (| Source_ColorToDepthMapping if color source is used)
 		};
 
+		enum class GreenScreenEffect
+		{
+			RemoveBackground = 0,
+			BlurBackground   = 1,
+			BlurForeground   = 2
+		};
+
 		enum class SourceType
 		{
 			Color = 0,   //< Requires Source_Color
@@ -95,9 +103,11 @@ class KinectSource
 
 		struct GreenScreenSettings
 		{
+			GreenScreenEffect effectType = GreenScreenEffect::BlurBackground;
 			GreenScreenFilterType filterType = GreenScreenFilterType::Depth;
 			bool enabled = true;
 			bool gpuDepthMapping = true;
+			std::size_t backgroundBlurPassCount = 10;
 			std::size_t blurPassCount = 3;
 			std::uint16_t depthMax = 1200;
 			std::uint16_t depthMin = 1;
@@ -136,12 +146,14 @@ class KinectSource
 		std::vector<std::uint8_t> m_depthMappingDirtyCounter;
 		AlphaMaskEffect m_alphaMaskFilter;
 		ConvertDepthIRToColorEffect m_depthIRConvertEffect;
-		GaussianBlurEffect m_gaussianBlur;
+		GaussianBlurEffect m_backgroundBlur;
+		GaussianBlurEffect m_filterBlur;
 		GreenScreenFilterEffect m_greenScreenFilterEffect;
 		ObserverPtr<gs_texture_t> m_finalTexture;
 		DepthToColorSettings m_depthToColorSettings;
 		GreenScreenSettings m_greenScreenSettings;
 		InfraredToColorSettings m_infraredToColorSettings;
+		TextureLerpEffect m_textureLerpEffect;
 		KinectDeviceRegistry& m_registry;
 		ObsTexturePtr m_backgroundRemovalTexture;
 		ObsTexturePtr m_bodyIndexTexture;

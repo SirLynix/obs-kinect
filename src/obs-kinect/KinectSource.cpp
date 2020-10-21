@@ -25,7 +25,8 @@
 #include <optional>
 
 KinectSource::KinectSource(KinectDeviceRegistry& registry, const obs_source_t* source) :
-m_gaussianBlur(GS_RGBA),
+m_backgroundBlur(GS_RGBA),
+m_filterBlur(GS_RGBA),
 m_registry(registry),
 m_sourceType(SourceType::Color),
 m_source(source),
@@ -514,13 +515,36 @@ void KinectSource::Update(float /*seconds*/)
 					return;
 
 				if (m_greenScreenSettings.blurPassCount > 0)
-					filterTexture = m_gaussianBlur.Blur(filterTexture, m_greenScreenSettings.blurPassCount);
+					filterTexture = m_filterBlur.Blur(filterTexture, m_greenScreenSettings.blurPassCount);
 			}
 
+			switch (m_greenScreenSettings.effectType)
+			{
+				case GreenScreenEffect::BlurBackground:
+				case GreenScreenEffect::BlurForeground:
+				{
+					if (m_greenScreenSettings.backgroundBlurPassCount > 0)
+					{
+						gs_texture_t* blurredBackground = m_backgroundBlur.Blur(sourceTexture, m_greenScreenSettings.backgroundBlurPassCount);
+						gs_texture_t* from = blurredBackground;
+						gs_texture_t* to = sourceTexture;
+						if (m_greenScreenSettings.effectType == GreenScreenEffect::BlurForeground)
+							std::swap(from, to);
 
-			gs_texture_t* filteredTexture = m_alphaMaskFilter.Filter(sourceTexture, filterTexture);
+						m_finalTexture.reset(m_textureLerpEffect.Lerp(from, to, filterTexture));
+					}
+					else
+						m_finalTexture.reset(sourceTexture);
+					break;
+				}
 
-			m_finalTexture.reset(filteredTexture);
+				case GreenScreenEffect::RemoveBackground:
+				{
+					m_finalTexture.reset(m_alphaMaskFilter.Filter(sourceTexture, filterTexture));
+					break;
+				}
+			}
+
 		}
 		else
 			m_finalTexture.reset(sourceTexture);
