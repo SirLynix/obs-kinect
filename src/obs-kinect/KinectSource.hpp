@@ -43,7 +43,7 @@ class KinectSource
 	friend KinectDeviceRegistry;
 
 	public:
-		enum class GreenScreenType;
+		enum class GreenScreenFilterType;
 		enum class SourceType;
 		struct DepthToColorSettings;
 		struct GreenScreenSettings;
@@ -70,7 +70,7 @@ class KinectSource
 		void UpdateGreenScreen(GreenScreenSettings greenScreen);
 		void UpdateInfraredToColor(InfraredToColorSettings infraredToColor);
 
-		enum class GreenScreenType
+		enum class GreenScreenFilterType
 		{
 			Body = 0,            //< Requires Source_Body (| Source_ColorToDepthMapping if color source is used)
 			BodyOrDepth = 2,     //< Requires Source_Body | Source_Depth (| Source_ColorToDepthMapping if color source is used)
@@ -95,7 +95,7 @@ class KinectSource
 
 		struct GreenScreenSettings
 		{
-			GreenScreenType type = GreenScreenType::Depth;
+			GreenScreenFilterType filterType = GreenScreenFilterType::Depth;
 			bool enabled = true;
 			bool gpuDepthMapping = true;
 			std::size_t blurPassCount = 3;
@@ -112,8 +112,8 @@ class KinectSource
 			float standardDeviation = 3.f;
 		};
 
-		static bool DoesRequireBodyFrame(GreenScreenType greenscreenType);
-		static bool DoesRequireDepthFrame(GreenScreenType greenscreenType);
+		static bool DoesRequireBodyFrame(GreenScreenFilterType greenscreenType);
+		static bool DoesRequireDepthFrame(GreenScreenFilterType greenscreenType);
 
 	private:
 		struct DynamicValues
