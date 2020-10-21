@@ -326,7 +326,7 @@ Nope, and I doubt it will as theses are the only depth camera I have, but it sho
 
 ## Thanks
 
-Thanks a lot to @microsoft for supporting obs-kinect developpment by sending me an Azure Kinect so I could make it work with it!
+Thanks a lot to @microsoft for supporting obs-kinect developpment by sending me an Azure Kinect so I could add support for it!
 
 Thanks to @pucgenie and @saphir1997 for the german translation.
 Thanks to @Liskowskyy for the polish translation.
