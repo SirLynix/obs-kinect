@@ -20,7 +20,7 @@
 
 std::string KinectSdk20Plugin::GetUniqueName() const
 {
-	return "KinectSDK2.0";
+	return "KinectV2";
 }
 
 std::vector<std::unique_ptr<KinectDevice>> KinectSdk20Plugin::Refresh() const
