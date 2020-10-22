@@ -22,12 +22,12 @@
 
 #include "Enums.hpp"
 #include "Helper.hpp"
-#include "AlphaMaskEffect.hpp"
-#include "ConvertDepthIRToColorEffect.hpp"
-#include "GaussianBlurEffect.hpp"
-#include "GreenScreenFilterEffect.hpp"
 #include "KinectDeviceAccess.hpp"
-#include "TextureLerpEffect.hpp"
+#include "ShaderEffects/AlphaMaskEffect.hpp"
+#include "ShaderEffects/ConvertDepthIRToColorEffect.hpp"
+#include "ShaderEffects/GaussianBlurEffect.hpp"
+#include "ShaderEffects/GreenScreenFilterEffect.hpp"
+#include "ShaderEffects/TextureLerpEffect.hpp"
 #include <obs-module.h>
 #include <atomic>
 #include <condition_variable>
