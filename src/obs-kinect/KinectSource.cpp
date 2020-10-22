@@ -461,7 +461,7 @@ void KinectSource::Update(float /*seconds*/)
 				{
 					case GreenScreenFilterType::Body:
 					{
-						GreenScreenFilterEffect::BodyFilterParams filterParams;
+						GreenScreenFilterShader::BodyFilterParams filterParams;
 						filterParams.bodyIndexTexture = bodyIndexTexture;
 						filterParams.colorToDepthTexture = depthMappingTexture;
 
@@ -471,7 +471,7 @@ void KinectSource::Update(float /*seconds*/)
 
 					case GreenScreenFilterType::BodyOrDepth:
 					{
-						GreenScreenFilterEffect::BodyOrDepthFilterParams filterParams;
+						GreenScreenFilterShader::BodyOrDepthFilterParams filterParams;
 						filterParams.bodyIndexTexture = bodyIndexTexture;
 						filterParams.colorToDepthTexture = depthMappingTexture;
 						filterParams.depthTexture = depthTexture;
@@ -485,7 +485,7 @@ void KinectSource::Update(float /*seconds*/)
 
 					case GreenScreenFilterType::BodyWithinDepth:
 					{
-						GreenScreenFilterEffect::BodyWithinDepthFilterParams filterParams;
+						GreenScreenFilterShader::BodyWithinDepthFilterParams filterParams;
 						filterParams.bodyIndexTexture = bodyIndexTexture;
 						filterParams.colorToDepthTexture = depthMappingTexture;
 						filterParams.depthTexture = depthTexture;
@@ -499,7 +499,7 @@ void KinectSource::Update(float /*seconds*/)
 
 					case GreenScreenFilterType::Depth:
 					{
-						GreenScreenFilterEffect::DepthFilterParams filterParams;
+						GreenScreenFilterShader::DepthFilterParams filterParams;
 						filterParams.colorToDepthTexture = depthMappingTexture;
 						filterParams.depthTexture = depthTexture;
 						filterParams.maxDepth = m_greenScreenSettings.depthMax;

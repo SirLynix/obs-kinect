@@ -15,12 +15,12 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "GreenScreenFilterEffect.hpp"
+#include "GreenScreenFilterShader.hpp"
 #include "Helper.hpp"
 #include <string>
 #include <stdexcept>
 
-GreenScreenFilterEffect::GreenScreenFilterEffect()
+GreenScreenFilterShader::GreenScreenFilterShader()
 {
 	ObsMemoryPtr<char> effectFilename(obs_module_file("greenscreen_filter.effect"));
 
@@ -63,7 +63,7 @@ GreenScreenFilterEffect::GreenScreenFilterEffect()
 	}
 }
 
-GreenScreenFilterEffect::~GreenScreenFilterEffect()
+GreenScreenFilterShader::~GreenScreenFilterShader()
 {
 	ObsGraphics gfx;
 
@@ -71,7 +71,7 @@ GreenScreenFilterEffect::~GreenScreenFilterEffect()
 	gs_texrender_destroy(m_workTexture);
 }
 
-gs_texture_t* GreenScreenFilterEffect::Filter(std::uint32_t width, std::uint32_t height, const BodyFilterParams& params)
+gs_texture_t* GreenScreenFilterShader::Filter(std::uint32_t width, std::uint32_t height, const BodyFilterParams& params)
 {
 	if (!Begin(width, height))
 		return nullptr;
@@ -83,7 +83,7 @@ gs_texture_t* GreenScreenFilterEffect::Filter(std::uint32_t width, std::uint32_t
 	return Process(width, height, technique);
 }
 
-gs_texture_t* GreenScreenFilterEffect::Filter(std::uint32_t width, std::uint32_t height, const BodyOrDepthFilterParams& params)
+gs_texture_t* GreenScreenFilterShader::Filter(std::uint32_t width, std::uint32_t height, const BodyOrDepthFilterParams& params)
 {
 	if (!Begin(width, height))
 		return nullptr;
@@ -96,7 +96,7 @@ gs_texture_t* GreenScreenFilterEffect::Filter(std::uint32_t width, std::uint32_t
 	return Process(width, height, technique);
 }
 
-gs_texture_t* GreenScreenFilterEffect::Filter(std::uint32_t width, std::uint32_t height, const BodyWithinDepthFilterParams& params)
+gs_texture_t* GreenScreenFilterShader::Filter(std::uint32_t width, std::uint32_t height, const BodyWithinDepthFilterParams& params)
 {
 	if (!Begin(width, height))
 		return nullptr;
@@ -109,7 +109,7 @@ gs_texture_t* GreenScreenFilterEffect::Filter(std::uint32_t width, std::uint32_t
 	return Process(width, height, technique);
 }
 
-gs_texture_t* GreenScreenFilterEffect::Filter(std::uint32_t width, std::uint32_t height, const DepthFilterParams& params)
+gs_texture_t* GreenScreenFilterShader::Filter(std::uint32_t width, std::uint32_t height, const DepthFilterParams& params)
 {
 	if (!Begin(width, height))
 		return nullptr;
@@ -121,7 +121,7 @@ gs_texture_t* GreenScreenFilterEffect::Filter(std::uint32_t width, std::uint32_t
 	return Process(width, height, technique);
 }
 
-bool GreenScreenFilterEffect::Begin(std::uint32_t width, std::uint32_t height)
+bool GreenScreenFilterShader::Begin(std::uint32_t width, std::uint32_t height)
 {
 	gs_texrender_reset(m_workTexture);
 	if (!gs_texrender_begin(m_workTexture, width, height))
@@ -134,7 +134,7 @@ bool GreenScreenFilterEffect::Begin(std::uint32_t width, std::uint32_t height)
 	return true;
 }
 
-gs_texture* GreenScreenFilterEffect::Process(std::uint32_t width, std::uint32_t height, gs_technique_t* technique)
+gs_texture* GreenScreenFilterShader::Process(std::uint32_t width, std::uint32_t height, gs_technique_t* technique)
 {
 	gs_technique_begin(technique);
 	gs_technique_begin_pass(technique, 0);

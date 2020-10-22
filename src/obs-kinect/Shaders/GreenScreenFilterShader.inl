@@ -15,10 +15,10 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "GreenScreenFilterEffect.hpp"
+#include "GreenScreenFilterShader.hpp"
 
 template<typename Params>
-void GreenScreenFilterEffect::SetBodyParams(const Params& params)
+void GreenScreenFilterShader::SetBodyParams(const Params& params)
 {
 	std::uint32_t bodyIndexWidth = gs_texture_get_width(params.bodyIndexTexture);
 	std::uint32_t bodyIndexHeight = gs_texture_get_height(params.bodyIndexTexture);
@@ -31,7 +31,7 @@ void GreenScreenFilterEffect::SetBodyParams(const Params& params)
 }
 
 template<typename Params>
-void GreenScreenFilterEffect::SetDepthParams(const Params& params)
+void GreenScreenFilterShader::SetDepthParams(const Params& params)
 {
 	std::uint32_t depthWidth = gs_texture_get_width(params.depthTexture);
 	std::uint32_t depthHeight = gs_texture_get_height(params.depthTexture);

@@ -17,13 +17,13 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_GREENSCREENFILTEREFFECT
-#define OBS_KINECT_PLUGIN_GREENSCREENFILTEREFFECT
+#ifndef OBS_KINECT_PLUGIN_GREENSCREENFILTERSHADER
+#define OBS_KINECT_PLUGIN_GREENSCREENFILTERSHADER
 
 #include <obs-module.h>
 #include <cstdint>
 
-class GreenScreenFilterEffect
+class GreenScreenFilterShader
 {
 	public:
 		struct BodyFilterParams;
@@ -31,8 +31,8 @@ class GreenScreenFilterEffect
 		struct BodyOrDepthFilterParams;
 		struct BodyWithinDepthFilterParams;
 
-		GreenScreenFilterEffect();
-		~GreenScreenFilterEffect();
+		GreenScreenFilterShader();
+		~GreenScreenFilterShader();
 
 		gs_texture_t* Filter(std::uint32_t width, std::uint32_t height, const BodyFilterParams& params);
 		gs_texture_t* Filter(std::uint32_t width, std::uint32_t height, const BodyOrDepthFilterParams& params);
@@ -99,6 +99,6 @@ class GreenScreenFilterEffect
 		gs_texrender_t* m_workTexture;
 };
 
-#include "GreenScreenFilterEffect.inl"
+#include "GreenScreenFilterShader.inl"
 
 #endif

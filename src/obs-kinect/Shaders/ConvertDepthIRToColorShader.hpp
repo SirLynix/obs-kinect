@@ -17,25 +17,24 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_TEXTURELERPEFFECT
-#define OBS_KINECT_PLUGIN_TEXTURELERPEFFECT
+#ifndef OBS_KINECT_PLUGIN_CONVERTDEPTHIRTOCOLORSHADER
+#define OBS_KINECT_PLUGIN_CONVERTDEPTHIRTOCOLORSHADER
 
 #include <obs-module.h>
-#include <cstddef>
+#include <cstdint>
 
-class TextureLerpEffect
+class ConvertDepthIRToColorShader
 {
 	public:
-		TextureLerpEffect();
-		~TextureLerpEffect();
+		ConvertDepthIRToColorShader();
+		~ConvertDepthIRToColorShader();
 
-		gs_texture_t* Lerp(gs_texture_t* from, gs_texture_t* to, gs_texture_t* factor);
+		gs_texture_t* Convert(std::uint32_t width, std::uint32_t height, gs_texture_t* source, float averageValue, float standardDeviation);
 
 	private:
 		gs_effect_t* m_effect;
-		gs_eparam_t* m_params_FactorImage;
-		gs_eparam_t* m_params_FromImage;
-		gs_eparam_t* m_params_ToImage;
+		gs_eparam_t* m_params_ColorImage;
+		gs_eparam_t* m_params_ColorMultiplier;
 		gs_technique_t* m_tech_Draw;
 		gs_texrender_t* m_workTexture;
 };
