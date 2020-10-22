@@ -196,7 +196,7 @@ void KinectSource::Update(float /*seconds*/)
 
 		bool softwareDepthMapping = (!m_greenScreenSettings.gpuDepthMapping || m_greenScreenSettings.maxDirtyDepth > 0);
 
-		if ((m_greenScreenSettings.enabled && DoesRequireDepthFrame(m_greenScreenSettings.type) && !softwareDepthMapping) || m_sourceType == SourceType::Depth)
+		if ((m_greenScreenSettings.enabled && DoesRequireDepthFrame(m_greenScreenSettings.filterType) && !softwareDepthMapping) || m_sourceType == SourceType::Depth)
 		{
 			if (!frameData->depthFrame)
 				return;
@@ -316,7 +316,7 @@ void KinectSource::Update(float /*seconds*/)
 				{
 					const DepthMappingFrameData& depthMappingFrame = *frameData->depthMappingFrame;
 
-					if (DoesRequireBodyFrame(m_greenScreenSettings.filterType))
+					if (softwareDepthMapping)
 					{
 						if (!frameData->colorFrame || !frameData->depthFrame)
 							return;
@@ -370,7 +370,7 @@ void KinectSource::Update(float /*seconds*/)
 						depthMappingTexture = nullptr;
 						depthTexture = m_depthMappingTexture.get();
 
-						if (DoesRequireBodyFrame(m_greenScreenSettings.type))
+						if (DoesRequireBodyFrame(m_greenScreenSettings.filterType))
 						{
 							if (!frameData->bodyIndexFrame)
 								return;
