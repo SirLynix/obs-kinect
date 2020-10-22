@@ -17,17 +17,17 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_ALPHAMASKEFFECT
-#define OBS_KINECT_PLUGIN_ALPHAMASKEFFECT
+#ifndef OBS_KINECT_PLUGIN_ALPHAMASKSHADER
+#define OBS_KINECT_PLUGIN_ALPHAMASKSHADER
 
 #include <obs-module.h>
 #include <cstddef>
 
-class AlphaMaskEffect
+class AlphaMaskShader
 {
 	public:
-		AlphaMaskEffect();
-		~AlphaMaskEffect();
+		AlphaMaskShader();
+		~AlphaMaskShader();
 
 		gs_texture_t* Filter(gs_texture_t* color, gs_texture_t* mask);
 

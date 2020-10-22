@@ -22,12 +22,12 @@
 
 #include "Enums.hpp"
 #include "Helper.hpp"
-#include "AlphaMaskEffect.hpp"
-#include "ConvertDepthIRToColorEffect.hpp"
-#include "GaussianBlurEffect.hpp"
-#include "GreenScreenFilterEffect.hpp"
 #include "KinectDeviceAccess.hpp"
-#include "TextureLerpEffect.hpp"
+#include "Shaders/AlphaMaskShader.hpp"
+#include "Shaders/ConvertDepthIRToColorShader.hpp"
+#include "Shaders/GaussianBlurShader.hpp"
+#include "Shaders/GreenScreenFilterShader.hpp"
+#include "Shaders/TextureLerpShader.hpp"
 #include <obs-module.h>
 #include <atomic>
 #include <condition_variable>
@@ -144,16 +144,16 @@ class KinectSource
 		std::vector<std::uint8_t> m_bodyMappingDirtyCounter;
 		std::vector<std::uint8_t> m_depthMappingMemory;
 		std::vector<std::uint8_t> m_depthMappingDirtyCounter;
-		AlphaMaskEffect m_alphaMaskFilter;
-		ConvertDepthIRToColorEffect m_depthIRConvertEffect;
-		GaussianBlurEffect m_backgroundBlur;
-		GaussianBlurEffect m_filterBlur;
-		GreenScreenFilterEffect m_greenScreenFilterEffect;
+		AlphaMaskShader m_alphaMaskFilter;
+		ConvertDepthIRToColorShader m_depthIRConvertEffect;
+		GaussianBlurShader m_backgroundBlur;
+		GaussianBlurShader m_filterBlur;
+		GreenScreenFilterShader m_greenScreenFilterEffect;
 		ObserverPtr<gs_texture_t> m_finalTexture;
 		DepthToColorSettings m_depthToColorSettings;
 		GreenScreenSettings m_greenScreenSettings;
 		InfraredToColorSettings m_infraredToColorSettings;
-		TextureLerpEffect m_textureLerpEffect;
+		TextureLerpShader m_textureLerpEffect;
 		KinectDeviceRegistry& m_registry;
 		ObsTexturePtr m_backgroundRemovalTexture;
 		ObsTexturePtr m_bodyIndexTexture;

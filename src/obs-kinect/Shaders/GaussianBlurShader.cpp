@@ -15,12 +15,12 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "GaussianBlurEffect.hpp"
+#include "GaussianBlurShader.hpp"
 #include "Helper.hpp"
 #include <string>
 #include <stdexcept>
 
-GaussianBlurEffect::GaussianBlurEffect(gs_color_format colorFormat)
+GaussianBlurShader::GaussianBlurShader(gs_color_format colorFormat)
 {
 	ObsMemoryPtr<char> effectFilename(obs_module_file("gaussian_blur.effect"));
 
@@ -49,7 +49,7 @@ GaussianBlurEffect::GaussianBlurEffect(gs_color_format colorFormat)
 	}
 }
 
-GaussianBlurEffect::~GaussianBlurEffect()
+GaussianBlurShader::~GaussianBlurShader()
 {
 	ObsGraphics gfx;
 
@@ -58,7 +58,7 @@ GaussianBlurEffect::~GaussianBlurEffect()
 	gs_texrender_destroy(m_workTextureB);
 }
 
-gs_texture_t* GaussianBlurEffect::Blur(gs_texture_t* source, std::size_t count)
+gs_texture_t* GaussianBlurShader::Blur(gs_texture_t* source, std::size_t count)
 {
 	std::uint32_t width = gs_texture_get_width(source);
 	std::uint32_t height = gs_texture_get_height(source);

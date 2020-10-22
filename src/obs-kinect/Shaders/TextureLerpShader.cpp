@@ -15,12 +15,12 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "TextureLerpEffect.hpp"
+#include "TextureLerpShader.hpp"
 #include "Helper.hpp"
 #include <string>
 #include <stdexcept>
 
-TextureLerpEffect::TextureLerpEffect()
+TextureLerpShader::TextureLerpShader()
 {
 	ObsMemoryPtr<char> effectFilename(obs_module_file("texture_lerp.effect"));
 
@@ -48,7 +48,7 @@ TextureLerpEffect::TextureLerpEffect()
 	}
 }
 
-TextureLerpEffect::~TextureLerpEffect()
+TextureLerpShader::~TextureLerpShader()
 {
 	ObsGraphics gfx;
 
@@ -56,7 +56,7 @@ TextureLerpEffect::~TextureLerpEffect()
 	gs_texrender_destroy(m_workTexture);
 }
 
-gs_texture_t* TextureLerpEffect::Lerp(gs_texture_t* from, gs_texture_t* to, gs_texture_t* factor)
+gs_texture_t* TextureLerpShader::Lerp(gs_texture_t* from, gs_texture_t* to, gs_texture_t* factor)
 {
 	std::uint32_t colorWidth = std::max(gs_texture_get_width(from), gs_texture_get_width(to));
 	std::uint32_t colorHeight = std::max(gs_texture_get_height(from), gs_texture_get_height(to));

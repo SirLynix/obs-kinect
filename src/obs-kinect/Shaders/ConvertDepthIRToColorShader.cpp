@@ -15,14 +15,14 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "AlphaMaskEffect.hpp"
+#include "ConvertDepthIRToColorShader.hpp"
 #include "Helper.hpp"
 #include <string>
 #include <stdexcept>
 
-AlphaMaskEffect::AlphaMaskEffect()
+ConvertDepthIRToColorShader::ConvertDepthIRToColorShader()
 {
-	ObsMemoryPtr<char> effectFilename(obs_module_file("alpha_mask.effect"));
+	ObsMemoryPtr<char> effectFilename(obs_module_file("color_multiplier.effect"));
 
 	ObsGraphics gfx;
 
@@ -33,7 +33,7 @@ AlphaMaskEffect::AlphaMaskEffect()
 	if (m_effect)
 	{
 		m_params_ColorImage = gs_effect_get_param_by_name(m_effect, "ColorImage");
-		m_params_MaskImage = gs_effect_get_param_by_name(m_effect, "MaskImage");
+		m_params_ColorMultiplier = gs_effect_get_param_by_name(m_effect, "ColorMultiplier");
 		m_tech_Draw = gs_effect_get_technique(m_effect, "Draw");
 
 		m_workTexture = gs_texrender_create(GS_RGBA, GS_ZS_NONE);
@@ -47,7 +47,7 @@ AlphaMaskEffect::AlphaMaskEffect()
 	}
 }
 
-AlphaMaskEffect::~AlphaMaskEffect()
+ConvertDepthIRToColorShader::~ConvertDepthIRToColorShader()
 {
 	ObsGraphics gfx;
 
@@ -55,25 +55,22 @@ AlphaMaskEffect::~AlphaMaskEffect()
 	gs_texrender_destroy(m_workTexture);
 }
 
-gs_texture_t* AlphaMaskEffect::Filter(gs_texture_t* color, gs_texture_t* mask)
+gs_texture_t* ConvertDepthIRToColorShader::Convert(std::uint32_t width, std::uint32_t height, gs_texture_t* source, float averageValue, float standardDeviation)
 {
-	std::uint32_t colorWidth = gs_texture_get_width(color);
-	std::uint32_t colorHeight = gs_texture_get_height(color);
-
 	gs_texrender_reset(m_workTexture);
-	if (!gs_texrender_begin(m_workTexture, colorWidth, colorHeight))
+	if (!gs_texrender_begin(m_workTexture, width, height))
 		return nullptr;
 
 	vec4 black = { 0.f, 0.f, 0.f, 0.f };
 	gs_clear(GS_CLEAR_COLOR, &black, 0.f, 0);
-	gs_ortho(0.0f, float(colorWidth), 0.0f, float(colorHeight), -100.0f, 100.0f);
+	gs_ortho(0.0f, float(width), 0.0f, float(height), -100.0f, 100.0f);
 
-	gs_effect_set_texture(m_params_ColorImage, color);
-	gs_effect_set_texture(m_params_MaskImage, mask);
+	gs_effect_set_texture(m_params_ColorImage, source);
+	gs_effect_set_float(m_params_ColorMultiplier, float(1.0 / (double(averageValue) * double(standardDeviation))));
 
 	gs_technique_begin(m_tech_Draw);
 	gs_technique_begin_pass(m_tech_Draw, 0);
-	gs_draw_sprite(nullptr, 0, colorWidth, colorHeight);
+	gs_draw_sprite(nullptr, 0, width, height);
 	gs_technique_end_pass(m_tech_Draw);
 	gs_technique_end(m_tech_Draw);
 

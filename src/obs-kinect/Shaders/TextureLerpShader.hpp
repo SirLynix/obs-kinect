@@ -17,28 +17,27 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_GAUSSIANBLUREFFECT
-#define OBS_KINECT_PLUGIN_GAUSSIANBLUREFFECT
+#ifndef OBS_KINECT_PLUGIN_TEXTURELERPSHADER
+#define OBS_KINECT_PLUGIN_TEXTURELERPSHADER
 
 #include <obs-module.h>
 #include <cstddef>
 
-class GaussianBlurEffect
+class TextureLerpShader
 {
 	public:
-		GaussianBlurEffect(gs_color_format colorFormat);
-		~GaussianBlurEffect();
+		TextureLerpShader();
+		~TextureLerpShader();
 
-		gs_texture_t* Blur(gs_texture_t* source, std::size_t count);
+		gs_texture_t* Lerp(gs_texture_t* from, gs_texture_t* to, gs_texture_t* factor);
 
 	private:
 		gs_effect_t* m_effect;
-		gs_eparam_t* m_blurEffect_Filter;
-		gs_eparam_t* m_blurEffect_Image;
-		gs_eparam_t* m_blurEffect_InvImageSize;
-		gs_technique_t* m_blurEffect_DrawTech;
-		gs_texrender_t* m_workTextureA;
-		gs_texrender_t* m_workTextureB;
+		gs_eparam_t* m_params_FactorImage;
+		gs_eparam_t* m_params_FromImage;
+		gs_eparam_t* m_params_ToImage;
+		gs_technique_t* m_tech_Draw;
+		gs_texrender_t* m_workTexture;
 };
 
 #endif

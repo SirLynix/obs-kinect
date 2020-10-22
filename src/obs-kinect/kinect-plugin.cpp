@@ -373,10 +373,11 @@ static obs_properties_t* kinect_source_properties(void *unused)
 	p = obs_properties_add_int_slider(greenscreenProps, "greenscreen_mindist", obs_module_text("ObsKinect.GreenScreenMinDist"), 0, 10000, 10);
 	obs_property_int_set_suffix(p, obs_module_text("ObsKinect.GreenScreenDistUnit"));
 
-	p = obs_properties_add_int_slider(greenscreenProps, "greenscreen_fadedist", obs_module_text("ObsKinect.GreenScreenFadeDist"), 0, 200, 1);
+	p = obs_properties_add_int_slider(greenscreenProps, "greenscreen_fadedist", obs_module_text("ObsKinect.GreenScreenFadeDist"), 0, 2000, 1);
 	obs_property_int_set_suffix(p, obs_module_text("ObsKinect.GreenScreenDistUnit"));
 
 	obs_properties_add_int_slider(greenscreenProps, "greenscreen_blurpasses", obs_module_text("ObsKinect.GreenScreenBlurPassCount"), 0, 20, 1);
+
 	p = obs_properties_add_int_slider(greenscreenProps, "greenscreen_maxdirtydepth", obs_module_text("ObsKinect.GreenScreenMaxDirtyDepth"), 0, 30, 1);
 	obs_property_set_long_description(p, obs_module_text("ObsKinect.GreenScreenMaxDirtyDepthDesc"));
 

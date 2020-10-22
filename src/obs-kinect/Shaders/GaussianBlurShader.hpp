@@ -17,26 +17,28 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_COLORMULTIPLIEREFFECT
-#define OBS_KINECT_PLUGIN_COLORMULTIPLIEREFFECT
+#ifndef OBS_KINECT_PLUGIN_GAUSSIANBLURSHADER
+#define OBS_KINECT_PLUGIN_GAUSSIANBLURSHADER
 
 #include <obs-module.h>
-#include <cstdint>
+#include <cstddef>
 
-class ConvertDepthIRToColorEffect
+class GaussianBlurShader
 {
 	public:
-		ConvertDepthIRToColorEffect();
-		~ConvertDepthIRToColorEffect();
+		GaussianBlurShader(gs_color_format colorFormat);
+		~GaussianBlurShader();
 
-		gs_texture_t* Convert(std::uint32_t width, std::uint32_t height, gs_texture_t* source, float averageValue, float standardDeviation);
+		gs_texture_t* Blur(gs_texture_t* source, std::size_t count);
 
 	private:
 		gs_effect_t* m_effect;
-		gs_eparam_t* m_params_ColorImage;
-		gs_eparam_t* m_params_ColorMultiplier;
-		gs_technique_t* m_tech_Draw;
-		gs_texrender_t* m_workTexture;
+		gs_eparam_t* m_blurEffect_Filter;
+		gs_eparam_t* m_blurEffect_Image;
+		gs_eparam_t* m_blurEffect_InvImageSize;
+		gs_technique_t* m_blurEffect_DrawTech;
+		gs_texrender_t* m_workTextureA;
+		gs_texrender_t* m_workTextureB;
 };
 
 #endif
