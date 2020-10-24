@@ -37,7 +37,7 @@ struct Source
 	SourceFlags requiredSources;
 };
 
-static std::array<Source, 3> sources = {
+static std::array<Source, 3> s_sources = {
 	{
 		{ "ObsKinect.Source_Color", KinectSource::SourceType::Color, Source_Color },
 		{ "ObsKinect.Source_Depth", KinectSource::SourceType::Depth, Source_Depth },
@@ -53,7 +53,7 @@ struct GreenScreenType
 	SourceFlags supportedSources;
 };
 
-static std::array<GreenScreenType, 5> greenscreenTypes = {
+static std::array<GreenScreenType, 5> s_greenscreenTypes = {
 	{
 		{ "ObsKinect.GreenScreenType_Body", KinectSource::GreenScreenFilterType::Body, Source_Body, Source_Color | Source_Depth | Source_Infrared },
 		{ "ObsKinect.GreenScreenType_Depth", KinectSource::GreenScreenFilterType::Depth, Source_Depth, Source_Color | Source_Depth | Source_Infrared },
@@ -65,15 +65,15 @@ static std::array<GreenScreenType, 5> greenscreenTypes = {
 
 struct GreenScreenEffect
 {
+	const char* name;
 	const char* text;
-	KinectSource::GreenScreenEffect value;
+	GreenscreenEffectConfigs value; //< Dummy variant, is only used to retrieve the type
 };
 
-static std::array<GreenScreenEffect, 3> greenscreenEffects = {
+static std::array<GreenScreenEffect, 2> s_greenscreenEffects = {
 	{
-		{ "ObsKinect.GreenScreenEffect_RemoveBackground", KinectSource::GreenScreenEffect::RemoveBackground },
-		{ "ObsKinect.GreenScreenEffect_BlurBackground", KinectSource::GreenScreenEffect::BlurBackground },
-		{ "ObsKinect.GreenScreenEffect_BlurForeground", KinectSource::GreenScreenEffect::BlurForeground }
+		{ "removebackground", "ObsKinect.GreenScreenEffect_RemoveBackground", RemoveBackgroundEffect::Config{} },
+		{ "blurbackground",   "ObsKinect.GreenScreenEffect_BlurBackground",   BlurBackgroundEffect::Config{} }
 	}
 };
 
@@ -137,9 +137,9 @@ void update_greenscreen_availability(KinectDevice* device, obs_properties_t* pro
 	assert(type);
 
 	SourceFlags supportedSource = device->GetSupportedSources();
-	for (std::size_t i = 0; i < greenscreenTypes.size(); ++i)
+	for (std::size_t i = 0; i < s_greenscreenTypes.size(); ++i)
 	{
-		const GreenScreenType& greenscreen = greenscreenTypes[i];
+		const GreenScreenType& greenscreen = s_greenscreenTypes[i];
 		obs_property_list_item_disable(type, i, !sourceVisible || ((greenscreen.requiredDeviceSources & supportedSource) != greenscreen.requiredDeviceSources) || ((greenscreen.supportedSources & source)) != source);
 	}
 }
@@ -148,7 +148,6 @@ void update_greenscreen_visibility(obs_properties_t* props, obs_data_t* s)
 {
 	bool enabled = obs_data_get_bool(s, "greenscreen_enabled") && get_property_visibility(props, "greenscreen_enabled");
 	KinectSource::GreenScreenFilterType type = static_cast<KinectSource::GreenScreenFilterType>(obs_data_get_int(s, "greenscreen_type"));
-	KinectSource::GreenScreenEffect effect = static_cast<KinectSource::GreenScreenEffect>(obs_data_get_int(s, "greenscreen_effect"));
 
 	set_property_visibility(props, "greenscreen", enabled);
 
@@ -158,15 +157,16 @@ void update_greenscreen_visibility(obs_properties_t* props, obs_data_t* s)
 	set_property_visibility(props, "greenscreen_maxdist", depthSettingsVisible);
 	set_property_visibility(props, "greenscreen_mindist", depthSettingsVisible);
 
-	bool backgroundBlurSettingsVisible = (enabled && (effect == KinectSource::GreenScreenEffect::BlurBackground || effect == KinectSource::GreenScreenEffect::BlurForeground));
-
-	set_property_visibility(props, "greenscreen_background_blurpasses", backgroundBlurSettingsVisible);
-
 	bool blurSettingsVisible = (enabled && type != KinectSource::GreenScreenFilterType::Dedicated);
 
 	set_property_visibility(props, "greenscreen_maxdirtydepth", blurSettingsVisible);
 	set_property_visibility(props, "greenscreen_blurpasses", blurSettingsVisible);
 	set_property_visibility(props, "greenscreen_gpudepthmapping", blurSettingsVisible);
+
+	// Green screen effects
+	std::size_t activeEffect = std::min(static_cast<std::size_t>(obs_data_get_int(s, "greenscreen_effect")), s_greenscreenEffects.size() - 1);
+	for (std::size_t i = 0; i < s_greenscreenEffects.size(); ++i)
+		set_property_visibility(props, s_greenscreenEffects[i].name, (activeEffect == i));
 };
 
 void update_device_list(obs_property_t* deviceList)
@@ -203,9 +203,7 @@ static void kinect_source_update(void* data, obs_data_t* settings)
 	kinectSource->UpdateDepthToColor(depthToColor);
 
 	KinectSource::GreenScreenSettings greenScreen;
-	greenScreen.backgroundBlurPassCount = obs_data_get_int(settings, "greenscreen_background_blurpasses");
 	greenScreen.blurPassCount = static_cast<std::size_t>(obs_data_get_int(settings, "greenscreen_blurpasses"));
-	greenScreen.effectType = static_cast<KinectSource::GreenScreenEffect>(obs_data_get_int(settings, "greenscreen_effect"));
 	greenScreen.enabled = obs_data_get_bool(settings, "greenscreen_enabled");
 	greenScreen.depthMax = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_maxdist"));
 	greenScreen.depthMin = static_cast<std::uint16_t>(obs_data_get_int(settings, "greenscreen_mindist"));
@@ -213,6 +211,16 @@ static void kinect_source_update(void* data, obs_data_t* settings)
 	greenScreen.maxDirtyDepth = static_cast<std::uint8_t>(obs_data_get_int(settings, "greenscreen_maxdirtydepth"));
 	greenScreen.gpuDepthMapping = obs_data_get_bool(settings, "greenscreen_gpudepthmapping");
 	greenScreen.filterType = static_cast<KinectSource::GreenScreenFilterType>(obs_data_get_int(settings, "greenscreen_type"));
+
+	std::size_t activeEffect = std::min(static_cast<std::size_t>(obs_data_get_int(settings, "greenscreen_effect")), s_greenscreenEffects.size() - 1);
+	std::visit([&](auto&& arg)
+	{
+		using T = std::decay_t<decltype(arg)>;
+		using E = typename T::Effect;
+
+		greenScreen.effectConfig = E::ToConfig(settings);
+
+	}, s_greenscreenEffects[activeEffect].value);
 
 	kinectSource->UpdateGreenScreen(greenScreen);
 
@@ -290,9 +298,9 @@ static obs_properties_t* kinect_source_properties(void *unused)
 			assert(sourceList);
 
 			SourceFlags supportedSource = device->GetSupportedSources();
-			for (std::size_t i = 0; i < sources.size(); ++i)
+			for (std::size_t i = 0; i < s_sources.size(); ++i)
 			{
-				const Source& sourceData = sources[i];
+				const Source& sourceData = s_sources[i];
 				obs_property_list_item_disable(sourceList, i, (sourceData.requiredSources & supportedSource) != sourceData.requiredSources);
 			}
 
@@ -309,7 +317,7 @@ static obs_properties_t* kinect_source_properties(void *unused)
 
 	// Source selection
 	p = obs_properties_add_list(props, "source", obs_module_text("ObsKinect.Source"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	for (const Source& sourceData : sources)
+	for (const Source& sourceData : s_sources)
 		obs_property_list_add_int(p, obs_module_text(sourceData.text), static_cast<int>(sourceData.value));
 
 	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
@@ -345,7 +353,7 @@ static obs_properties_t* kinect_source_properties(void *unused)
 
 	// Greenscreen filter type (body, depth, ...)
 	p = obs_properties_add_list(greenscreenProps, "greenscreen_type", obs_module_text("ObsKinect.GreenScreenType"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	for (const GreenScreenType& greenscreen : greenscreenTypes)
+	for (const GreenScreenType& greenscreen : s_greenscreenTypes)
 		obs_property_list_add_int(p, obs_module_text(greenscreen.text), static_cast<int>(greenscreen.value));
 
 	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
@@ -356,16 +364,30 @@ static obs_properties_t* kinect_source_properties(void *unused)
 
 	// Greenscreen effect (remove background, blur background, ...)
 	p = obs_properties_add_list(greenscreenProps, "greenscreen_effect", obs_module_text("ObsKinect.GreenScreenEffect"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	for (const GreenScreenEffect& effectType : greenscreenEffects)
-		obs_property_list_add_int(p, obs_module_text(effectType.text), static_cast<int>(effectType.value));
+	for (std::size_t i = 0; i < s_greenscreenEffects.size(); ++i)
+	{
+		const GreenScreenEffect& effectType = s_greenscreenEffects[i];
+		obs_property_list_add_int(p, obs_module_text(effectType.text), static_cast<long long>(i));
+
+		obs_properties_t* effectProperties;
+		std::visit([&](auto&& arg)
+		{
+			using T = std::decay_t<decltype(arg)>;
+			using E = typename T::Effect;
+
+			effectProperties = E::BuildProperties();
+
+		}, effectType.value);
+
+		if (effectProperties)
+			obs_properties_add_group(greenscreenProps, effectType.name, obs_module_text(effectType.text), OBS_GROUP_NORMAL, effectProperties);
+	}
 	
 	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
 	{
 		update_greenscreen_visibility(props, s);
 		return true;
 	});
-
-	obs_properties_add_int_slider(greenscreenProps, "greenscreen_background_blurpasses", obs_module_text("ObsKinect.GreenScreenBackground_BlurPassCount"), 0, 50, 1);
 
 	p = obs_properties_add_int_slider(greenscreenProps, "greenscreen_maxdist", obs_module_text("ObsKinect.GreenScreenMaxDist"), 0, 10000, 10);
 	obs_property_int_set_suffix(p, obs_module_text("ObsKinect.GreenScreenDistUnit"));
@@ -408,14 +430,24 @@ static void kinect_source_defaults(obs_data_t* settings)
 	obs_data_set_default_double(settings, "infrared_standard_deviation", 3);
 	obs_data_set_default_bool(settings, "greenscreen_enabled", false);
 	obs_data_set_default_bool(settings, "greenscreen_gpudepthmapping", true);
-	obs_data_set_default_int(settings, "greenscreen_background_blurpasses", 10);
 	obs_data_set_default_int(settings, "greenscreen_blurpasses", 3);
-	obs_data_set_default_int(settings, "greenscreen_effect", static_cast<int>(KinectSource::GreenScreenEffect::RemoveBackground));
+	obs_data_set_default_int(settings, "greenscreen_effect", 0);
 	obs_data_set_default_int(settings, "greenscreen_fadedist", 100);
 	obs_data_set_default_int(settings, "greenscreen_maxdist", 1200);
 	obs_data_set_default_int(settings, "greenscreen_mindist", 1);
 	obs_data_set_default_int(settings, "greenscreen_maxdirtydepth", 0);
 	obs_data_set_default_int(settings, "greenscreen_type", static_cast<int>(KinectSource::GreenScreenFilterType::Depth));
+
+	for (const GreenScreenEffect& effectType : s_greenscreenEffects)
+	{
+		std::visit([&](auto&& arg)
+		{
+			using T = std::decay_t<decltype(arg)>;
+			using E = typename T::Effect;
+
+			E::SetDefaultValues(settings);
+		}, effectType.value);
+	}
 }
 
 static void kinect_video_render(void* data, gs_effect_t* /*effect*/)

@@ -25,7 +25,6 @@
 #include <optional>
 
 KinectSource::KinectSource(KinectDeviceRegistry& registry, const obs_source_t* source) :
-m_backgroundBlur(GS_RGBA),
 m_filterBlur(GS_RGBA),
 m_registry(registry),
 m_sourceType(SourceType::Color),
@@ -91,7 +90,19 @@ void KinectSource::UpdateGreenScreen(GreenScreenSettings greenScreen)
 	if (greenScreen.enabled != m_greenScreenSettings.enabled)
 		m_finalTexture.reset();
 
-	m_greenScreenSettings = greenScreen;
+	m_greenScreenSettings = std::move(greenScreen);
+
+	// If green screen effect config isn't linked to the current effect, update it
+	std::visit([&](auto&& effect)
+	{
+		using C = std::decay_t<decltype(effect)>;
+		using E = typename C::Effect;
+
+		if (!std::holds_alternative<E>(m_greenscreenEffect))
+			m_greenscreenEffect.emplace<E>();
+
+	}, m_greenScreenSettings.effectConfig);
+
 
 	if (m_deviceAccess)
 		m_deviceAccess->SetEnabledSourceFlags(ComputeEnabledSourceFlags());
@@ -518,33 +529,13 @@ void KinectSource::Update(float /*seconds*/)
 					filterTexture = m_filterBlur.Blur(filterTexture, m_greenScreenSettings.blurPassCount);
 			}
 
-			switch (m_greenScreenSettings.effectType)
+			m_finalTexture.reset(std::visit([&](auto&& effect) -> gs_texture_t*
 			{
-				case GreenScreenEffect::BlurBackground:
-				case GreenScreenEffect::BlurForeground:
-				{
-					if (m_greenScreenSettings.backgroundBlurPassCount > 0)
-					{
-						gs_texture_t* blurredBackground = m_backgroundBlur.Blur(sourceTexture, m_greenScreenSettings.backgroundBlurPassCount);
-						gs_texture_t* from = blurredBackground;
-						gs_texture_t* to = sourceTexture;
-						if (m_greenScreenSettings.effectType == GreenScreenEffect::BlurForeground)
-							std::swap(from, to);
+				using E = std::decay_t<decltype(effect)>;
+				using C = typename E::Config;
 
-						m_finalTexture.reset(m_textureLerpEffect.Lerp(from, to, filterTexture));
-					}
-					else
-						m_finalTexture.reset(sourceTexture);
-					break;
-				}
-
-				case GreenScreenEffect::RemoveBackground:
-				{
-					m_finalTexture.reset(m_alphaMaskFilter.Filter(sourceTexture, filterTexture));
-					break;
-				}
-			}
-
+				return effect.Apply(std::get<C>(m_greenScreenSettings.effectConfig), sourceTexture, filterTexture);
+			}, m_greenscreenEffect));
 		}
 		else
 			m_finalTexture.reset(sourceTexture);
