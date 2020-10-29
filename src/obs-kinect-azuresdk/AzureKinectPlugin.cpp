@@ -43,7 +43,6 @@ void ErrorCallback(void* context, k4a_log_level_t level, const char* file, const
 	}
 }
 
-// typedef void() k4a_logging_message_cb_t(void *context, k4a_log_level_t level, const char *file, const int line, const char *message)
 
 AzureKinectPlugin::AzureKinectPlugin()
 {
