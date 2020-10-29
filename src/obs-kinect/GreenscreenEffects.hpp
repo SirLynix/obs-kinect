@@ -22,9 +22,10 @@
 
 #include <GreenscreenEffects/BlurBackgroundEffect.hpp>
 #include <GreenscreenEffects/RemoveBackgroundEffect.hpp>
+#include <GreenscreenEffects/ReplaceBackgroundEffect.hpp>
 #include <variant>
 
-using GreenscreenEffects = std::variant<BlurBackgroundEffect, RemoveBackgroundEffect>;
+using GreenscreenEffects = std::variant<BlurBackgroundEffect, RemoveBackgroundEffect, ReplaceBackgroundEffect>;
 
 // Build a std::variant<T1::Config, T2::Config> from std::variant<T1, T2>
 template<typename>

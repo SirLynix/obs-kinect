@@ -70,10 +70,11 @@ struct GreenScreenEffect
 	GreenscreenEffectConfigs value; //< Dummy variant, is only used to retrieve the type
 };
 
-static std::array<GreenScreenEffect, 2> s_greenscreenEffects = {
+static std::array<GreenScreenEffect, 3> s_greenscreenEffects = {
 	{
-		{ "removebackground", "ObsKinect.GreenScreenEffect_RemoveBackground", RemoveBackgroundEffect::Config{} },
-		{ "blurbackground",   "ObsKinect.GreenScreenEffect_BlurBackground",   BlurBackgroundEffect::Config{} }
+		{ "removebackground",  "ObsKinect.GreenScreenEffect_RemoveBackground", RemoveBackgroundEffect::Config{} },
+		{ "blurbackground",    "ObsKinect.GreenScreenEffect_BlurBackground",   BlurBackgroundEffect::Config{} },
+		{ "replacebackground", "ObsKinect.GreenScreenEffect_ReplaceBackground",   ReplaceBackgroundEffect::Config{} }
 	}
 };
 

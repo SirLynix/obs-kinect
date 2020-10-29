@@ -39,6 +39,7 @@
 #define OBSKINECT_VERSION ((OBSKINECT_VERSION_MAJOR << 8) | OBSKINECT_VERSION_MINOR)
 
 #include <obs-module.h>
+#include <graphics/image-file.h>
 #include <util/platform.h>
 #include <memory>
 
@@ -84,6 +85,19 @@ struct ObsLibDeleter
 };
 
 using ObsLibPtr = std::unique_ptr<void, ObsLibDeleter>;
+
+struct ObsImageFileDeleter
+{
+	void operator()(gs_image_file_t* imageFile) const
+	{
+		ObsGraphics gfx;
+		gs_image_file_free(imageFile);
+
+		delete imageFile;
+	}
+};
+
+using ObsImageFilePtr = std::unique_ptr<gs_image_file_t, ObsImageFileDeleter>;
 
 struct ObsTextureDeleter
 {
