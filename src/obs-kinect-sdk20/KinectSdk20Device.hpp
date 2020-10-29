@@ -22,7 +22,6 @@
 
 #include "KinectDevice.hpp"
 #include "Win32Helper.hpp"
-
 #include <Kinect.h>
 
 class KinectSdk20Device final : public KinectDevice
