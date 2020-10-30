@@ -14,7 +14,7 @@ This plugins allows you to access a Kinect v1 (for Xbox 360 or Kinect for Window
 # Requirement
 
 - Windows. For now this plugin is only compatible with Windows as it uses the official Kinect for Windows API (may change in the future).
-- A Kinect (obviously), all known models are supported:
+- A Kinect, all known models are supported:
    * **Kinect for 360** - original Kinect (v1)
    * **Kinect for Windows** - same as Kinect for 360 but with support for camera controls and a "near mode" (v1+)
    * **Kinect for Xbox One** and **Kinect 2 for Windows** (v2)
@@ -40,23 +40,21 @@ This plugins allows you to access a Kinect v1 (for Xbox 360 or Kinect for Window
 
 # How to use (for end-users, you probably want this)
 
-**If you want to have support for the Kinect v1 (Xbox 360 or Kinect for Windows)**
+Depending on your Kinect model (see requirement) you'll have to install a runtime to make it work with obs-kinect (and any other thirdparty application).
+
+You can install multiples runtimes if you want to support multiple Kinect versions.
+
+### If you have a Kinect v1 (Xbox 360 or Kinect for Windows)
 - Download and install [**Kinect for Windows runtime v1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40277) or download and install [**Kinect for Windows SDK 1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40278).
 
 ⚠️ Some Kinects seem to work only with the SDK installed ("Not supported" error showing up in the logs), installing the SDK seems to fix this.
 
 ⚠️ Don't forget to install the Visual Studio 2019 redistributables ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe)).
 
-**If you want to have support for the Kinect v2 (Xbox One or Kinect 2 for Windows)**
+### If you have a Kinect v2 (Xbox One or Kinect 2 for Windows)
 - Download and install [**Kinect for Windows runtime v2.2**](https://www.microsoft.com/en-us/download/details.aspx?id=100067)
 
-You can/must install both if you want to support both Kinect versions.
-
-Download the [latest release](https://github.com/SirLynix/obs-kinect/releases) and copy the files in your OBS folder, restart OBS and you should have a "Kinect source" available
-
-⚠️ Don't forget to install the Visual Studio 2019 redistributables ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe)).
-
-**If you want to have support for the Kinect v3 (Azure Kinect)**
+### If you have a Kinect v3 (Azure Kinect)
 
 - Along with obs-kinect files on GitHub you will find Azure Kinect SDK redistributables, download them and put them in your `obs-studio/bin/[32|64]bits folder`, next to obs(64) executable (the package distributed here already has the right arborescence, just copy it to obs-studio folder).  
 You can also get thoses files (possibly even a more recent version) from the [**Azure Kinect Sensor SDK**](https://docs.microsoft.com/en-us/azure/kinect-dk/sensor-sdk-download).
@@ -73,6 +71,10 @@ You can also get thoses files (possibly even a more recent version) from the [**
  to `obs-studio/bin/[32|64]bits folder`, next to obs(64) executable.
 
 AKBT SDK redistributable are pretty big (~600MB) so I don't include them with obs-kinect releases.
+
+### How to install the plugin
+
+Once you've installed the corresponding Kinect Runtime, download the [latest release](https://github.com/SirLynix/obs-kinect/releases) and copy the files in your OBS folder, restart OBS and you should have a "KinectSource" available in your source list.
 
 ⚠️ Don't forget to install the Visual Studio 2019 redistributables ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe)).
 
@@ -132,11 +134,11 @@ Unfortunately since some of the features this plugin provides (like body indexin
 
 Unfortunately as far as I know Streamlabs OBS doesn't support thirdparty plugins, so nope.
 
-## Does this plugin works for the Kinect v1 (Xbox 360 or Kinect for Windows version)?
+## Does this plugin work for the Kinect v1 (Xbox 360 or Kinect for Windows version)?
 
 Yes! I added support for the Kinect v1 in 0.3!
 
-## Does this plugin supports Azure Kinect (v3)
+## Does this plugin support Azure Kinect (v3)
 
 Yes! Azure Kinect is supported since 0.3, thanks to Microsoft which sent me one to support obs-kinect developpment!
 
@@ -158,7 +160,7 @@ Maybe you could use the infrared image for an horror game stream (where you play
 
 Be sure to tune the depth/infrared to color values to what suits you the most.
 
-## How does the green screen effect works?
+## How does the green screen effect work?
 
 Kinect gives us a color map (like any webcam does) and a depth map, allowing to get the distance between a pixel and the Kinect sensor.
 The green screen effect discard pixels being too far (or too close) and voilà.
