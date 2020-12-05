@@ -125,6 +125,56 @@ else
 	print("Skipping KinectSdk20 backend")
 end
 
+if (Config.AzureKinectSdk) then
+	local project = {
+		Name = "obs-kinect-azuresdk",
+		Files = { 
+			"src/obs-kinect-azuresdk/**.hpp", 
+			"src/obs-kinect-azuresdk/**.inl", 
+			"src/obs-kinect-azuresdk/**.cpp"
+		},
+		Include = {
+			obsinclude,
+			"include/obs-kinect",
+			assert(Config.AzureKinectSdk.Include, "Missing AzureKinectSdk include dir")
+		},
+		Links = {
+			"obs-kinect",
+			"obs",
+			"k4a"
+		}
+	}
+
+	if (Config.AzureKinectSdk.Lib32) then
+		project.LibDir32 = {
+			obslib32,
+			Config.AzureKinectSdk.Lib32
+		}
+	else
+		print("Missing AzureKinectSdk lib dir (x86)")
+	end
+
+	if (Config.AzureKinectSdk.Lib64) then
+		project.LibDir64 = {
+			obslib64,
+			Config.AzureKinectSdk.Lib64
+		}
+	else
+		print("Missing AzureKinectSdk lib dir (x86_64)")
+	end
+
+	if (Config.AzureKinectBodyTrackingSdk) then
+		table.insert(project.Include, Config.AzureKinectBodyTrackingSdk.Include)
+	else
+		print("Warning: AzureKinectSdk will not have body tracking support")
+	end
+
+	table.insert(projects, project)
+else
+	print("Skipping AzureKinectSdk backend")
+end
+
+
 workspace("obs-kinect")
 	configurations({ "Debug", "Release" })
 	platforms({ "x86", "x86_64" })
@@ -184,22 +234,22 @@ workspace("obs-kinect")
 				symbols("On") -- Generate symbols in release too (helps in case of crash)
 
 			if (Config.CopyToDebug32) then
-				filter("configurations:Debug", "architecture:x32")
+				filter("configurations:Debug", "platforms:x86")
 					postbuildcommands({ "{COPY} %{cfg.buildtarget.abspath} " .. Config.CopyToDebug32 })
 			end
 
 			if (Config.CopyToDebug64) then
-				filter("configurations:Debug", "architecture:x64")
+				filter("configurations:Debug", "platforms:x86_64")
 					postbuildcommands({ "{COPY} %{cfg.buildtarget.abspath} " .. Config.CopyToDebug64 })
 			end
 
 			if (Config.CopyToRelease32) then
-				filter("configurations:Release", "architecture:x32")
+				filter("configurations:Release", "platforms:x86")
 					postbuildcommands({ "{COPY} %{cfg.buildtarget.abspath} " .. Config.CopyToRelease32 })
 			end
 
 			if (Config.CopyToRelease64) then
-				filter("configurations:Release", "architecture:x64")
+				filter("configurations:Release", "platforms:x86_64")
 					postbuildcommands({ "{COPY} %{cfg.buildtarget.abspath} " .. Config.CopyToRelease64 })
 			end
 

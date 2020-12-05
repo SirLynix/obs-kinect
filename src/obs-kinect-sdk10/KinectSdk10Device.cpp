@@ -303,6 +303,7 @@ void KinectSdk10Device::HandleIntParameterUpdate(const std::string& parameterNam
 		SetEvent(m_elevationUpdateEvent.get());
 	}
 }
+
 void KinectSdk10Device::RegisterParameters()
 {
 	RegisterIntParameter("sdk10_camera_elevation", 0, [](long long a, long long b)
@@ -1134,7 +1135,7 @@ InfraredFrameData KinectSdk10Device::RetrieveInfraredFrame(INuiSensor* sensor, H
 	frameData.memory.resize(memSize);
 	std::uint8_t* memPtr = frameData.memory.data();
 
-	frameData.ptr.reset(memPtr);
+	frameData.ptr.reset(reinterpret_cast<std::uint16_t*>(frameData.memory.data()));
 	frameData.pitch = frameData.width * bpp;
 
 	if (frameData.pitch == lockedRect.Pitch)

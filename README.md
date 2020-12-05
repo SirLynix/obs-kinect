@@ -14,16 +14,22 @@ This plugins allows you to access a Kinect v1 (for Xbox 360 or Kinect for Window
 # Requirement
 
 - Windows. For now this plugin is only compatible with Windows as it uses the official Kinect for Windows API (may change in the future).
-- A Kinect (obviously), v1 (Xbox 360 or kinect for windows) and v2 (Xbox one) are supported (but v2 has better quality), they're *relatively* cheap on eBay (between 50€ and 100€).
+- A Kinect, all known models are supported:
+   * **Kinect for 360** - original Kinect (v1)
+   * **Kinect for Windows** - same as Kinect for 360 but with support for camera controls and a "near mode" (v1+)
+   * **Kinect for Xbox One** and **Kinect 2 for Windows** (v2)
+   * **Azure Kinect** (v3)
+
 - If your Kinect isn't pluggable to your computer: a Kinect to USB adapter (search for PeakLead Kinect to USB on Amazon).
 - Not running on a potato computer, Kinect itself requires a little bit of CPU power, especially when using the faux green screen effect (I'm trying to improve that) because of the color-to-depth mapping (which is done on the CPU). The plugin itself runs on the GPU.
 - ⚠️ OBS Studio >= 25.0 (since 0.3 this plugins no longer works on OBS Studio 24.0, if upgrading is a problem let me know).
 - ⚠️ **Kinect for Windows runtime or SDK** (links in "How to use", note that Kinect for Windows SDK includes runtime)
-- ⚠️ **Visual Studio 2019 redistribuables** ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe))
+- ⚠️ **Visual Studio 2019 redistributables** ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe))
 
 # To do
 
 - ~~Add support for Kinect v1~~
+- ~~Add support for Azure Kinect~~
 - ~~Improve green-screen filtering using gaussian blur~~
 - ~~Use shaders to do faux green-screen processing. 1080p pixel processing is a really heavy CPU task and would benefit a lot to run on the GPU~~
 - ~~Add possibility to use body index masking (pixels identified by Kinect SDK to be you)~~
@@ -34,32 +40,60 @@ This plugins allows you to access a Kinect v1 (for Xbox 360 or Kinect for Window
 
 # How to use (for end-users, you probably want this)
 
-**If you want to have support for the Kinect v1 (Xbox 360 or Kinect for Windows version)**
+Depending on your Kinect model (see requirement) you'll have to install a runtime to make it work with obs-kinect (and any other thirdparty application).
+
+You can install multiples runtimes if you want to support multiple Kinect versions.
+
+### If you have a Kinect v1 (Xbox 360 or Kinect for Windows)
 - Download and install [**Kinect for Windows runtime v1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40277) or download and install [**Kinect for Windows SDK 1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40278).
 
 ⚠️ Some Kinects seem to work only with the SDK installed ("Not supported" error showing up in the logs), installing the SDK seems to fix this.
 
-**If you want to have support for the Kinect v2 (Xbox one version)**
+⚠️ Don't forget to install the Visual Studio 2019 redistributables ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe)).
+
+### If you have a Kinect v2 (Xbox One or Kinect 2 for Windows)
 - Download and install [**Kinect for Windows runtime v2.2**](https://www.microsoft.com/en-us/download/details.aspx?id=100067)
 
-You can/must install both if you want to support both Kinect versions.
+### If you have a Kinect v3 (Azure Kinect)
 
-Download the [latest release](https://github.com/SirLynix/obs-kinect/releases) and copy the files in your OBS folder, restart OBS and you should have a "Kinect source" available
+- Along with obs-kinect files on GitHub you will find Azure Kinect SDK redistributables, download them and put them in your `obs-studio/bin/[32|64]bits folder`, next to obs(64) executable (the package distributed here already has the right arborescence, just copy it to obs-studio folder).  
+You can also get thoses files (possibly even a more recent version) from the [**Azure Kinect Sensor SDK**](https://docs.microsoft.com/en-us/azure/kinect-dk/sensor-sdk-download).
 
-⚠️ Don't forget to install the Visual Studio 2019 redistribuables ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe)).
+- **To enable body filter support** you have to download [**Azure Kinect Body Tracking SDK**](https://docs.microsoft.com/en-us/azure/kinect-dk/body-sdk-download) from Microsoft and copy theses files from `Azure Kinect SDK v1.4.1\tools` folder:
+   * cublas64_100.dll
+   * cudart64_100.dll
+   * cudnn64_7.dll
+   * dnn_model_2_0.onnx
+   * k4abt.dll
+   * onnxruntime.dll
+   * vcomp140.dll
+
+ to `obs-studio/bin/[32|64]bits folder`, next to obs(64) executable.
+
+AKBT SDK redistributable are pretty big (~600MB) so I don't include them with obs-kinect releases.
+
+### How to install the plugin
+
+Once you've installed the corresponding Kinect Runtime, download the [latest release](https://github.com/SirLynix/obs-kinect/releases) and copy the files in your OBS folder, restart OBS and you should have a "KinectSource" available in your source list.
+
+⚠️ Don't forget to install the Visual Studio 2019 redistributables ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe)).
 
 # How to build (for people wanting to contribute)
 
 Clone and build OBS-studio first.
 
-**If you want to have support for the Kinect v1 (Xbox 360 or Kinect for Windows version)**
+**If you want to have support for the Kinect v1 (Xbox 360 or Kinect for Windows)**
 - Download and install [**Kinect for Windows SDK 1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40278)
-- (Optional) Download and install [**Kinect for Windows Developer Toolkit v1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40276), this is required for dedicated background support!
+- (Optional) Download and install [**Kinect for Windows Developer Toolkit v1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40276), this is required for dedicated background support.
 
-**If you want to have support for the Kinect v2 (Xbox one version)**
+**If you want to have support for the Kinect v2 (Xbox One or Kinect 2 for Windows)**
 - Download and install [**Kinect for Windows SDK v2.0**](https://www.microsoft.com/en-us/download/details.aspx?id=44561)
 
-You can/must install both if you want to support both Kinect versions.
+**If you want to have support for the Kinect v3 (Azure Kinect)**
+- Download and install [**Azure Kinect Sensor SDK**](https://docs.microsoft.com/en-us/azure/kinect-dk/sensor-sdk-download)
+- (Optional) Download and install [**Azure Kinect Body Tracking SDK**](https://docs.microsoft.com/en-us/azure/kinect-dk/body-sdk-download), this is required for body filter support.
+
+You can/must install all SDK if you want to support all Kinect versions (recommended to redistribute).
 
 Copy the config.lua.default to config.lua and changes the values accordingly.
 
@@ -71,7 +105,7 @@ Open the project workspace/solution (located in build/<actionfolder>) and build 
 
 ## I copied the files and the source doesn't show up
 
-Did you install every dependency, including Kinect Runtime (or SDK) and Visual Studio 2019 redistribuables?  
+Did you install every dependency, including Kinect Runtime (or SDK) and Visual Studio 2019 redistributables?  
 Are you using OBS Studio 25.0 or newer?  
 Since 0.3 this plugins no longer works with OBS Studio 24.0 (this is because of source icons OBS-Studio added in v25, I can build the plugin for OBS 24 if upgrading is an issue for you).
 
@@ -79,10 +113,10 @@ Links are in the "requirement" and "how to use" parts, right above.
 
 ## I have a Kinect source but there are no device in the list
 
-Are you sure to have a Kinect v1/v2 plugged in?
+Are you sure to have a Kinect v1/v2/v3 plugged in?
 Did you download Kinect for Windows runtime for your Kinect version (see "How to use")?
 
-If yes, please download Kinect for Windows SDK (see "How to build") and try to run Kinect examples from it.
+If yes, please download Kinect for Windows SDK (see "How to build") and try to run Kinect examples from it.  
 If Kinect examples are running but this plugins doesn't work, please [create an issue](https://github.com/SirLynix/obs-kinect/issues) and post your OBS Studio logs with it.
 
 ## The plugin works but I have "LoadLibrary failed for obs-kinect-XXX" in OBS logs
@@ -93,28 +127,30 @@ Developer note: a way to fix that warning would be to load kinect runtime dynami
 
 ## Does it work on Linux/macOS?
 
-Not yet, I still have to try to use libfreenect(2) for that.
+Not yet, I still have to try to use libfreenect(2) for that.  
 Unfortunately since some of the features this plugin provides (like body indexing and dedicated background removal) are based on Windows Kinect SDK features, theses will probably never be available to other systems.
 
 ## Does it work with Streamlabs OBS?
 
 Unfortunately as far as I know Streamlabs OBS doesn't support thirdparty plugins, so nope.
 
-## Does this plugin works for the Kinect v1 (Xbox 360 or Kinect for Windows version)?
+## Does this plugin work for the Kinect v1 (Xbox 360 or Kinect for Windows version)?
 
 Yes! I added support for the Kinect v1 in 0.3!
 
-## Does this plugin supports Azure Kinect (v3)
+## Does this plugin support Azure Kinect (v3)
 
-Not yet, because I don't have one to test it. If you have an Azure Kinect and are willing to help, let me know!
+Yes! Azure Kinect is supported since 0.3, thanks to Microsoft which sent me one to support obs-kinect developpment!
 
 ## My Kinect cannot be plugged by USB, how can I use it on Windows?
 
 Unfortunately, Microsoft used a proprietary port on the Xbox 360/One.
-For the Kinect v1, you have to buy a Kinect to USB 2.0 and AC adapter to use it on your computer (search for Microsoft Xbox 360 Kinect Sensor Mains Power Supply Adapter on Amazon).
-For the Kinect v2, you have to buy a Kinect to USB 3.0 and AC adapter to use it on your computer (search for PeakLead Kinect to USB on Amazon).
 
-Don't forget to install the [Kinect for Windows runtime](https://www.microsoft.com/en-us/download/details.aspx?id=44559) before using this plugin.
+For the Kinect v1, you have to buy a Kinect to USB 2.0 and AC adapter to use it on your computer (search for Microsoft Xbox 360 Kinect Sensor Mains Power Supply Adapter on Amazon).  
+For the Kinect v2, you have to buy a Kinect to USB 3.0 and AC adapter to use it on your computer (search for PeakLead Kinect to USB on Amazon).  
+For the Kinect v3, you can plug it to your computer using the provided USB C cable.  
+
+Don't forget to install the runtime files (see "How to use") before using this plugin.
 
 ## What is the use of having access to the depth and infrared images?
 
@@ -124,7 +160,7 @@ Maybe you could use the infrared image for an horror game stream (where you play
 
 Be sure to tune the depth/infrared to color values to what suits you the most.
 
-## How does the green screen effect works?
+## How does the green screen effect work?
 
 Kinect gives us a color map (like any webcam does) and a depth map, allowing to get the distance between a pixel and the Kinect sensor.
 The green screen effect discard pixels being too far (or too close) and voilà.
@@ -140,7 +176,7 @@ Kinect v1 dedicated background removal (Microsoft background removal) is also su
 
 ## Why isn't dedicated background removal available?
 
-If you're using a KinectV2 this is normal, Microsoft didn't (afaik) release a background removal library for Kinect v2.
+If you're using a KinectV2 or KinectV3 this is normal, Microsoft didn't (afaik) release a background removal library for those.
 If you're using a KinectV1, you're maybe lacking the KinectBackgroundRemoval180_(32|64).dll in your plugin folder (next to obs-kinect.dll)?
 
 Please [create an issue](https://github.com/SirLynix/obs-kinect/issues) otherwise!
@@ -149,13 +185,15 @@ Please [create an issue](https://github.com/SirLynix/obs-kinect/issues) otherwis
 
 Body filtering is based on body data from Kinect, which means Kinect has to recognize your body first.
 
-Kinect v2 does that kinda well but v1 may struggle at the beginning, try to move away from your Kinect to let it see your whole body and then come back.
+Kinect v2 and v3 do that kinda well but v1 may struggle at the beginning, try to move away from your Kinect to let it see your whole body and then come back.
 
 ## I have to get really far away from the Kinect for the green screen to work!
 
 Kinect v1 depth range is about 80-400cm in front of it, but if you have a Kinect for Windows you can enable near mode to bring it to 40-200cm.
 
 Kinect v2 depth range is about 50-500cm in front of it.
+
+Kinect v3 depth range depends on the selected depth mode (the nearest depth value it can read is 25cm and the furthest is about ~546cm).
 
 This range is a physical limitation, there's not much I can do about it.
 
@@ -175,6 +213,38 @@ Kinect v1 takes indeed a lot of time to initialize itself and to change the runn
 As far as my tests went, it may take up to 10-15s before showing up something.
 
 Note: if you enabled the green-screen effect with a body filter, try to move away from the Kinect to let it detect your body and then come back.
+
+## (KinectV3) What are depth modes?
+
+The Azure Kinect supports multiple depth modes (see [Azure Kinect Hardware specifications](https://docs.microsoft.com/en-us/azure/kinect-dk/hardware-specification#depth-camera-supported-operating-modes)). Theses will affect the depth field of view and range.
+
+NFOV unbinned is a good default, but you can try to play with them to see what works best for you (be warned that WFOV unbinned limit the framerate to 15Hz).
+
+Passive IR only works with infrared stream.
+
+Beware: only one color/depth mode can be active at a given time, so if you're planning to use multiple Azure Kinect sources with multiple color/depth modes ensure to disable others sources (hide them and check "Shutdown when not visible") so they don't conflict and force some color or depth mode.
+
+## (KinectV3) I don't have body filer options available
+
+You're probably lacking some files, please follow the "How to use" instructions and ensure you have every listed file for the Azure Kinect Body Tracking SDK next to your obs executable.
+
+## (KinectV3) Body filtering doesn't work as good as previous Kinect versions
+
+With Azure Kinect, Microsoft switched to a neural network to identify skeletons and body pixels, which is expected to improve with every Azure Kinect Body Tracking SDK release, check if you're using the latest version (see "How to use" instructions for how to install or upgrade your SDK).
+You can follow Microsoft update on the officiel [Azure Kinect SDK repository](https://github.com/microsoft/Azure-Kinect-Sensor-SDK) (check issues like https://github.com/microsoft/Azure-Kinect-Sensor-SDK/issues/1357 )
+
+You can also try changing the depth mode (see "What are depth modes?")
+
+## (KinectV3) The greenscreen gives me holes in clothes / headset / black hair
+
+Azure Kinect depth sensor quality is really good but it has some troubles with black surfaces like headsets and hair for some people (like me), and cannot read depth for thoses pixels.  
+I'm trying to improve that on my side (along with transparency shadows). I don't know yet if Azure Kinect team can fix this or not, as it may be a software or hardware issue
+
+## What is the maximum color resolution I can have @30Hz?
+
+For the Kinect v1 it's 480p (640x480), but it can output 1280x960@15Hz.  
+For the Kinect v2 it's 1080p (1920x1080), which is the only resolution available.  
+For the Kinect v3 it's 4K (3840x2160), but it can output 4096x3072@15Hz (4:3).  
 
 ## Can I have multiple Kinect source at the same time?
 
@@ -206,16 +276,17 @@ Since version 0.3 you can allow some "depth-lag", which means the plugin is allo
 
 ## Why do closes object disappears before reaching the min distance?
 
-Kinect cannot read depth below 40cm (v1) / 50cm (v2) in front of it and invalid depth are discarded.
+Kinect cannot read depth below 40cm (v1) / 50cm (v2) / 25|50cm (v3) in front of it and invalid depth are discarded.
 Try moving your Kinect further away from the object/person you want to film.
 
 ## Can I use this with VR (since SteamVR lighthouses use infrared too)?
 
-I tested it with the HTC Vive base stations (SteamVR 1.0) and didn't have any issues related to Kinect depth mapping. However the Kinect may cause tracking issues (or even prevent VR tracking).
+It depends on your Kinect model and version of SteamVR lighthouses.
+There shouldn't be any issue with SteamVR 2.0 lighthouses, but I've observed some conflicts between Kinectv2 and SteamVR 1.0 lighthouses (KinectV1 was fine, can't tell for KinectV3)
 
-[Here's a cool guide](https://skarredghost.com/2016/12/09/how-to-use-kinect-with-htc-vive/) about reducing those interferences.
+If your Kinect is causing tracking issues (or even preventing VR tracking) [here's a cool guide](https://skarredghost.com/2016/12/09/how-to-use-kinect-with-htc-vive/) about reducing those interferences.
 
-## Why is it called a "green screen" even though there's no green involved
+## Why is it called a "green screen" even though there's no green involved?
 
 I'm lacking a better name, being a developper implies I suck at naming things.
 
@@ -223,7 +294,7 @@ I'm lacking a better name, being a developper implies I suck at naming things.
 
 I don't have the space to use a real green screen, and don't want to run into light setup.
 
-Also I wanted a Kinect so badly since it got out.
+Also I wanted a Kinect so badly since the [Project Natal E3 video](https://www.youtube.com/watch?v=g_txF7iETX0).
 
 ## Hey I have an idea
 
@@ -236,8 +307,6 @@ Fork this project, improve it and make a [pull request](https://github.com/SirLy
 ## Why isn't my language available?
 
 That's probably because I don't speak it, I can only do the english and french translations, but you can translate this plugin [pull request](https://github.com/SirLynix/obs-kinect/pulls) with your language file!
-
-Thanks to @pucgenie and @saphir1997 for the german translation.
 
 ## What's the "GPU depth mapping/Use GPU to fetch color-to-depth values" option?
 
@@ -255,6 +324,11 @@ This helps with flickering but also introduces a "movement shadow", which may or
 
 ## Does this plugin support other devices than Kinect?
 
-Nope, and I doubt it will as theses are the only depth camera I have.
+Nope, and I doubt it will as theses are the only depth camera I have, but it should be easy to add a backend for some other device. I will be more than willing to help you with that!
 
-If you're looking for Intel Realsense support (which seems to be a way better device than KinectV2 today), [OBS has builtin support for this](https://youtu.be/wW4HiiksDcU)
+## Thanks
+
+Thanks a lot to @microsoft for supporting obs-kinect developpment by sending me an Azure Kinect so I could add support for it!
+
+Thanks to @pucgenie and @saphir1997 for the german translation.
+Thanks to @Liskowskyy for the polish translation.

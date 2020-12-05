@@ -59,10 +59,10 @@ struct DepthFrameData : FrameData
 	ObserverPtr<std::uint16_t[]> ptr;
 };
 
-// R8 infrared frame
+// R16 infrared frame
 struct InfraredFrameData : FrameData
 {
-	ObserverPtr<std::uint8_t[]> ptr;
+	ObserverPtr<std::uint16_t[]> ptr;
 };
 
 // RG16F depth mapping frame
@@ -83,6 +83,7 @@ struct KinectFrame
 	std::optional<BodyIndexFrameData> bodyIndexFrame;
 	std::optional<ColorFrameData> colorFrame;
 	std::optional<DepthFrameData> depthFrame;
+	std::optional<DepthFrameData> mappedDepthFrame;
 	std::optional<DepthMappingFrameData> depthMappingFrame;
 	std::optional<InfraredFrameData> infraredFrame;
 	std::uint64_t frameIndex;
