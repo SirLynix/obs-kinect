@@ -56,7 +56,7 @@ You can install multiples runtimes if you want to support multiple Kinect versio
 
 ### If you have a Kinect v3 (Azure Kinect)
 
-- Along with obs-kinect files on GitHub you will find Azure Kinect SDK redistributables, download them and put them in your `obs-studio/bin/[32|64]bits folder`, next to obs(64) executable (the package distributed here already has the right arborescence, just copy it to obs-studio folder).  
+- Along with obs-kinect files on GitHub you will find Azure Kinect SDK redistributables, download them and put them in your `obs-studio/bin/[32|64]bit folder`, next to obs(64) executable (the package distributed here already has the right arborescence, just copy it to obs-studio folder).  
 You can also get thoses files (possibly even a more recent version) from the [**Azure Kinect Sensor SDK**](https://docs.microsoft.com/en-us/azure/kinect-dk/sensor-sdk-download).
 
 - **To enable body filter support** you have to download [**Azure Kinect Body Tracking SDK**](https://docs.microsoft.com/en-us/azure/kinect-dk/body-sdk-download) from Microsoft and copy theses files from `Azure Kinect SDK v1.4.1\tools` folder:
@@ -68,7 +68,7 @@ You can also get thoses files (possibly even a more recent version) from the [**
    * onnxruntime.dll
    * vcomp140.dll
 
- to `obs-studio/bin/[32|64]bits folder`, next to obs(64) executable.
+ to `obs-studio/bin/[32|64]bit folder`, next to obs(64) executable.
 
 AKBT SDK redistributable are pretty big (~600MB) so I don't include them with obs-kinect releases.
 
@@ -240,6 +240,10 @@ You can also try changing the depth mode (see "What are depth modes?")
 Azure Kinect depth sensor quality is really good but it has some troubles with black surfaces like headsets and hair for some people (like me), and cannot read depth for thoses pixels.  
 I'm trying to improve that on my side (along with transparency shadows). I don't know yet if Azure Kinect team can fix this or not, as it may be a software or hardware issue
 
+## (KinectV3) Is this plugin able to use multiple Azure Kinect at once (to fill depth holes)?
+
+At this point, this is an idea I would like to implement but I won't be able to test it myself. If you have two Azure Kinect and are willing to help please let me know!
+
 ## What is the maximum color resolution I can have @30Hz?
 
 For the Kinect v1 it's 480p (640x480), but it can output 1280x960@15Hz.  
@@ -263,7 +267,7 @@ That's because the color and the IR sensor of the kinect are one centimeter apar
 
 (image from https://daqri.com/blog/depth-cameras-for-mobile-ar/)
 
-I hope to be able to improve this (using the body index masking).
+I hope to improve this with post-processing filters.
 
 ## It flickers so much
 
