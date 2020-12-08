@@ -36,11 +36,31 @@ enum EnabledSources
 
 using SourceFlags = std::uint32_t;
 
+enum class ExposureControl
+{
+	FullyAuto,
+	SemiAuto,
+	Manual
+};
+
+enum class PowerlineFrequency
+{
+	Freq50,
+	Freq60
+};
+
 enum class ProcessPriority
 {
 	Normal = 0,
 	AboveNormal = 1,
 	High = 2
+};
+
+enum class WhiteBalanceMode
+{
+	Auto,
+	Manual,
+	Unknown
 };
 
 OBSKINECT_API std::string EnabledSourceToString(SourceFlags flags);

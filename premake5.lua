@@ -95,27 +95,34 @@ if (Config.KinectSdk20) then
 			"include/obs-kinect",
 			assert(Config.KinectSdk20.Include, "Missing KinectSdk20 include dir")
 		},
+		Include64 = {
+			"thirdparty/NuiSensorLib/include"
+		},
+		LibDir32 = {},
+		LibDir64 = {
+			"thirdparty/NuiSensorLib/lib/x64"
+		},
 		Links = {
 			"obs-kinect",
 			"obs",
 			"kinect20"
+		},
+		Links64 = {
+			"NuiSensorLib",
+			"SetupAPI"
 		}
 	}
 
 	if (Config.KinectSdk20.Lib32) then
-		project.LibDir32 = {
-			obslib32,
-			Config.KinectSdk20.Lib32
-		}
+		table.insert(project.LibDir32, obslib32)
+		table.insert(project.LibDir32, Config.KinectSdk20.Lib32)
 	else
 		print("Missing KinectSdk20 lib dir (x86)")
 	end
 
 	if (Config.KinectSdk20.Lib64) then
-		project.LibDir64 = {
-			obslib64,
-			Config.KinectSdk20.Lib64
-		}
+		table.insert(project.LibDir64, obslib64)
+		table.insert(project.LibDir64, Config.KinectSdk20.Lib64)
 	else
 		print("Missing KinectSdk20 lib dir (x86_64)")
 	end
@@ -211,16 +218,24 @@ workspace("obs-kinect")
 				platforms "x86"
 			end
 
+			filter("system:Windows")
+				defines("NOMINMAX")
+				defines("WIN32_LEAN_AND_MEAN")
+
 			filter("action:vs*")
 				defines("_ENABLE_ATOMIC_ALIGNMENT_FIX")
 				disablewarnings("4251") -- class needs to have dll-interface to be used by clients of class blah blah blah
 
 			filter("platforms:x86")
 				architecture "x32"
+				includedirs(proj.Include32)
+				links(proj.Links32)
 				libdirs(proj.LibDir32)
 
 			filter("platforms:x86_64")
 				architecture "x64"
+				includedirs(proj.Include64)
+				links(proj.Links64)
 				libdirs(proj.LibDir64)
 
 			filter("configurations:Debug")

@@ -22,6 +22,7 @@
 
 #include "KinectDevice.hpp"
 #include "Win32Helper.hpp"
+#include "NuiSensorLibHelper.hpp"
 #include <Kinect.h>
 
 class KinectSdk20Device final : public KinectDevice
@@ -37,6 +38,7 @@ class KinectSdk20Device final : public KinectDevice
 		static void SetServicePriority(ProcessPriority priority);
 
 	private:
+		void HandleDoubleParameterUpdate(const std::string& parameterName, double value) override;
 		void HandleIntParameterUpdate(const std::string& parameterName, long long value) override;
 		void ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr) override;
 
@@ -48,6 +50,11 @@ class KinectSdk20Device final : public KinectDevice
 
 		ReleasePtr<IKinectSensor> m_kinectSensor;
 		ReleasePtr<ICoordinateMapper> m_coordinateMapper;
+		ClosePtr<IKinectSensor> m_openedKinectSensor;
+
+#if HAS_NUISENSOR_LIB
+		NuiSensorHandle m_nuiHandle;
+#endif
 
 		static ProcessPriority s_servicePriority;
 };

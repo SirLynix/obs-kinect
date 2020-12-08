@@ -28,6 +28,11 @@ KinectSdk20Device::KinectSdk20Device()
 
 	m_kinectSensor.reset(pKinectSensor);
 
+	if (FAILED(m_kinectSensor->Open()))
+		throw std::runtime_error("failed to open Kinect sensor");
+
+	m_openedKinectSensor.reset(pKinectSensor);
+
 	ICoordinateMapper* pCoordinateMapper;
 	if (FAILED(m_kinectSensor->get_CoordinateMapper(&pCoordinateMapper)))
 		throw std::runtime_error("failed to retrieve coordinate mapper");
@@ -41,12 +46,149 @@ KinectSdk20Device::KinectSdk20Device()
 	{
 		return std::max(a, b);
 	});
+
+#if HAS_NUISENSOR_LIB
+	std::array<NUISENSOR_DEVICE_INFO, 16> devices;
+	ULONG deviceFound = NuiSensor_FindAllDevices(devices.data(), ULONG(devices.size()));
+	if (deviceFound > 0)
+	{
+		auto DeviceToString = [](const NUISENSOR_DEVICE_INFO& deviceInfo) -> std::string
+		{
+			std::array<char, MAX_PATH * 4> devicePath;
+			std::size_t length = os_wcs_to_utf8(deviceInfo.DevicePath, 0, devicePath.data(), devicePath.size());
+			if (length == 0)
+				return "<Error>";
+
+			return std::string(devicePath.data(), length);
+		};
+
+		if (deviceFound > 1)
+		{
+			// Multiple Kinect v2 found, find the right one by using the serial number
+			std::array<wchar_t, 256> wideId = { L"<failed to get id>" };
+			HRESULT serialResult = m_openedKinectSensor->get_UniqueKinectId(UINT(wideId.size()), wideId.data());
+			if (SUCCEEDED(serialResult))
+			{
+				std::size_t serialLength = std::wcslen(wideId.data());
+				for (ULONG i = 0; i < deviceFound; ++i)
+				{
+					NUISENSOR_HANDLE deviceHandle;
+					if (!NuiSensor_InitializeEx(&deviceHandle, devices[i].DevicePath))
+					{
+						errorlog("failed to initialize device #%u %s", i, DeviceToString(devices[i]).c_str());
+						continue;
+					}
+
+					m_nuiHandle.reset(deviceHandle);
+
+					NUISENSOR_SERIAL_NUMBER serial;
+					if (!NuiSensor_GetSerialNumber(deviceHandle, &serial))
+					{
+						errorlog("failed to retrieve serial number of device #%u (%s)", i, DeviceToString(devices[i]).c_str());
+						continue;
+					}
+
+					// Even though NUISENSOR_SERIAL_NUMBER returns an array of byte, it seems to be an array of wchar_t that can be compared using memcmp
+					if (std::memcmp(serial.Data, wideId.data(), std::min(sizeof(serial.Data) / sizeof(BYTE), serialLength * sizeof(wchar_t))) == 0)
+					{
+						// Found it!
+						break;
+					}
+
+					m_nuiHandle.reset();
+				}
+			}
+			else
+				errorlog("failed to retrieve Kinect serial");
+		}
+		else
+		{
+			NUISENSOR_HANDLE deviceHandle;
+			if (NuiSensor_InitializeEx(&deviceHandle, devices[0].DevicePath))
+				m_nuiHandle.reset(deviceHandle);
+			else
+				errorlog("failed to initialize device #0 %s", DeviceToString(devices[0]).c_str());
+		}
+	}
+
+	if (m_nuiHandle)
+	{
+		RegisterIntParameter("sdk20_exposure_mode", static_cast<int>(ExposureControl::FullyAuto), [](long long a, long long b)
+		{
+			return std::max(a, b);
+		});
+
+		// Default values read from my KinectV2
+
+		RegisterDoubleParameter("sdk20_analog_gain", 5.333333, 0.0001, [](double a, double b)
+		{
+			return std::max(a, b);
+		});
+
+		RegisterDoubleParameter("sdk20_digital_gain", 1.000286, 0.0001, [](double a, double b)
+		{
+			return std::max(a, b);
+		});
+
+		RegisterDoubleParameter("sdk20_exposure_compensation", 0.0, 0.01, [](double a, double b)
+		{
+			return std::max(a, b);
+		});
+
+		RegisterDoubleParameter("sdk20_exposure_time", 0.0, 0.1, [](double a, double b)
+		{
+			return std::max(a, b);
+		});
+
+		RegisterIntParameter("sdk20_white_balance_mode", static_cast<int>(WhiteBalanceMode::Auto), [](long long a, long long b)
+		{
+			return std::max(a, b);
+		});
+
+		RegisterDoubleParameter("sdk20_red_gain", 1.0, 0.01, [](double a, double b)
+		{
+			return std::max(a, b);
+		});
+
+		RegisterDoubleParameter("sdk20_green_gain", 1.0, 0.01, [](double a, double b)
+		{
+			return std::max(a, b);
+		});
+
+		RegisterDoubleParameter("sdk20_blue_gain", 1.0, 0.01, [](double a, double b)
+		{
+			return std::max(a, b);
+		});
+		
+		RegisterIntParameter("sdk20_powerline_frequency", static_cast<int>(PowerlineFrequency::Freq50), [](long long a, long long b)
+		{
+			return std::max(a, b);
+		});
+	}
+	else
+		warnlog("failed to open a NuiSensor handle to the Kinect, some functionnality (such as exposure mode control) will be disabled");
+#else
+	warnlog("obs-kinect-sdk20 backend has been built without NuiSensorLib support, some functionnality (such as exposure mode control) will be disabled");
+#endif
 }
 
 KinectSdk20Device::~KinectSdk20Device()
 {
 	// Reset service priority on exit
 	SetServicePriority(ProcessPriority::Normal);
+
+#if HAS_NUISENSOR_LIB
+	// Reset exposure and white mode to automatic
+	if (m_nuiHandle)
+	{
+		NuiSensorColorCameraSettings cameraSettings;
+		cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_EXPOSURE_MODE, 0); //< 0 = fully auto
+		cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_WHITE_BALANCE_MODE, 1); //< 1 = auto
+
+		if (!cameraSettings.Execute(m_nuiHandle.get()))
+			warnlog("failed to reset camera color settings");
+	}
+#endif
 }
 
 obs_properties_t* KinectSdk20Device::CreateProperties() const
@@ -58,6 +200,31 @@ obs_properties_t* KinectSdk20Device::CreateProperties() const
 	obs_property_list_add_int(p, Translate("ObsKinectV2.ServicePriority_High"), static_cast<int>(ProcessPriority::High));
 	obs_property_list_add_int(p, Translate("ObsKinectV2.ServicePriority_AboveNormal"), static_cast<int>(ProcessPriority::AboveNormal));
 	obs_property_list_add_int(p, Translate("ObsKinectV2.ServicePriority_Normal"), static_cast<int>(ProcessPriority::Normal));
+
+#if HAS_NUISENSOR_LIB
+	p = obs_properties_add_list(props, "sdk20_exposure_mode", Translate("ObsKinectV2.ExposureMode"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(p, Translate("ObsKinectV2.ExposureControl_FullyAuto"), static_cast<int>(ExposureControl::FullyAuto));
+	obs_property_list_add_int(p, Translate("ObsKinectV2.ExposureControl_SemiAuto"), static_cast<int>(ExposureControl::SemiAuto));
+	obs_property_list_add_int(p, Translate("ObsKinectV2.ExposureControl_Manual"), static_cast<int>(ExposureControl::Manual));
+	
+	obs_properties_add_float_slider(props, "sdk20_analog_gain", Translate("ObsKinectV2.AnalogGain"), 1.0, 4.0, 0.1);
+	obs_properties_add_float_slider(props, "sdk20_digital_gain", Translate("ObsKinectV2.DigitalGain"), 1.0, 4.0, 0.1);
+	obs_properties_add_float_slider(props, "sdk20_exposure_compensation", Translate("ObsKinectV2.ExposureCompensation"), -2.0, 2.0, 0.1);
+	obs_properties_add_float_slider(props, "sdk20_exposure_time", Translate("ObsKinectV2.ExposureTime"), 0.0, 640.0, 1.0);
+
+	p = obs_properties_add_list(props, "sdk20_white_balance_mode", Translate("ObsKinectV2.WhiteBalanceMode"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(p, Translate("ObsKinectV2.WhiteBalanceMode_Auto"), static_cast<int>(WhiteBalanceMode::Auto));
+	obs_property_list_add_int(p, Translate("ObsKinectV2.WhiteBalanceMode_Manual"), static_cast<int>(WhiteBalanceMode::Manual));
+	obs_property_list_add_int(p, Translate("ObsKinectV2.WhiteBalanceMode_Unknown"), static_cast<int>(WhiteBalanceMode::Unknown));
+
+	obs_properties_add_float_slider(props, "sdk20_red_gain", Translate("ObsKinectV2.RedGain"), 1.0, 4.0, 0.1);
+	obs_properties_add_float_slider(props, "sdk20_green_gain", Translate("ObsKinectV2.GreenGain"), 1.0, 4.0, 0.1);
+	obs_properties_add_float_slider(props, "sdk20_blue_gain", Translate("ObsKinectV2.BlueGain"), 1.0, 4.0, 0.1);
+
+	p = obs_properties_add_list(props, "sdk20_powerline_frequency", Translate("ObsKinectV2.PowerlineFrequency"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(p, Translate("ObsKinectV2.PowerlineFrequency_50Hz"), static_cast<int>(PowerlineFrequency::Freq50));
+	obs_property_list_add_int(p, Translate("ObsKinectV2.PowerlineFrequency_60Hz"), static_cast<int>(PowerlineFrequency::Freq60));
+#endif
 
 	return props;
 }
@@ -404,10 +571,138 @@ auto KinectSdk20Device::RetrieveInfraredFrame(IMultiSourceFrame* multiSourceFram
 	return frameData;
 }
 
+void KinectSdk20Device::HandleDoubleParameterUpdate(const std::string& parameterName, double value)
+{
+#if HAS_NUISENSOR_LIB
+	NuiSensorColorCameraSettings cameraSettings;
+
+	float fValue = float(value);
+
+	if (parameterName == "sdk20_analog_gain")
+		cameraSettings.AddCommandFloat(NUISENSOR_RGB_COMMAND_SET_ANALOG_GAIN, fValue);
+	else if (parameterName == "sdk20_digital_gain")
+		cameraSettings.AddCommandFloat(NUISENSOR_RGB_COMMAND_SET_DIGITAL_GAIN, fValue);
+	else if (parameterName == "sdk20_exposure_compensation")
+		cameraSettings.AddCommandFloat(NUISENSOR_RGB_COMMAND_SET_EXPOSURE_COMPENSATION, fValue);
+	else if (parameterName == "sdk20_exposure_time")
+		cameraSettings.AddCommandFloat(NUISENSOR_RGB_COMMAND_SET_EXPOSURE_TIME_MS, fValue);
+	else if (parameterName == "sdk20_red_gain")
+		cameraSettings.AddCommandFloat(NUISENSOR_RGB_COMMAND_SET_RED_CHANNEL_GAIN, fValue);
+	else if (parameterName == "sdk20_green_gain")
+		cameraSettings.AddCommandFloat(NUISENSOR_RGB_COMMAND_SET_GREEN_CHANNEL_GAIN, fValue);
+	else if (parameterName == "sdk20_blue_gain")
+		cameraSettings.AddCommandFloat(NUISENSOR_RGB_COMMAND_SET_BLUE_CHANNEL_GAIN, fValue);
+	else
+		errorlog("unhandled parameter %s", parameterName.c_str());
+
+	if (cameraSettings.GetCommandCount() > 0)
+	{
+		if (cameraSettings.Execute(m_nuiHandle.get()))
+		{
+			if (!cameraSettings.GetReplyStatus(0))
+				errorlog("Kinect refused color camera setting (%s) with value %f");
+		}
+		else
+			errorlog("failed to send color settings to the Kinect");
+	}
+#endif
+}
+
 void KinectSdk20Device::HandleIntParameterUpdate(const std::string& parameterName, long long value)
 {
 	if (parameterName == "sdk20_service_priority")
 		SetServicePriority(static_cast<ProcessPriority>(value));
+#if HAS_NUISENSOR_LIB
+	else if (parameterName == "sdk20_exposure_mode")
+	{
+		ExposureControl exposureMode = static_cast<ExposureControl>(value);
+
+		NuiSensorColorCameraSettings cameraSettings;
+		cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_ACS, 0);
+
+		switch (exposureMode)
+		{
+			case ExposureControl::FullyAuto:
+				cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_EXPOSURE_MODE, 0); //< 0 = fully auto
+				break;
+
+			case ExposureControl::SemiAuto:
+				cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_EXPOSURE_MODE, 3); //< 3 = semi auto
+				break;
+
+			case ExposureControl::Manual:
+				cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_EXPOSURE_MODE, 4); //< 4 = manual
+				break;
+		}
+
+		if (cameraSettings.Execute(m_nuiHandle.get()))
+		{
+			if (!cameraSettings.GetReplyStatus(0))
+				errorlog("SET_ACS command failed");
+
+			if (!cameraSettings.GetReplyStatus(1))
+				errorlog("SET_EXPOSURE_MODE command failed");
+		}
+		else
+			errorlog("failed to send color settings to the Kinect");
+	}
+	else if (parameterName == "sdk20_white_balance_mode")
+	{
+		WhiteBalanceMode whiteBalanceMode = static_cast<WhiteBalanceMode>(value);
+		
+		NuiSensorColorCameraSettings cameraSettings;
+
+		switch (whiteBalanceMode)
+		{
+			case WhiteBalanceMode::Auto:
+				cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_WHITE_BALANCE_MODE, 1); //< 1 = auto
+				break;
+
+			case WhiteBalanceMode::Manual:
+				cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_WHITE_BALANCE_MODE, 3); //< 3 = ? (similar to manual but ignores red/green/blue gains)
+				break;
+
+			case WhiteBalanceMode::Unknown:
+				cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_WHITE_BALANCE_MODE, 0); //< 0 = manual
+				break;
+		}
+
+		if (cameraSettings.Execute(m_nuiHandle.get()))
+		{
+			if (!cameraSettings.GetReplyStatus(0))
+				errorlog("SET_WHITE_BALANCE_MODE command failed");
+		}
+		else
+			errorlog("failed to send color settings to the Kinect");
+	}
+	else if (parameterName == "sdk20_powerline_frequency")
+	{
+		PowerlineFrequency powerlineFrequency = static_cast<PowerlineFrequency>(value);
+
+		NuiSensorColorCameraSettings cameraSettings;
+
+		switch (powerlineFrequency)
+		{
+			case PowerlineFrequency::Freq50:
+				cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_FLICKER_FREE_FREQUENCY, 50);
+				break;
+
+			case PowerlineFrequency::Freq60:
+				cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_FLICKER_FREE_FREQUENCY, 60);
+				break;
+		}
+
+		if (cameraSettings.Execute(m_nuiHandle.get()))
+		{
+			if (!cameraSettings.GetReplyStatus(0))
+				errorlog("SET_FLICKER_FREE_FREQUENCY command failed");
+		}
+		else
+			errorlog("failed to send color settings to the Kinect");
+	}
+#endif
+	else
+		errorlog("unhandled parameter %s", parameterName.c_str());
 }
 
 void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& error)
@@ -415,7 +710,6 @@ void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 	os_set_thread_name("KinectDeviceSdk20");
 
 	ReleasePtr<IMultiSourceFrameReader> multiSourceFrameReader;
-	ClosePtr<IKinectSensor> openedKinectSensor;
 
 	SourceFlags enabledSourceFlags = 0;
 	DWORD enabledFrameSourceTypes = 0;
@@ -438,7 +732,7 @@ void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 		if (!multiSourceFrameReader || newFrameSourcesTypes != enabledFrameSourceTypes)
 		{
 			IMultiSourceFrameReader* pMultiSourceFrameReader;
-			if (FAILED(openedKinectSensor->OpenMultiSourceFrameReader(newFrameSourcesTypes, &pMultiSourceFrameReader)))
+			if (FAILED(m_openedKinectSensor->OpenMultiSourceFrameReader(newFrameSourcesTypes, &pMultiSourceFrameReader)))
 				throw std::runtime_error("failed to acquire source frame reader");
 
 			multiSourceFrameReader.reset(pMultiSourceFrameReader);
@@ -452,13 +746,8 @@ void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 	try
 	{
-		if (FAILED(m_kinectSensor->Open()))
-			throw std::runtime_error("failed to open Kinect sensor");
-
-		openedKinectSensor.reset(m_kinectSensor.get());
-
 		std::array<wchar_t, 256> wideId = { L"<failed to get id>" };
-		openedKinectSensor->get_UniqueKinectId(UINT(wideId.size()), wideId.data());
+		m_openedKinectSensor->get_UniqueKinectId(UINT(wideId.size()), wideId.data());
 
 		std::array<char, wideId.size()> id = { "<failed to get id>" };
 		WideCharToMultiByte(CP_UTF8, 0, wideId.data(), int(wideId.size()), id.data(), int(id.size()), nullptr, nullptr);
