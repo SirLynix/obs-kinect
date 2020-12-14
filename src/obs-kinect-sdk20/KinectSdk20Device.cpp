@@ -198,6 +198,9 @@ obs_properties_t* KinectSdk20Device::CreateProperties() const
 	p = obs_properties_add_list(props, "sdk20_powerline_frequency", Translate("ObsKinectV2.PowerlineFrequency"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(p, Translate("ObsKinectV2.PowerlineFrequency_50Hz"), static_cast<int>(PowerlineFrequency::Freq50));
 	obs_property_list_add_int(p, Translate("ObsKinectV2.PowerlineFrequency_60Hz"), static_cast<int>(PowerlineFrequency::Freq60));
+
+	obs_properties_add_int_slider(props, "sdk20_led_nexus_intensity", Translate("ObsKinectV2.NexusLedIntensity"), 0, 1000, 10);
+	obs_properties_add_int_slider(props, "sdk20_led_privacy_intensity", Translate("ObsKinectV2.PrivacyLedIntensity"), 0, 1000, 10);
 #endif
 
 	return props;
@@ -676,6 +679,15 @@ void KinectSdk20Device::HandleIntParameterUpdate(const std::string& parameterNam
 		}
 		else
 			errorlog("failed to send color settings to the Kinect");
+	}
+	else if (parameterName == "sdk20_led_nexus_intensity" || parameterName == "sdk20_led_privacy_intensity")
+	{
+		NUISENSOR_LED_SETTING ledSetting;
+		ledSetting.Index = (parameterName == "sdk20_led_nexus_intensity") ? NUISENSOR_LED_INDEX_NEXUS : NUISENSOR_LED_INDEX_PRIVACY;
+		ledSetting.Intensity = ULONG(value);
+
+		if (!NuiSensor_SetLedStatus(m_nuiHandle.get(), &ledSetting))
+			errorlog("failed to set led intensity");
 	}
 #endif
 	else
