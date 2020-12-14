@@ -20,6 +20,16 @@
 #include <array>
 #include <tlhelp32.h>
 
+namespace
+{
+	void set_property_visibility(obs_properties_t* props, const char* propertyName, bool visible)
+	{
+		obs_property_t* property = obs_properties_get(props, propertyName);
+		if (property)
+			obs_property_set_visible(property, visible);
+	}
+}
+
 KinectSdk20Device::KinectSdk20Device()
 {
 	IKinectSensor* pKinectSensor;
@@ -180,6 +190,19 @@ obs_properties_t* KinectSdk20Device::CreateProperties() const
 	obs_property_list_add_int(p, Translate("ObsKinectV2.ExposureControl_SemiAuto"), static_cast<int>(ExposureControl::SemiAuto));
 	obs_property_list_add_int(p, Translate("ObsKinectV2.ExposureControl_Manual"), static_cast<int>(ExposureControl::Manual));
 	
+	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
+	{
+		ExposureControl exposureMode = static_cast<ExposureControl>(obs_data_get_int(s, "sdk20_exposure_mode"));
+
+		set_property_visibility(props, "sdk20_analog_gain", (exposureMode == ExposureControl::Manual));
+		set_property_visibility(props, "sdk20_digital_gain", (exposureMode == ExposureControl::Manual));
+		set_property_visibility(props, "sdk20_exposure_compensation", (exposureMode == ExposureControl::FullyAuto));
+		set_property_visibility(props, "sdk20_exposure_integration_time", (exposureMode == ExposureControl::Manual));
+		set_property_visibility(props, "sdk20_exposure", (exposureMode == ExposureControl::SemiAuto));
+
+		return true;
+	});
+
 	obs_properties_add_float_slider(props, "sdk20_analog_gain", Translate("ObsKinectV2.AnalogGain"), 1.0, 8.0, 0.1);
 	obs_properties_add_float_slider(props, "sdk20_digital_gain", Translate("ObsKinectV2.DigitalGain"), 1.0, 4.0, 0.1);
 	obs_properties_add_float_slider(props, "sdk20_exposure_compensation", Translate("ObsKinectV2.ExposureCompensation"), -2.0, 2.0, 0.1);
@@ -190,6 +213,18 @@ obs_properties_t* KinectSdk20Device::CreateProperties() const
 	obs_property_list_add_int(p, Translate("ObsKinectV2.WhiteBalanceMode_Auto"), static_cast<int>(WhiteBalanceMode::Auto));
 	obs_property_list_add_int(p, Translate("ObsKinectV2.WhiteBalanceMode_Manual"), static_cast<int>(WhiteBalanceMode::Manual));
 	obs_property_list_add_int(p, Translate("ObsKinectV2.WhiteBalanceMode_Unknown"), static_cast<int>(WhiteBalanceMode::Unknown));
+	
+	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
+	{
+		WhiteBalanceMode whiteBalanceMode = static_cast<WhiteBalanceMode>(obs_data_get_int(s, "sdk20_white_balance_mode"));
+
+		bool showGainSliders = (whiteBalanceMode == WhiteBalanceMode::Manual);
+
+		set_property_visibility(props, "sdk20_red_gain", showGainSliders);
+		set_property_visibility(props, "sdk20_green_gain", showGainSliders);
+		set_property_visibility(props, "sdk20_blue_gain", showGainSliders);
+		return true;
+	});
 
 	obs_properties_add_float_slider(props, "sdk20_red_gain", Translate("ObsKinectV2.RedGain"), 1.0, 4.0, 0.1);
 	obs_properties_add_float_slider(props, "sdk20_green_gain", Translate("ObsKinectV2.GreenGain"), 1.0, 4.0, 0.1);
