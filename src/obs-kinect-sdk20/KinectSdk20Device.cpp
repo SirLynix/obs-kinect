@@ -17,8 +17,9 @@
 
 #include "KinectSdk20Device.hpp"
 #include <util/threading.h>
-#include <array>
 #include <tlhelp32.h>
+#include <array>
+#include <sstream>
 
 namespace
 {
@@ -236,6 +237,63 @@ obs_properties_t* KinectSdk20Device::CreateProperties() const
 
 	obs_properties_add_int_slider(props, "sdk20_led_nexus_intensity", Translate("ObsKinectV2.NexusLedIntensity"), 0, 1000, 10);
 	obs_properties_add_int_slider(props, "sdk20_led_privacy_intensity", Translate("ObsKinectV2.PrivacyLedIntensity"), 0, 1000, 10);
+
+	obs_properties_add_button2(props, "dump", Translate("ObsKinectV2.DumpCameraSettings"), [](obs_properties_t* props, obs_property_t* property, void* data)
+	{
+		struct CameraSetting
+		{
+			const char* str;
+			NUISENSOR_RGB_COMMAND_TYPE command;
+			bool integer;
+		};
+
+		std::array<CameraSetting, 9> settings = {
+			{
+				{ "ACS", NUISENSOR_RGB_COMMAND_GET_ACS, true },
+				{ "analog gain", NUISENSOR_RGB_COMMAND_GET_ANALOG_GAIN, false },
+				{ "digital gain", NUISENSOR_RGB_COMMAND_GET_DIGITAL_GAIN, false },
+				{ "exposure compensation", NUISENSOR_RGB_COMMAND_GET_EXPOSURE_COMPENSATION, false },
+				{ "exposure time", NUISENSOR_RGB_COMMAND_GET_EXPOSURE_TIME_MS, false },
+				{ "integration time", NUISENSOR_RGB_COMMAND_GET_INTEGRATION_TIME, false },
+				{ "red gain", NUISENSOR_RGB_COMMAND_GET_RED_CHANNEL_GAIN, false },
+				{ "green gain", NUISENSOR_RGB_COMMAND_GET_GREEN_CHANNEL_GAIN, false },
+				{ "blue gain", NUISENSOR_RGB_COMMAND_GET_BLUE_CHANNEL_GAIN, false },
+			}
+		};
+
+		NuiSensorColorCameraSettings cameraSettings;
+		for (const CameraSetting& setting : settings)
+			cameraSettings.AddCommand(setting.command);
+
+		if (cameraSettings.Execute(static_cast<NUISENSOR_HANDLE>(data)))
+		{
+			std::ostringstream ss;
+
+			std::size_t commandIndex = 0;
+			for (const CameraSetting& setting : settings)
+			{
+				ss << setting.str << ": ";
+				if (cameraSettings.GetReplyStatus(commandIndex))
+				{
+					if (setting.integer)
+						ss << *cameraSettings.GetReplyData(commandIndex);
+					else
+						ss << *cameraSettings.GetReplyDataFloat(commandIndex);
+				}
+				else
+					ss << "failed to get data from Kinect";
+
+				if (++commandIndex < settings.size())
+					ss << '\n';
+			}
+
+			infolog("%s", ss.str().c_str());
+		}
+		else
+			errorlog("failed to retrieve camera settings");
+
+		return true;
+	}, m_nuiHandle.get());
 #endif
 
 	return props;
