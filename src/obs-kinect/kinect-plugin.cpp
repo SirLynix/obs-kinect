@@ -415,6 +415,8 @@ static obs_properties_t* kinect_source_properties(void *unused)
 static void kinect_source_defaults(obs_data_t* settings)
 {
 	obs_data_set_default_string(settings, "device", NoDevice);
+
+	// Set the first device of the list as the default one
 	s_deviceRegistry->ForEachDevice([=](const std::string& pluginName, const std::string& uniqueName, const KinectDevice& device)
 	{
 		obs_data_set_default_string(settings, "device", uniqueName.c_str());
@@ -438,6 +440,13 @@ static void kinect_source_defaults(obs_data_t* settings)
 	obs_data_set_default_int(settings, "greenscreen_mindist", 1);
 	obs_data_set_default_int(settings, "greenscreen_maxdirtydepth", 0);
 	obs_data_set_default_int(settings, "greenscreen_type", static_cast<int>(KinectSource::GreenScreenFilterType::Depth));
+	
+	// Register default values
+	s_deviceRegistry->ForEachDevice([=](const std::string& pluginName, const std::string& uniqueName, const KinectDevice& device)
+	{
+		device.SetDefaultValues(settings);
+		return true;
+	});
 
 	for (const GreenScreenEffect& effectType : s_greenscreenEffects)
 	{

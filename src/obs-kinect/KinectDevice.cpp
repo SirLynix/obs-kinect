@@ -203,7 +203,7 @@ const std::string& KinectDevice::GetUniqueName() const
 	return m_uniqueName;
 }
 
-void KinectDevice::SetDefaultValues(obs_data_t* settings)
+void KinectDevice::SetDefaultValues(obs_data_t* settings) const
 {
 	for (auto&& [parameterName, parameterData] : m_parameters)
 	{

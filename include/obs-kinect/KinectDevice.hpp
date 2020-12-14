@@ -55,7 +55,7 @@ class OBSKINECT_API KinectDevice
 		SourceFlags GetSupportedSources() const;
 		const std::string& GetUniqueName() const;
 
-		void SetDefaultValues(obs_data_t* settings);
+		void SetDefaultValues(obs_data_t* settings) const;
 
 		void StartCapture();
 		void StopCapture();
