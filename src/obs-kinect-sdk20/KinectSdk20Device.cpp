@@ -210,7 +210,7 @@ obs_properties_t* KinectSdk20Device::CreateProperties() const
 	obs_properties_add_float_slider(props, "sdk20_analog_gain", Translate("ObsKinectV2.AnalogGain"), 1.0, 4.0, 0.1);
 	obs_properties_add_float_slider(props, "sdk20_digital_gain", Translate("ObsKinectV2.DigitalGain"), 1.0, 4.0, 0.1);
 	obs_properties_add_float_slider(props, "sdk20_exposure_compensation", Translate("ObsKinectV2.ExposureCompensation"), -2.0, 2.0, 0.1);
-	obs_properties_add_float_slider(props, "sdk20_exposure_time", Translate("ObsKinectV2.ExposureTime"), 0.0, 640.0, 1.0);
+	obs_properties_add_float_slider(props, "sdk20_exposure", Translate("ObsKinectV2.ExposureTime"), 0.0, 100.0, 1.0);
 
 	p = obs_properties_add_list(props, "sdk20_white_balance_mode", Translate("ObsKinectV2.WhiteBalanceMode"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(p, Translate("ObsKinectV2.WhiteBalanceMode_Auto"), static_cast<int>(WhiteBalanceMode::Auto));
@@ -584,8 +584,9 @@ void KinectSdk20Device::HandleDoubleParameterUpdate(const std::string& parameter
 		cameraSettings.AddCommandFloat(NUISENSOR_RGB_COMMAND_SET_DIGITAL_GAIN, fValue);
 	else if (parameterName == "sdk20_exposure_compensation")
 		cameraSettings.AddCommandFloat(NUISENSOR_RGB_COMMAND_SET_EXPOSURE_COMPENSATION, fValue);
-	else if (parameterName == "sdk20_exposure_time")
-		cameraSettings.AddCommandFloat(NUISENSOR_RGB_COMMAND_SET_EXPOSURE_TIME_MS, fValue);
+	else if (parameterName == "sdk20_exposure")
+		// from https://github.com/microsoft/MixedRealityCompanionKit/blob/e01d8e1bf60cd20a62e182610e8a9bfb757a7654/KinectIPD/KinectIPD/KinectExposure.cs#L27
+		cameraSettings.AddCommandFloat(NUISENSOR_RGB_COMMAND_SET_EXPOSURE_TIME_MS, 640.f * fValue / 100.f);
 	else if (parameterName == "sdk20_red_gain")
 		cameraSettings.AddCommandFloat(NUISENSOR_RGB_COMMAND_SET_RED_CHANNEL_GAIN, fValue);
 	else if (parameterName == "sdk20_green_gain")
