@@ -113,57 +113,29 @@ KinectSdk20Device::KinectSdk20Device()
 
 	if (m_nuiHandle)
 	{
-		RegisterIntParameter("sdk20_exposure_mode", static_cast<int>(ExposureControl::FullyAuto), [](long long a, long long b)
+		auto MaxDouble = [](double a, double b)
 		{
 			return std::max(a, b);
-		});
+		};
+
+		auto MaxInt = [](long long a, long long b)
+		{
+			return std::max(a, b);
+		};
 
 		// Default values read from my KinectV2
-
-		RegisterDoubleParameter("sdk20_analog_gain", 5.333333, 0.0001, [](double a, double b)
-		{
-			return std::max(a, b);
-		});
-
-		RegisterDoubleParameter("sdk20_digital_gain", 1.000286, 0.0001, [](double a, double b)
-		{
-			return std::max(a, b);
-		});
-
-		RegisterDoubleParameter("sdk20_exposure_compensation", 0.0, 0.01, [](double a, double b)
-		{
-			return std::max(a, b);
-		});
-
-		RegisterDoubleParameter("sdk20_exposure_time", 0.0, 0.1, [](double a, double b)
-		{
-			return std::max(a, b);
-		});
-
-		RegisterIntParameter("sdk20_white_balance_mode", static_cast<int>(WhiteBalanceMode::Auto), [](long long a, long long b)
-		{
-			return std::max(a, b);
-		});
-
-		RegisterDoubleParameter("sdk20_red_gain", 1.0, 0.01, [](double a, double b)
-		{
-			return std::max(a, b);
-		});
-
-		RegisterDoubleParameter("sdk20_green_gain", 1.0, 0.01, [](double a, double b)
-		{
-			return std::max(a, b);
-		});
-
-		RegisterDoubleParameter("sdk20_blue_gain", 1.0, 0.01, [](double a, double b)
-		{
-			return std::max(a, b);
-		});
-		
-		RegisterIntParameter("sdk20_powerline_frequency", static_cast<int>(PowerlineFrequency::Freq50), [](long long a, long long b)
-		{
-			return std::max(a, b);
-		});
+		RegisterIntParameter("sdk20_exposure_mode", static_cast<int>(ExposureControl::FullyAuto), MaxInt);
+		RegisterDoubleParameter("sdk20_analog_gain", 5.333333, 0.01, MaxDouble);
+		RegisterDoubleParameter("sdk20_digital_gain", 1.000286, 0.01, MaxDouble);
+		RegisterDoubleParameter("sdk20_exposure_compensation", 0.0, 0.01, MaxDouble);
+		RegisterDoubleParameter("sdk20_exposure", 10.0, 0.1, MaxDouble);
+		RegisterIntParameter("sdk20_white_balance_mode", static_cast<int>(WhiteBalanceMode::Auto), MaxInt);
+		RegisterDoubleParameter("sdk20_red_gain", 1.0, 0.01, MaxDouble);
+		RegisterDoubleParameter("sdk20_green_gain", 1.0, 0.01, MaxDouble);
+		RegisterDoubleParameter("sdk20_blue_gain", 1.0, 0.01, MaxDouble);
+		RegisterIntParameter("sdk20_powerline_frequency", static_cast<int>(PowerlineFrequency::Freq50), MaxInt);
+		RegisterIntParameter("sdk20_led_nexus_intensity", 100, MaxInt);
+		RegisterIntParameter("sdk20_led_privacy_intensity", 100, MaxInt);
 	}
 	else
 		warnlog("failed to open a NuiSensor handle to the Kinect, some functionnality (such as exposure mode control) will be disabled");
@@ -207,7 +179,7 @@ obs_properties_t* KinectSdk20Device::CreateProperties() const
 	obs_property_list_add_int(p, Translate("ObsKinectV2.ExposureControl_SemiAuto"), static_cast<int>(ExposureControl::SemiAuto));
 	obs_property_list_add_int(p, Translate("ObsKinectV2.ExposureControl_Manual"), static_cast<int>(ExposureControl::Manual));
 	
-	obs_properties_add_float_slider(props, "sdk20_analog_gain", Translate("ObsKinectV2.AnalogGain"), 1.0, 4.0, 0.1);
+	obs_properties_add_float_slider(props, "sdk20_analog_gain", Translate("ObsKinectV2.AnalogGain"), 1.0, 8.0, 0.1);
 	obs_properties_add_float_slider(props, "sdk20_digital_gain", Translate("ObsKinectV2.DigitalGain"), 1.0, 4.0, 0.1);
 	obs_properties_add_float_slider(props, "sdk20_exposure_compensation", Translate("ObsKinectV2.ExposureCompensation"), -2.0, 2.0, 0.1);
 	obs_properties_add_float_slider(props, "sdk20_exposure", Translate("ObsKinectV2.ExposureTime"), 0.0, 100.0, 1.0);
@@ -619,7 +591,7 @@ void KinectSdk20Device::HandleIntParameterUpdate(const std::string& parameterNam
 		ExposureControl exposureMode = static_cast<ExposureControl>(value);
 
 		NuiSensorColorCameraSettings cameraSettings;
-		cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_ACS, 0);
+		cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_ACS, 0); //< I have no idea what this is
 
 		switch (exposureMode)
 		{
@@ -660,11 +632,11 @@ void KinectSdk20Device::HandleIntParameterUpdate(const std::string& parameterNam
 				break;
 
 			case WhiteBalanceMode::Manual:
-				cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_WHITE_BALANCE_MODE, 3); //< 3 = ? (similar to manual but ignores red/green/blue gains)
+				cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_WHITE_BALANCE_MODE, 3); //< 3 = manual
 				break;
 
 			case WhiteBalanceMode::Unknown:
-				cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_WHITE_BALANCE_MODE, 0); //< 0 = manual
+				cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_WHITE_BALANCE_MODE, 0); //< 0 = ? (similar to manual but ignores red/green/blue gains)
 				break;
 		}
 
