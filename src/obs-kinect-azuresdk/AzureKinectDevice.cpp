@@ -193,9 +193,9 @@ m_depthMode(DepthMode::NFOVUnbinned)
 	// Default values from https://github.com/microsoft/Azure-Kinect-Sensor-SDK/blob/master/tools/k4aviewer/k4adevicedockcontrol.cpp#L194
 	RegisterIntParameter("azuresdk_color_resolution", static_cast<long long>(m_colorResolution.load()), MaxInt);
 	RegisterIntParameter("azuresdk_depth_mode", static_cast<long long>(m_depthMode.load()), MaxInt);
-	RegisterBoolParameter("azuresdk_exposure_auto", false, OrBool);
+	RegisterBoolParameter("azuresdk_exposure_auto", true, OrBool);
 	RegisterIntParameter("azuresdk_exposure_time", 15625, MaxInt);
-	RegisterBoolParameter("azuresdk_whitebalance_auto", false, OrBool);
+	RegisterBoolParameter("azuresdk_whitebalance_auto", true, OrBool);
 	RegisterIntParameter("azuresdk_whitebalance", 4500, MaxInt);
 	RegisterIntParameter("azuresdk_brightness", 128, MaxInt);
 	RegisterIntParameter("azuresdk_contrast", 5, MaxInt);
