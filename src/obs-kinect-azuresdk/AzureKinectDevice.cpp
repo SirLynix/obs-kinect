@@ -275,20 +275,27 @@ obs_properties_t* AzureKinectDevice::CreateProperties() const
 
 void AzureKinectDevice::HandleBoolParameterUpdate(const std::string& parameterName, bool value)
 {
-	if (parameterName == "azuresdk_exposure_auto")
+	try
 	{
-		std::int32_t intVal = (value) ? 0 : std::int32_t(GetIntParameterValue("azuresdk_exposure_time"));
-		m_device.set_color_control(K4A_COLOR_CONTROL_EXPOSURE_TIME_ABSOLUTE, (value) ? K4A_COLOR_CONTROL_MODE_AUTO : K4A_COLOR_CONTROL_MODE_MANUAL, intVal);
+		if (parameterName == "azuresdk_exposure_auto")
+		{
+			std::int32_t intVal = (value) ? 0 : std::int32_t(GetIntParameterValue("azuresdk_exposure_time"));
+			m_device.set_color_control(K4A_COLOR_CONTROL_EXPOSURE_TIME_ABSOLUTE, (value) ? K4A_COLOR_CONTROL_MODE_AUTO : K4A_COLOR_CONTROL_MODE_MANUAL, intVal);
+		}
+		else if (parameterName == "azuresdk_whitebalance_auto")
+		{
+			std::int32_t intVal = (value) ? 0 : std::int32_t(GetIntParameterValue("azuresdk_whitebalance"));
+			m_device.set_color_control(K4A_COLOR_CONTROL_WHITEBALANCE, (value) ? K4A_COLOR_CONTROL_MODE_AUTO : K4A_COLOR_CONTROL_MODE_MANUAL, intVal);
+		}
+		else if (parameterName == "azuresdk_backlightcompensation")
+			m_device.set_color_control(K4A_COLOR_CONTROL_BACKLIGHT_COMPENSATION, K4A_COLOR_CONTROL_MODE_MANUAL, (value) ? 1 : 0);
+		else
+			errorlog("unhandled bool parameter %s", parameterName.c_str());
 	}
-	else if (parameterName == "azuresdk_whitebalance_auto")
+	catch (const k4a::error& err)
 	{
-		std::int32_t intVal = (value) ? 0 : std::int32_t(GetIntParameterValue("azuresdk_whitebalance"));
-		m_device.set_color_control(K4A_COLOR_CONTROL_WHITEBALANCE, (value) ? K4A_COLOR_CONTROL_MODE_AUTO : K4A_COLOR_CONTROL_MODE_MANUAL, intVal);
+		errorlog("failed to update %s to %s: %s", parameterName.c_str(), (value) ? "enabled" : "disabled", err.what());
 	}
-	else if (parameterName == "azuresdk_backlightcompensation")
-		m_device.set_color_control(K4A_COLOR_CONTROL_BACKLIGHT_COMPENSATION, K4A_COLOR_CONTROL_MODE_MANUAL, (value) ? 1 : 0);
-	else
-		errorlog("unhandled bool parameter %s", parameterName.c_str());
 }
 
 void AzureKinectDevice::HandleIntParameterUpdate(const std::string& parameterName, long long value)
