@@ -52,6 +52,7 @@ class AzureKinectDevice final : public KinectDevice
 		obs_properties_t* AzureKinectDevice::CreateProperties() const;
 
 	private:
+		void HandleBoolParameterUpdate(const std::string& parameterName, bool value);
 		void HandleIntParameterUpdate(const std::string& parameterName, long long value);
 		void ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr) override;
 

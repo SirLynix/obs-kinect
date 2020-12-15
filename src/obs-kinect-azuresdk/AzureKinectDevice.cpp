@@ -28,6 +28,13 @@
 
 namespace
 {
+	void set_property_visibility(obs_properties_t* props, const char* propertyName, bool visible)
+	{
+		obs_property_t* property = obs_properties_get(props, propertyName);
+		if (property)
+			obs_property_set_visible(property, visible);
+	}
+
 	k4a_device_configuration_t BuildConfiguration(SourceFlags enabledSources, ColorResolution colorRes, DepthMode depthMode)
 	{
 		k4a_device_configuration_t deviceConfig;
@@ -173,15 +180,30 @@ m_depthMode(DepthMode::NFOVUnbinned)
 
 	SetSupportedSources(supportedSources);
 
-	RegisterIntParameter("azuresdk_color_resolution", static_cast<long long>(m_colorResolution.load()), [](long long a, long long b)
+	auto OrBool = [](bool a, bool b)
 	{
-		return std::max(a, b);
-	});
+		return a || b;
+	};
 
-	RegisterIntParameter("azuresdk_depth_mode", static_cast<long long>(m_depthMode.load()), [](long long a, long long b)
+	auto MaxInt = [](long long a, long long b)
 	{
 		return std::max(a, b);
-	});
+	};
+
+	// Default values from https://github.com/microsoft/Azure-Kinect-Sensor-SDK/blob/master/tools/k4aviewer/k4adevicedockcontrol.cpp#L194
+	RegisterIntParameter("azuresdk_color_resolution", static_cast<long long>(m_colorResolution.load()), MaxInt);
+	RegisterIntParameter("azuresdk_depth_mode", static_cast<long long>(m_depthMode.load()), MaxInt);
+	RegisterBoolParameter("azuresdk_exposure_auto", false, OrBool);
+	RegisterIntParameter("azuresdk_exposure_time", 15625, MaxInt);
+	RegisterBoolParameter("azuresdk_whitebalance_auto", false, OrBool);
+	RegisterIntParameter("azuresdk_whitebalance", 4500, MaxInt);
+	RegisterIntParameter("azuresdk_brightness", 128, MaxInt);
+	RegisterIntParameter("azuresdk_contrast", 5, MaxInt);
+	RegisterIntParameter("azuresdk_saturation", 32, MaxInt);
+	RegisterIntParameter("azuresdk_sharpness", 2, MaxInt);
+	RegisterIntParameter("azuresdk_gain", 0, MaxInt);
+	RegisterBoolParameter("azuresdk_backlightcompensation", false, OrBool);
+	RegisterIntParameter("azuresdk_powerline_frequency", static_cast<int>(PowerlineFrequency::Freq60), MaxInt);
 }
 
 AzureKinectDevice::~AzureKinectDevice()
@@ -194,6 +216,7 @@ obs_properties_t* AzureKinectDevice::CreateProperties() const
 	obs_property_t* p;
 
 	obs_properties_t* props = obs_properties_create();
+
 	p = obs_properties_add_list(props, "azuresdk_color_resolution", Translate("ObsKinectAzure.ColorResolution"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(p, Translate("ObsKinectAzure.ColorResolution_1280x720"),  static_cast<int>(ColorResolution::R1280x720));
 	obs_property_list_add_int(p, Translate("ObsKinectAzure.ColorResolution_1920x1080"), static_cast<int>(ColorResolution::R1920x1080));
@@ -209,7 +232,63 @@ obs_properties_t* AzureKinectDevice::CreateProperties() const
 	obs_property_list_add_int(p, Translate("ObsKinectAzure.DepthMode_WFOV_2x2Binned"), static_cast<int>(DepthMode::WFOV2x2Binned));
 	obs_property_list_add_int(p, Translate("ObsKinectAzure.DepthMode_Passive"),        static_cast<int>(DepthMode::Passive));
 
+	p = obs_properties_add_bool(props, "azuresdk_exposure_auto", Translate("ObsKinectAzure.AutoExposure"));
+	
+	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
+	{
+		bool autoExposure = obs_data_get_bool(s, "azuresdk_exposure_auto");
+
+		set_property_visibility(props, "azuresdk_exposure_time", !autoExposure);
+
+		return true;
+	});
+
+	obs_properties_add_int_slider(props, "azuresdk_exposure_time", Translate("ObsKinectAzure.ExposureTime"), 488, 1000000, 8);
+
+	p = obs_properties_add_bool(props, "azuresdk_whitebalance_auto", Translate("ObsKinectAzure.AutoWhiteBalance"));
+	
+	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
+	{
+		bool autoWhiteBalance = obs_data_get_bool(s, "azuresdk_whitebalance_auto");
+
+		set_property_visibility(props, "azuresdk_whitebalance", !autoWhiteBalance);
+
+		return true;
+	});
+
+	p = obs_properties_add_int_slider(props, "azuresdk_whitebalance", Translate("ObsKinectAzure.WhiteBalance"), 2500, 12500, 1);
+	obs_property_int_set_suffix(p, "K");
+
+	obs_properties_add_int_slider(props, "azuresdk_brightness", Translate("ObsKinectAzure.Brightness"), 0, 255, 1);
+	obs_properties_add_int_slider(props, "azuresdk_contrast", Translate("ObsKinectAzure.Contrast"), 0, 10, 1);
+	obs_properties_add_int_slider(props, "azuresdk_saturation", Translate("ObsKinectAzure.Saturation"), 0, 63, 1);
+	obs_properties_add_int_slider(props, "azuresdk_sharpness", Translate("ObsKinectAzure.Saturation"), 0, 4, 1);
+	obs_properties_add_int_slider(props, "azuresdk_gain", Translate("ObsKinectAzure.Gain"), 0, 255, 1);
+	obs_properties_add_bool(props, "azuresdk_backlightcompensation", Translate("ObsKinectAzure.BacklightCompensation"));
+
+	p = obs_properties_add_list(props, "azuresdk_powerline_frequency", Translate("ObsKinectAzure.PowerlineFrequency"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(p, Translate("ObsKinectAzure.PowerlineFrequency_50Hz"), static_cast<int>(PowerlineFrequency::Freq50));
+	obs_property_list_add_int(p, Translate("ObsKinectAzure.PowerlineFrequency_60Hz"), static_cast<int>(PowerlineFrequency::Freq60));
+
 	return props;
+}
+
+void AzureKinectDevice::HandleBoolParameterUpdate(const std::string& parameterName, bool value)
+{
+	if (parameterName == "azuresdk_exposure_auto")
+	{
+		std::int32_t intVal = (value) ? 0 : std::int32_t(GetIntParameterValue("azuresdk_exposure_time"));
+		m_device.set_color_control(K4A_COLOR_CONTROL_EXPOSURE_TIME_ABSOLUTE, (value) ? K4A_COLOR_CONTROL_MODE_AUTO : K4A_COLOR_CONTROL_MODE_MANUAL, intVal);
+	}
+	else if (parameterName == "azuresdk_whitebalance_auto")
+	{
+		std::int32_t intVal = (value) ? 0 : std::int32_t(GetIntParameterValue("azuresdk_whitebalance"));
+		m_device.set_color_control(K4A_COLOR_CONTROL_WHITEBALANCE, (value) ? K4A_COLOR_CONTROL_MODE_AUTO : K4A_COLOR_CONTROL_MODE_MANUAL, intVal);
+	}
+	else if (parameterName == "azuresdk_backlightcompensation")
+		m_device.set_color_control(K4A_COLOR_CONTROL_BACKLIGHT_COMPENSATION, K4A_COLOR_CONTROL_MODE_MANUAL, (value) ? 1 : 0);
+	else
+		errorlog("unhandled bool parameter %s", parameterName.c_str());
 }
 
 void AzureKinectDevice::HandleIntParameterUpdate(const std::string& parameterName, long long value)
@@ -223,6 +302,45 @@ void AzureKinectDevice::HandleIntParameterUpdate(const std::string& parameterNam
 	{
 		m_depthMode.store(static_cast<DepthMode>(value));
 		TriggerSourceFlagsUpdate();
+	}
+	else
+	{
+		try
+		{
+			if (parameterName == "azuresdk_exposure_time")
+			{
+				// Don't override automatic exposure
+				if (!GetBoolParameterValue("azuresdk_exposure_auto"))
+					m_device.set_color_control(K4A_COLOR_CONTROL_EXPOSURE_TIME_ABSOLUTE, K4A_COLOR_CONTROL_MODE_MANUAL, std::int32_t(value));
+			}
+			else if (parameterName == "azuresdk_whitebalance")
+			{
+				// Don't override automatic white balance
+				if (!GetBoolParameterValue("azuresdk_whitebalance_auto"))
+					m_device.set_color_control(K4A_COLOR_CONTROL_WHITEBALANCE, K4A_COLOR_CONTROL_MODE_MANUAL, std::int32_t(value));
+			}
+			else if (parameterName == "azuresdk_brightness")
+				m_device.set_color_control(K4A_COLOR_CONTROL_BRIGHTNESS, K4A_COLOR_CONTROL_MODE_MANUAL, std::int32_t(value));
+			else if (parameterName == "azuresdk_contrast")
+				m_device.set_color_control(K4A_COLOR_CONTROL_CONTRAST, K4A_COLOR_CONTROL_MODE_MANUAL, std::int32_t(value));
+			else if (parameterName == "azuresdk_saturation")
+				m_device.set_color_control(K4A_COLOR_CONTROL_SATURATION, K4A_COLOR_CONTROL_MODE_MANUAL, std::int32_t(value));
+			else if (parameterName == "azuresdk_sharpness")
+				m_device.set_color_control(K4A_COLOR_CONTROL_SHARPNESS, K4A_COLOR_CONTROL_MODE_MANUAL, std::int32_t(value));
+			else if (parameterName == "azuresdk_gain")
+				m_device.set_color_control(K4A_COLOR_CONTROL_GAIN, K4A_COLOR_CONTROL_MODE_MANUAL, std::int32_t(value));
+			else if (parameterName == "azuresdk_powerline_frequency")
+			{
+				PowerlineFrequency powerlineFrequency = static_cast<PowerlineFrequency>(value);
+				m_device.set_color_control(K4A_COLOR_CONTROL_POWERLINE_FREQUENCY, K4A_COLOR_CONTROL_MODE_MANUAL, (powerlineFrequency == PowerlineFrequency::Freq50) ? 1 : 2);
+			}
+			else
+				errorlog("unhandled int parameter %s", parameterName.c_str());
+		}
+		catch (const k4a::error& err)
+		{
+			errorlog("failed to update %s to %lld: %s", parameterName.c_str(), value, err.what());
+		}
 	}
 }
 

@@ -50,6 +50,9 @@ class OBSKINECT_API KinectDevice
 
 		virtual obs_properties_t* CreateProperties() const;
 
+		bool GetBoolParameterValue(const std::string& parameterName) const;
+		double GetDoubleParameterValue(const std::string& parameterName) const;
+		long long GetIntParameterValue(const std::string& parameterName) const;
 		KinectFrameConstPtr GetLastFrame();
 
 		SourceFlags GetSupportedSources() const;

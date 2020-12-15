@@ -68,6 +68,36 @@ obs_properties_t* KinectDevice::CreateProperties() const
 	return nullptr;
 }
 
+bool KinectDevice::GetBoolParameterValue(const std::string& parameterName) const
+{
+	auto it = m_parameters.find(parameterName);
+	assert(it != m_parameters.end());
+
+	assert(std::holds_alternative<BoolParameter>(it->second));
+	const BoolParameter& parameter = std::get<BoolParameter>(it->second);
+	return parameter.value;
+}
+
+double KinectDevice::GetDoubleParameterValue(const std::string& parameterName) const
+{
+	auto it = m_parameters.find(parameterName);
+	assert(it != m_parameters.end());
+
+	assert(std::holds_alternative<DoubleParameter>(it->second));
+	const DoubleParameter& parameter = std::get<DoubleParameter>(it->second);
+	return parameter.value;
+}
+
+long long KinectDevice::GetIntParameterValue(const std::string& parameterName) const
+{
+	auto it = m_parameters.find(parameterName);
+	assert(it != m_parameters.end());
+
+	assert(std::holds_alternative<IntegerParameter>(it->second));
+	const IntegerParameter& parameter = std::get<IntegerParameter>(it->second);
+	return parameter.value;
+}
+
 auto KinectDevice::GetLastFrame() -> KinectFrameConstPtr
 {
 	std::lock_guard<std::mutex> lock(m_lastFrameLock);
