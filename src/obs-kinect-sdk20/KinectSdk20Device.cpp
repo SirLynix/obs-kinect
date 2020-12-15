@@ -241,7 +241,7 @@ obs_properties_t* KinectSdk20Device::CreateProperties() const
 	obs_properties_add_int_slider(props, "sdk20_led_nexus_intensity", Translate("ObsKinectV2.NexusLedIntensity"), 0, 1000, 10);
 	obs_properties_add_int_slider(props, "sdk20_led_privacy_intensity", Translate("ObsKinectV2.PrivacyLedIntensity"), 0, 1000, 10);
 
-	obs_properties_add_button2(props, "dump", Translate("ObsKinectV2.DumpCameraSettings"), [](obs_properties_t* props, obs_property_t* property, void* data)
+	obs_properties_add_button2(props, "sdk20_dump", Translate("ObsKinectV2.DumpCameraSettings"), [](obs_properties_t* props, obs_property_t* property, void* data)
 	{
 		struct CameraSetting
 		{

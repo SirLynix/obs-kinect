@@ -16,6 +16,7 @@
 ******************************************************************************/
 
 #include "NuiSensorLibHelper.hpp"
+#include "Win32Helper.hpp"
 #include <cassert>
 
 #if HAS_NUISENSOR_LIB
@@ -23,9 +24,10 @@
 // From https://github.com/microsoft/MixedRealityCompanionKit/blob/e01d8e1bf60cd20a62e182610e8a9bfb757a7654/KinectIPD/NuiSensor/Helpers.cpp#L67
 BOOL ColorChangeCameraSettingsSync(NUISENSOR_HANDLE nuiSensorHandle, void* scratchBuffer, DWORD scratchBufferSize, NUISENSOR_RGB_CHANGE_STREAM_SETTING* settings, DWORD settingsSizeInBytes, NUISENSOR_RGB_CHANGE_STREAM_SETTING_REPLY* replies, DWORD replySizeInBytes)
 {
-	OVERLAPPED overlapped = { 0 };
+	HandlePtr eventOwner(CreateEvent(nullptr, FALSE, FALSE, nullptr));
 
-	overlapped.hEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+	OVERLAPPED overlapped = { 0 };
+	overlapped.hEvent = eventOwner.get();
 
 	BOOL success = NuiSensor_ColorChangeCameraSettings(
 		nuiSensorHandle,
@@ -46,8 +48,6 @@ BOOL ColorChangeCameraSettingsSync(NUISENSOR_HANDLE nuiSensorHandle, void* scrat
 			&bytesTransferred,
 			TRUE);
 	}
-
-	CloseHandle(overlapped.hEvent);
 
 	return success;
 }
