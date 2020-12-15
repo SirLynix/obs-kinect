@@ -28,4 +28,12 @@
 
 #include "Helper.hpp"
 
+enum class BacklightCompensation
+{
+	AverageBrightness,
+	CenterPriority,
+	LowLightsPriority,
+	CenterOnly
+};
+
 #endif

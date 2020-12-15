@@ -45,6 +45,7 @@ enum class ExposureControl
 
 enum class PowerlineFrequency
 {
+	Disabled,
 	Freq50,
 	Freq60
 };

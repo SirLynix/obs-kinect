@@ -212,14 +212,27 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 {
 	obs_property_t* p;
 
+	// Values obtained by calling GetMin[...] and GetMax[...]
 	constexpr double BrignessMax = 1.0;
 	constexpr double BrignessMin = 0.0;
-	constexpr double GainMax = 16.0;
-	constexpr double GainMin = 0.0;
+	constexpr double ContrastMax = 2.0;
+	constexpr double ContrastMin = 0.5;
 	constexpr double ExposureMax = 4000.0;
 	constexpr double ExposureMin = 1.0;
 	constexpr double FrameIntervalMax = 4000.0;
 	constexpr double FrameIntervalMin = 0.0;
+	constexpr double GainMax = 16.0;
+	constexpr double GainMin = 0.0;
+	constexpr double GammaMax = 2.7999999999999998;
+	constexpr double GammaMin = 1.0;
+	constexpr double HueMax = 22.0;
+	constexpr double HueMin = -22.0;
+	constexpr double SaturationMax = 2.0;
+	constexpr double SaturationMin = 0.0;
+	constexpr double SharpnessMax = 1.0;
+	constexpr double SharpnessMin = 0.0;
+	constexpr long long WhiteBalanceMax = 6500;
+	constexpr long long WhiteBalanceMin = 2700;
 
 	obs_properties_t* props = obs_properties_create();
 	p = obs_properties_add_bool(props, "sdk10_near_mode", Translate("ObsKinectV1.NearMode"));
@@ -232,13 +245,24 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 
 	if (m_hasColorSettings)
 	{
-		obs_properties_add_float_slider(props, "sdk10_brightness", Translate("ObsKinectV1.Brightness"), BrignessMin, BrignessMax, 0.05);
+		p = obs_properties_add_list(props, "sdk10_backlight_compensation", Translate("ObsKinectV1.BacklightCompensation"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+		obs_property_list_add_int(p, Translate("ObsKinectV1.BacklightCompensation_AverageBrightness"), static_cast<int>(BacklightCompensation::AverageBrightness));
+		obs_property_list_add_int(p, Translate("ObsKinectV1.BacklightCompensation_CenterOnly"), static_cast<int>(BacklightCompensation::CenterOnly));
+		obs_property_list_add_int(p, Translate("ObsKinectV1.BacklightCompensation_CenterPriority"), static_cast<int>(BacklightCompensation::CenterPriority));
+		obs_property_list_add_int(p, Translate("ObsKinectV1.BacklightCompensation_LowLightsPriority"), static_cast<int>(BacklightCompensation::LowLightsPriority));
 
-		p = obs_properties_add_bool(props, "sdk10_auto_exposure", Translate("ObsKinectV1.AutoExposure"));
+		obs_properties_add_float_slider(props, "sdk10_brightness", Translate("ObsKinectV1.Brightness"), BrignessMin, BrignessMax, 0.05);
+		obs_properties_add_float_slider(props, "sdk10_contrast", Translate("ObsKinectV1.Contrast"), ContrastMin, ContrastMax, 0.01);
+		obs_properties_add_float_slider(props, "sdk10_gamma", Translate("ObsKinectV1.Gamma"), GammaMin, GammaMax, 0.01);
+		obs_properties_add_float_slider(props, "sdk10_hue", Translate("ObsKinectV1.Hue"), HueMin, HueMax, 0.1);
+		obs_properties_add_float_slider(props, "sdk10_saturation", Translate("ObsKinectV1.Saturation"), SaturationMin, SaturationMax, 0.01);
+		obs_properties_add_float_slider(props, "sdk10_sharpness", Translate("ObsKinectV1.Sharpness"), SharpnessMin, SharpnessMax, 0.01);
+
+		p = obs_properties_add_bool(props, "sdk10_exposure_auto", Translate("ObsKinectV1.AutoExposure"));
 		
 		obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
 		{
-			bool autoExposure = obs_data_get_bool(s, "sdk10_auto_exposure");
+			bool autoExposure = obs_data_get_bool(s, "sdk10_exposure_auto");
 
 			set_property_visibility(props, "sdk10_exposure_time", !autoExposure);
 			set_property_visibility(props, "sdk10_frame_interval", !autoExposure);
@@ -248,8 +272,25 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 		});
 
 		obs_properties_add_float_slider(props, "sdk10_exposure_time", Translate("ObsKinectV1.Exposure"), ExposureMin, ExposureMax, 20.0);
-		obs_properties_add_float_slider(props, "sdk10_frame_interval", Translate("ObsKinectV1.FrameInterval"), ExposureMin, ExposureMax, 20.0);
+		obs_properties_add_float_slider(props, "sdk10_frame_interval", Translate("ObsKinectV1.FrameInterval"), FrameIntervalMin, FrameIntervalMax, 10.0);
 		obs_properties_add_float_slider(props, "sdk10_gain", Translate("ObsKinectV1.Gain"), GainMin, GainMax, 0.1);
+
+		p = obs_properties_add_bool(props, "sdk10_whitebalance_auto", Translate("ObsKinectV1.AutoWhiteBalance"));
+		obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
+		{
+			bool autoWhiteBalance = obs_data_get_bool(s, "sdk10_whitebalance_auto");
+
+			set_property_visibility(props, "sdk10_whitebalance", !autoWhiteBalance);
+
+			return true;
+		});
+
+		obs_properties_add_int_slider(props, "sdk10_whitebalance", Translate("ObsKinectV1.WhiteBalance"), WhiteBalanceMin, WhiteBalanceMax, 1);
+
+		p = obs_properties_add_list(props, "sdk10_powerline_frequency", Translate("ObsKinectV1.PowerlineFrequency"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+		obs_property_list_add_int(p, Translate("ObsKinectV1.PowerlineFrequency_Disabled"), static_cast<int>(PowerlineFrequency::Disabled));
+		obs_property_list_add_int(p, Translate("ObsKinectV1.PowerlineFrequency_50Hz"), static_cast<int>(PowerlineFrequency::Freq50));
+		obs_property_list_add_int(p, Translate("ObsKinectV1.PowerlineFrequency_60Hz"), static_cast<int>(PowerlineFrequency::Freq60));
 
 		obs_properties_add_button2(props, "sdk10_dump", Translate("ObsKinectV1.DumpCameraSettings"), [](obs_properties_t* props, obs_property_t* property, void* data)
 		{
@@ -422,10 +463,21 @@ void KinectSdk10Device::ElevationThreadFunc()
 
 void KinectSdk10Device::HandleBoolParameterUpdate(const std::string& parameterName, bool value)
 {
-	if (parameterName == "sdk10_auto_exposure")
+	auto LogOnFailure = [&](HRESULT result)
+	{
+		if (FAILED(result))
+			errorlog("failed to update %s to %s: %s", parameterName.c_str(), (value) ? "enabled" : "disabled", ErrToString(result).c_str());
+	};
+
+	if (parameterName == "sdk10_exposure_auto")
 	{
 		assert(m_cameraSettings);
-		m_cameraSettings->SetAutoExposure(value);
+		LogOnFailure(m_cameraSettings->SetAutoExposure(value));
+	}
+	else if (parameterName == "sdk10_whitebalance_auto")
+	{
+		assert(m_cameraSettings);
+		LogOnFailure(m_cameraSettings->SetAutoWhiteBalance(value));
 	}
 	else if (parameterName == "sdk10_near_mode")
 		m_kinectNearMode.store(value, std::memory_order_relaxed);
@@ -434,29 +486,112 @@ void KinectSdk10Device::HandleBoolParameterUpdate(const std::string& parameterNa
 		m_kinectHighRes.store(value);
 		TriggerSourceFlagsUpdate();
 	}
+	else
+		errorlog("unhandled parameter %s", parameterName.c_str());
 }
 
 void KinectSdk10Device::HandleDoubleParameterUpdate(const std::string& parameterName, double value)
 {
 	assert(m_cameraSettings);
 
+	auto LogOnFailure = [&](HRESULT result)
+	{
+		if (FAILED(result))
+			errorlog("failed to update %s to %lf: %s", parameterName.c_str(), value, ErrToString(result).c_str());
+	};
+
 	if (parameterName == "sdk10_brightness")
-		m_cameraSettings->SetBrightness(value);
+		LogOnFailure(m_cameraSettings->SetBrightness(value));
+	else if (parameterName == "sdk10_contrast")
+		LogOnFailure(m_cameraSettings->SetContrast(value));
 	else if (parameterName == "sdk10_exposure_time")
-		m_cameraSettings->SetExposureTime(value);
+		LogOnFailure(m_cameraSettings->SetExposureTime(value));
 	else if (parameterName == "sdk10_frame_interval")
-		m_cameraSettings->SetFrameInterval(value);
+		LogOnFailure(m_cameraSettings->SetFrameInterval(value));
 	else if (parameterName == "sdk10_gain")
-		m_cameraSettings->SetGain(value);
+		LogOnFailure(m_cameraSettings->SetGain(value));
+	else if (parameterName == "sdk10_gamma")
+		LogOnFailure(m_cameraSettings->SetGamma(value));
+	else if (parameterName == "sdk10_hue")
+		LogOnFailure(m_cameraSettings->SetHue(value));
+	else if (parameterName == "sdk10_saturation")
+		LogOnFailure(m_cameraSettings->SetSaturation(value));
+	else if (parameterName == "sdk10_sharpness")
+		LogOnFailure(m_cameraSettings->SetSharpness(value));
+	else
+		errorlog("unhandled parameter %s", parameterName.c_str());
 }
 
 void KinectSdk10Device::HandleIntParameterUpdate(const std::string& parameterName, long long value)
 {
-	if (parameterName == "sdk10_camera_elevation")
+	auto LogOnFailure = [&](HRESULT result)
+	{
+		if (FAILED(result))
+			errorlog("failed to update %s to %lld: %s", parameterName.c_str(), value, ErrToString(result).c_str());
+	};
+
+	if (parameterName == "sdk10_backlight_compensation")
+	{
+		BacklightCompensation backlightCompensationMode = static_cast<BacklightCompensation>(value);
+
+		assert(m_cameraSettings);
+		switch (backlightCompensationMode)
+		{
+			case BacklightCompensation::AverageBrightness:
+				LogOnFailure(m_cameraSettings->SetBacklightCompensationMode(NUI_BACKLIGHT_COMPENSATION_MODE_AVERAGE_BRIGHTNESS));
+				break;
+
+			case BacklightCompensation::CenterPriority:
+				LogOnFailure(m_cameraSettings->SetBacklightCompensationMode(NUI_BACKLIGHT_COMPENSATION_MODE_CENTER_PRIORITY));
+				break;
+
+			case BacklightCompensation::LowLightsPriority:
+				LogOnFailure(m_cameraSettings->SetBacklightCompensationMode(NUI_BACKLIGHT_COMPENSATION_MODE_LOWLIGHTS_PRIORITY));
+				break;
+
+			case BacklightCompensation::CenterOnly:
+				LogOnFailure(m_cameraSettings->SetBacklightCompensationMode(NUI_BACKLIGHT_COMPENSATION_MODE_CENTER_ONLY));
+				break;
+
+			default:
+				break;
+		}
+	}
+	else if (parameterName == "sdk10_powerline_frequency")
+	{
+		PowerlineFrequency backlightCompensationMode = static_cast<PowerlineFrequency>(value);
+
+		assert(m_cameraSettings);
+		switch (backlightCompensationMode)
+		{
+			case PowerlineFrequency::Disabled:
+				LogOnFailure(m_cameraSettings->SetPowerLineFrequency(NUI_POWER_LINE_FREQUENCY_DISABLED));
+				break;
+
+			case PowerlineFrequency::Freq50:
+				LogOnFailure(m_cameraSettings->SetPowerLineFrequency(NUI_POWER_LINE_FREQUENCY_50HZ));
+				break;
+
+			case PowerlineFrequency::Freq60:
+				LogOnFailure(m_cameraSettings->SetPowerLineFrequency(NUI_POWER_LINE_FREQUENCY_60HZ));
+				break;
+
+			default:
+				break;
+		}
+	}
+	else if (parameterName == "sdk10_whitebalance")
+	{
+		assert(m_cameraSettings);
+		LogOnFailure(m_cameraSettings->SetWhiteBalance(LONG(value)));
+	}
+	else if (parameterName == "sdk10_camera_elevation")
 	{
 		m_kinectElevation.store(LONG(value), std::memory_order_relaxed);
 		SetEvent(m_elevationUpdateEvent.get());
 	}
+	else
+		errorlog("unhandled parameter %s", parameterName.c_str());
 }
 
 void KinectSdk10Device::RegisterParameters()
@@ -479,21 +614,36 @@ void KinectSdk10Device::RegisterParameters()
 
 		m_cameraSettings.reset(pNuiCameraSettings);
 
-		double brightness = 0.5;
-		double exposureTime = 2000;
-		double frameInterval = 2000;
-		double gain = 8.0;
+		auto OrBool = [](bool a, bool b)
+		{
+			return a || b;
+		};
 
-		m_cameraSettings->GetBrightness(&brightness);
-		m_cameraSettings->GetExposureTime(&exposureTime);
-		m_cameraSettings->GetFrameInterval(&frameInterval);
-		m_cameraSettings->GetGain(&gain);
+		auto MaxDouble = [](double a, double b)
+		{
+			return std::max(a, b);
+		};
 
-		RegisterBoolParameter("sdk10_auto_exposure", true, [](bool a, bool b) { return a && b; });
-		RegisterDoubleParameter("sdk10_brightness", brightness, 0.001, [](double a, double b) { return std::max(a, b); });
-		RegisterDoubleParameter("sdk10_exposure_time", exposureTime, 1, [](double a, double b) { return std::max(a, b); });
-		RegisterDoubleParameter("sdk10_frame_interval", frameInterval, 1, [](double a, double b) { return std::max(a, b); });
-		RegisterDoubleParameter("sdk10_gain", frameInterval, 1, [](double a, double b) { return std::max(a, b); });
+		auto MaxInt = [](long long a, long long b)
+		{
+			return std::max(a, b);
+		};
+
+		// Default values taken by reading values after a call to ResetCameraSettingsToDefault
+		RegisterIntParameter("sdk10_backlight_compensation", static_cast<int>(BacklightCompensation::AverageBrightness), MaxInt);
+		RegisterDoubleParameter("sdk10_brightness", 0.2156, 0.001, MaxDouble);
+		RegisterDoubleParameter("sdk10_contrast", 1.0, 0.01, MaxDouble);
+		RegisterBoolParameter("sdk10_exposure_auto", true, OrBool);
+		RegisterDoubleParameter("sdk10_exposure_time", 4000.0, 1, MaxDouble);
+		RegisterDoubleParameter("sdk10_frame_interval", 0.0, 1, MaxDouble);
+		RegisterDoubleParameter("sdk10_gain", 1.0, 0.1, MaxDouble);
+		RegisterDoubleParameter("sdk10_gamma", 2.2, 0.01, MaxDouble);
+		RegisterDoubleParameter("sdk10_hue", 0.0, 0.1, MaxDouble);
+		RegisterIntParameter("sdk10_powerline_frequency", static_cast<int>(PowerlineFrequency::Disabled), MaxInt);
+		RegisterDoubleParameter("sdk10_saturation", 1.0, 0.01, MaxDouble);
+		RegisterDoubleParameter("sdk10_sharpness", 0.5, 0.01, MaxDouble);
+		RegisterBoolParameter("sdk10_whitebalance_auto", true, OrBool);
+		RegisterIntParameter("sdk10_whitebalance", 2700, MaxInt);
 	}
 }
 
