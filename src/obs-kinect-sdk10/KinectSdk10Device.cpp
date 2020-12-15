@@ -250,14 +250,7 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 		obs_property_list_add_int(p, Translate("ObsKinectV1.BacklightCompensation_CenterOnly"), static_cast<int>(BacklightCompensation::CenterOnly));
 		obs_property_list_add_int(p, Translate("ObsKinectV1.BacklightCompensation_CenterPriority"), static_cast<int>(BacklightCompensation::CenterPriority));
 		obs_property_list_add_int(p, Translate("ObsKinectV1.BacklightCompensation_LowLightsPriority"), static_cast<int>(BacklightCompensation::LowLightsPriority));
-
-		obs_properties_add_float_slider(props, "sdk10_brightness", Translate("ObsKinectV1.Brightness"), BrignessMin, BrignessMax, 0.05);
-		obs_properties_add_float_slider(props, "sdk10_contrast", Translate("ObsKinectV1.Contrast"), ContrastMin, ContrastMax, 0.01);
-		obs_properties_add_float_slider(props, "sdk10_gamma", Translate("ObsKinectV1.Gamma"), GammaMin, GammaMax, 0.01);
-		obs_properties_add_float_slider(props, "sdk10_hue", Translate("ObsKinectV1.Hue"), HueMin, HueMax, 0.1);
-		obs_properties_add_float_slider(props, "sdk10_saturation", Translate("ObsKinectV1.Saturation"), SaturationMin, SaturationMax, 0.01);
-		obs_properties_add_float_slider(props, "sdk10_sharpness", Translate("ObsKinectV1.Sharpness"), SharpnessMin, SharpnessMax, 0.01);
-
+		
 		p = obs_properties_add_bool(props, "sdk10_exposure_auto", Translate("ObsKinectV1.AutoExposure"));
 		
 		obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
@@ -274,6 +267,13 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 		obs_properties_add_float_slider(props, "sdk10_exposure_time", Translate("ObsKinectV1.Exposure"), ExposureMin, ExposureMax, 20.0);
 		obs_properties_add_float_slider(props, "sdk10_frame_interval", Translate("ObsKinectV1.FrameInterval"), FrameIntervalMin, FrameIntervalMax, 10.0);
 		obs_properties_add_float_slider(props, "sdk10_gain", Translate("ObsKinectV1.Gain"), GainMin, GainMax, 0.1);
+
+		obs_properties_add_float_slider(props, "sdk10_brightness", Translate("ObsKinectV1.Brightness"), BrignessMin, BrignessMax, 0.05);
+		obs_properties_add_float_slider(props, "sdk10_contrast", Translate("ObsKinectV1.Contrast"), ContrastMin, ContrastMax, 0.01);
+		obs_properties_add_float_slider(props, "sdk10_gamma", Translate("ObsKinectV1.Gamma"), GammaMin, GammaMax, 0.01);
+		obs_properties_add_float_slider(props, "sdk10_hue", Translate("ObsKinectV1.Hue"), HueMin, HueMax, 0.1);
+		obs_properties_add_float_slider(props, "sdk10_saturation", Translate("ObsKinectV1.Saturation"), SaturationMin, SaturationMax, 0.01);
+		obs_properties_add_float_slider(props, "sdk10_sharpness", Translate("ObsKinectV1.Sharpness"), SharpnessMin, SharpnessMax, 0.01);
 
 		p = obs_properties_add_bool(props, "sdk10_whitebalance_auto", Translate("ObsKinectV1.AutoWhiteBalance"));
 		obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)

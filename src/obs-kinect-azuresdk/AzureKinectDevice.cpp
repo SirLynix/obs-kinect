@@ -246,26 +246,26 @@ obs_properties_t* AzureKinectDevice::CreateProperties() const
 
 	obs_properties_add_int_slider(props, "azuresdk_exposure_time", Translate("ObsKinectAzure.ExposureTime"), 488, 1000000 / 30, 8);
 
-	p = obs_properties_add_bool(props, "azuresdk_whitebalance_auto", Translate("ObsKinectAzure.AutoWhiteBalance"));
-	
-	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
-	{
-		bool autoWhiteBalance = obs_data_get_bool(s, "azuresdk_whitebalance_auto");
-
-		set_property_visibility(props, "azuresdk_whitebalance", !autoWhiteBalance);
-
-		return true;
-	});
-
-	p = obs_properties_add_int_slider(props, "azuresdk_whitebalance", Translate("ObsKinectAzure.WhiteBalance"), 2500, 12500, 1);
-	obs_property_int_set_suffix(p, "K");
-
 	obs_properties_add_int_slider(props, "azuresdk_brightness", Translate("ObsKinectAzure.Brightness"), 0, 255, 1);
 	obs_properties_add_int_slider(props, "azuresdk_contrast", Translate("ObsKinectAzure.Contrast"), 0, 10, 1);
 	obs_properties_add_int_slider(props, "azuresdk_saturation", Translate("ObsKinectAzure.Saturation"), 0, 63, 1);
 	obs_properties_add_int_slider(props, "azuresdk_sharpness", Translate("ObsKinectAzure.Saturation"), 0, 4, 1);
 	obs_properties_add_int_slider(props, "azuresdk_gain", Translate("ObsKinectAzure.Gain"), 0, 255, 1);
 	obs_properties_add_bool(props, "azuresdk_backlightcompensation", Translate("ObsKinectAzure.BacklightCompensation"));
+
+	p = obs_properties_add_bool(props, "azuresdk_whitebalance_auto", Translate("ObsKinectAzure.AutoWhiteBalance"));
+
+	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
+		{
+			bool autoWhiteBalance = obs_data_get_bool(s, "azuresdk_whitebalance_auto");
+
+			set_property_visibility(props, "azuresdk_whitebalance", !autoWhiteBalance);
+
+			return true;
+		});
+
+	p = obs_properties_add_int_slider(props, "azuresdk_whitebalance", Translate("ObsKinectAzure.WhiteBalance"), 2500, 12500, 1);
+	obs_property_int_set_suffix(p, "K");
 
 	p = obs_properties_add_list(props, "azuresdk_powerline_frequency", Translate("ObsKinectAzure.PowerlineFrequency"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(p, Translate("ObsKinectAzure.PowerlineFrequency_50Hz"), static_cast<int>(PowerlineFrequency::Freq50));
