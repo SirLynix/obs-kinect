@@ -842,10 +842,15 @@ void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 		std::array<wchar_t, 256> wideId = { L"<failed to get id>" };
 		m_openedKinectSensor->get_UniqueKinectId(UINT(wideId.size()), wideId.data());
 
-		std::array<char, wideId.size()> id = { "<failed to get id>" };
-		WideCharToMultiByte(CP_UTF8, 0, wideId.data(), int(wideId.size()), id.data(), int(id.size()), nullptr, nullptr);
+		std::array<char, wideId.size()> id;
 
-		infolog("found kinect sensor (%s)", id.data());
+		const char* sensorId;
+		if (os_wcs_to_utf8(wideId.data(), 0, id.data(), id.size()) > 0)
+			sensorId = id.data();
+		else
+			sensorId = "<failed to get id>";
+
+		infolog("found kinect sensor (serial: %s)", sensorId);
 	}
 	catch (const std::exception&)
 	{
