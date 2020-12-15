@@ -39,11 +39,6 @@ KinectSdk20Device::KinectSdk20Device()
 
 	m_kinectSensor.reset(pKinectSensor);
 
-	if (FAILED(m_kinectSensor->Open()))
-		throw std::runtime_error("failed to open Kinect sensor");
-
-	m_openedKinectSensor.reset(pKinectSensor);
-
 	ICoordinateMapper* pCoordinateMapper;
 	if (FAILED(m_kinectSensor->get_CoordinateMapper(&pCoordinateMapper)))
 		throw std::runtime_error("failed to retrieve coordinate mapper");
@@ -75,6 +70,14 @@ KinectSdk20Device::KinectSdk20Device()
 
 		if (deviceFound > 1)
 		{
+			if (!m_openedKinectSensor)
+			{
+				if (FAILED(m_kinectSensor->Open()))
+					throw std::runtime_error("failed to open Kinect sensor");
+
+				m_openedKinectSensor.reset(m_kinectSensor.get());
+			}
+
 			// Multiple Kinect v2 found, find the right one by using the serial number
 			std::array<wchar_t, 256> wideId = { L"<failed to get id>" };
 			HRESULT serialResult = m_openedKinectSensor->get_UniqueKinectId(UINT(wideId.size()), wideId.data());
@@ -828,6 +831,14 @@ void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 	try
 	{
+		if (!m_openedKinectSensor)
+		{
+			if (FAILED(m_kinectSensor->Open()))
+				throw std::runtime_error("failed to open Kinect sensor");
+
+			m_openedKinectSensor.reset(m_kinectSensor.get());
+		}
+
 		std::array<wchar_t, 256> wideId = { L"<failed to get id>" };
 		m_openedKinectSensor->get_UniqueKinectId(UINT(wideId.size()), wideId.data());
 
@@ -925,6 +936,9 @@ void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 			os_sleep_ms(100);
 		}
 	}
+
+	// Force closing the kinect sensor
+	m_openedKinectSensor.reset();
 
 	infolog("exiting thread");
 }
