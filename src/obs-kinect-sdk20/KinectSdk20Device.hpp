@@ -20,6 +20,7 @@
 #ifndef OBS_KINECT_PLUGIN_KINECTDEVICESDK20
 #define OBS_KINECT_PLUGIN_KINECTDEVICESDK20
 
+#include "Sdk20Helper.hpp"
 #include "KinectDevice.hpp"
 #include "Win32Helper.hpp"
 #include "NuiSensorLibHelper.hpp"

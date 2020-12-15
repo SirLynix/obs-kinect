@@ -20,6 +20,7 @@
 #ifndef OBS_KINECT_PLUGIN_KINECTSDK20PLUGIN
 #define OBS_KINECT_PLUGIN_KINECTSDK20PLUGIN
 
+#include "Sdk20Helper.hpp"
 #include "Enums.hpp"
 #include "KinectPluginImpl.hpp"
 

@@ -20,8 +20,8 @@
 #ifndef OBS_KINECT_PLUGIN_AZUREKINECT
 #define OBS_KINECT_PLUGIN_AZUREKINECT
 
+#include "AzureHelper.hpp"
 #include "Enums.hpp"
-#include "Helper.hpp"
 #include "KinectPluginImpl.hpp"
 
 #if __has_include(<k4abt.hpp>)

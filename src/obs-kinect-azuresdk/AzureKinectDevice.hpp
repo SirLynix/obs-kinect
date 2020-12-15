@@ -20,6 +20,7 @@
 #ifndef OBS_KINECT_PLUGIN_AZUREKINECTDEVICE
 #define OBS_KINECT_PLUGIN_AZUREKINECTDEVICE
 
+#include "AzureHelper.hpp"
 #include "KinectDevice.hpp"
 #include "Win32Helper.hpp"
 #include <k4a/k4a.hpp>

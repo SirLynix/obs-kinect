@@ -16,7 +16,7 @@
 ******************************************************************************/
 
 #include "AzureKinectBodyTrackingDynFuncs.hpp"
-#include "Helper.hpp"
+#include "AzureHelper.hpp"
 #include <util/platform.h>
 #include <stdexcept>
 

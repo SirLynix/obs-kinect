@@ -15,18 +15,17 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "KinectSdk20Plugin.hpp"
+#pragma once
 
-extern "C"
-{
-	OBSKINECT_EXPORT KinectPluginImpl* ObsKinect_CreatePlugin(std::uint32_t version)
-	{
-		if (version != OBSKINECT_VERSION)
-		{
-			warnlog("Kinect plugin incompatibilities (obs-kinect version: %d, plugin version: %d)", OBSKINECT_VERSION, version);
-			return nullptr;
-		}
+#ifndef OBS_KINECT_PLUGIN_HELPER_AZUREKINECT
+#define OBS_KINECT_PLUGIN_HELPER_AZUREKINECT
 
-		return new KinectSdk20Plugin;
-	}
-}
+#ifdef OBS_KINECT_PLUGIN_HELPER
+#error "This file must be included before Helper.hpp"
+#endif
+
+#define logprefix "[obs-kinect] [azure] "
+
+#include "Helper.hpp"
+
+#endif

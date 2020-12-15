@@ -20,6 +20,7 @@
 #ifndef OBS_KINECT_PLUGIN_KINECTDEVICESDK10
 #define OBS_KINECT_PLUGIN_KINECTDEVICESDK10
 
+#include "Sdk10Helper.hpp"
 #include "KinectDevice.hpp"
 #include "KinectSdk10Plugin.hpp"
 #include <functional>

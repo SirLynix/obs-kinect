@@ -15,7 +15,6 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "Helper.hpp"
 #include "KinectSdk10Plugin.hpp"
 
 extern "C"

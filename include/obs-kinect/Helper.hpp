@@ -43,8 +43,11 @@
 #include <util/platform.h>
 #include <memory>
 
-#define blog(log_level, format, ...)                    \
-	blog(log_level, "[obs-kinect] " format, ##__VA_ARGS__)
+#ifndef logprefix
+#define logprefix "[obs-kinect] "
+#endif
+
+#define blog(log_level, format, ...) blog(log_level, logprefix format, ##__VA_ARGS__)
 
 #define debuglog(format, ...) blog(LOG_DEBUG, format, ##__VA_ARGS__)
 #define errorlog(format, ...) blog(LOG_ERROR, format, ##__VA_ARGS__)

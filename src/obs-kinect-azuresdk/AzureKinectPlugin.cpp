@@ -25,16 +25,16 @@ void ErrorCallback(void* context, k4a_log_level_t level, const char* file, const
 	{
 		case K4A_LOG_LEVEL_CRITICAL:
 		case K4A_LOG_LEVEL_ERROR:
-			errorlog("Azure Kinect SDK error: %s (in %s:%d)", message, file, line);
+			errorlog("SDK error: %s (in %s:%d)", message, file, line);
 			break;
 
 		case K4A_LOG_LEVEL_WARNING:
-			warnlog("Azure Kinect SDK warning: %s (in %s:%d)", message, file, line);
+			warnlog("SDK warning: %s (in %s:%d)", message, file, line);
 			break;
 
 		case K4A_LOG_LEVEL_INFO:
 		case K4A_LOG_LEVEL_TRACE:
-			infolog("Azure Kinect SDK info: %s (in %s:%d)", message, file, line);
+			infolog("SDK info: %s (in %s:%d)", message, file, line);
 			break;
 
 		case K4A_LOG_LEVEL_OFF:
