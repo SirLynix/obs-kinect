@@ -243,7 +243,7 @@ obs_properties_t* AzureKinectDevice::CreateProperties() const
 		return true;
 	});
 
-	obs_properties_add_int_slider(props, "azuresdk_exposure_time", Translate("ObsKinectAzure.ExposureTime"), 488, 1000000, 8);
+	obs_properties_add_int_slider(props, "azuresdk_exposure_time", Translate("ObsKinectAzure.ExposureTime"), 488, 1000000 / 30, 8);
 
 	p = obs_properties_add_bool(props, "azuresdk_whitebalance_auto", Translate("ObsKinectAzure.AutoWhiteBalance"));
 	
