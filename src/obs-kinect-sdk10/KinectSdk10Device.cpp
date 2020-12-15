@@ -19,9 +19,20 @@
 #include <comdef.h>
 #include <util/threading.h>
 #include <array>
+#include <sstream>
 
 namespace
 {
+	template<typename T>
+	struct AlwaysFalse : std::false_type {};
+
+	void set_property_visibility(obs_properties_t* props, const char* propertyName, bool visible)
+	{
+		obs_property_t* property = obs_properties_get(props, propertyName);
+		if (property)
+			obs_property_set_visible(property, visible);
+	}
+
 	template<typename FrameData>
 	void ConvertResolutionToSize(NUI_IMAGE_RESOLUTION resolution, FrameData& frameData)
 	{
@@ -117,6 +128,21 @@ namespace
 			}
 		}
 	}
+
+	template<typename T>
+	struct FirstParamExtractor;
+
+	template<typename O, typename R, typename FirstArg, typename... Args>
+	struct FirstParamExtractor<R(O::*)(FirstArg, Args...)>
+	{
+		using ArgType = FirstArg;
+	};
+
+	template<typename O, typename R, typename FirstArg, typename... Args>
+	struct FirstParamExtractor<R(O::*)(FirstArg, Args...) const>
+	{
+		using ArgType = FirstArg;
+	};
 }
 
 KinectSdk10Device::KinectSdk10Device(int sensorId) :
@@ -201,17 +227,146 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 	p = obs_properties_add_bool(props, "sdk10_high_res", Translate("ObsKinectV1.HighRes"));
 	obs_property_set_long_description(p, Translate("ObsKinectV1.HighResDesc"));
 
-	if (m_hasColorSettings)
-	{
-		p = obs_properties_add_bool(props, "sdk10_auto_exposure", Translate("ObsKinectV1.AutoExposure"));
-		p = obs_properties_add_float_slider(props, "sdk10_brightness", Translate("ObsKinectV1.Brightness"), BrignessMin, BrignessMax, 0.05);
-		p = obs_properties_add_float_slider(props, "sdk10_exposure_time", Translate("ObsKinectV1.Exposure"), ExposureMin, ExposureMax, 20.0);
-		p = obs_properties_add_float_slider(props, "sdk10_frame_interval", Translate("ObsKinectV1.FrameInterval"), ExposureMin, ExposureMax, 20.0);
-		p = obs_properties_add_float_slider(props, "sdk10_gain", Translate("ObsKinectV1.Gain"), GainMin, GainMax, 0.1);
-	}
-
 	p = obs_properties_add_int_slider(props, "sdk10_camera_elevation", Translate("ObsKinectV1.CameraElevation"), NUI_CAMERA_ELEVATION_MINIMUM, NUI_CAMERA_ELEVATION_MAXIMUM, 1);
 	obs_property_int_set_suffix(p, "°");
+
+	if (m_hasColorSettings)
+	{
+		obs_properties_add_float_slider(props, "sdk10_brightness", Translate("ObsKinectV1.Brightness"), BrignessMin, BrignessMax, 0.05);
+
+		p = obs_properties_add_bool(props, "sdk10_auto_exposure", Translate("ObsKinectV1.AutoExposure"));
+		
+		obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
+		{
+			bool autoExposure = obs_data_get_bool(s, "sdk10_auto_exposure");
+
+			set_property_visibility(props, "sdk10_exposure_time", !autoExposure);
+			set_property_visibility(props, "sdk10_frame_interval", !autoExposure);
+			set_property_visibility(props, "sdk10_gain", !autoExposure);
+
+			return true;
+		});
+
+		obs_properties_add_float_slider(props, "sdk10_exposure_time", Translate("ObsKinectV1.Exposure"), ExposureMin, ExposureMax, 20.0);
+		obs_properties_add_float_slider(props, "sdk10_frame_interval", Translate("ObsKinectV1.FrameInterval"), ExposureMin, ExposureMax, 20.0);
+		obs_properties_add_float_slider(props, "sdk10_gain", Translate("ObsKinectV1.Gain"), GainMin, GainMax, 0.1);
+
+		obs_properties_add_button2(props, "sdk10_dump", Translate("ObsKinectV1.DumpCameraSettings"), [](obs_properties_t* props, obs_property_t* property, void* data)
+		{
+			INuiColorCameraSettings* cameraSettings = static_cast<INuiColorCameraSettings*>(data);
+
+			struct CameraSetting
+			{
+				const char* str;
+				std::variant<
+					HRESULT(STDMETHODCALLTYPE INuiColorCameraSettings::*)(BOOL*),
+					HRESULT(STDMETHODCALLTYPE INuiColorCameraSettings::*)(NUI_BACKLIGHT_COMPENSATION_MODE*),
+					HRESULT(STDMETHODCALLTYPE INuiColorCameraSettings::*)(NUI_POWER_LINE_FREQUENCY*),
+					HRESULT(STDMETHODCALLTYPE INuiColorCameraSettings::*)(LONG*),
+					HRESULT(STDMETHODCALLTYPE INuiColorCameraSettings::*)(double*)
+				> method;
+			};
+
+			std::array<CameraSetting, 14> settings = {
+				{
+					{ "automatic exposure", &INuiColorCameraSettings::GetAutoExposure },
+					{ "automatic white balance", &INuiColorCameraSettings::GetAutoWhiteBalance },
+					{ "backlight compensation", &INuiColorCameraSettings::GetBacklightCompensationMode },
+					{ "brightness", &INuiColorCameraSettings::GetBrightness },
+					{ "contrast", &INuiColorCameraSettings::GetContrast },
+					{ "exposure time", &INuiColorCameraSettings::GetExposureTime },
+					{ "frame interval", &INuiColorCameraSettings::GetFrameInterval },
+					{ "gain", &INuiColorCameraSettings::GetGain },
+					{ "gamma", &INuiColorCameraSettings::GetGamma },
+					{ "hue", &INuiColorCameraSettings::GetHue },
+					{ "powerline frequency", &INuiColorCameraSettings::GetPowerLineFrequency },
+					{ "saturation", &INuiColorCameraSettings::GetSaturation },
+					{ "sharpness", &INuiColorCameraSettings::GetSharpness },
+					{ "white balance", &INuiColorCameraSettings::GetWhiteBalance }
+				}
+			};
+
+			std::ostringstream ss;
+
+			for (const CameraSetting& setting : settings)
+			{
+				ss << setting.str << ": ";
+				std::visit([&](auto&& arg)
+				{
+					using T = std::decay_t<decltype(arg)>;
+					using ParamType = std::remove_pointer_t<typename FirstParamExtractor<T>::ArgType>;
+
+					ParamType value;
+					HRESULT result = (cameraSettings ->* arg)(&value);
+
+					if (SUCCEEDED(result))
+					{
+						if constexpr (std::is_same_v<ParamType, LONG> || std::is_same_v<ParamType, double>)
+							ss << value;
+						else if constexpr (std::is_same_v<ParamType, BOOL>)
+							ss << ((value) ? "enabled" : "disabled");
+						else if constexpr (std::is_same_v<ParamType, NUI_BACKLIGHT_COMPENSATION_MODE>)
+						{
+							switch (value)
+							{
+								case NUI_BACKLIGHT_COMPENSATION_MODE_AVERAGE_BRIGHTNESS:
+									ss << "average brightness";
+									break;
+
+								case NUI_BACKLIGHT_COMPENSATION_MODE_CENTER_PRIORITY:
+									ss << "center priority";
+									break;
+
+								case NUI_BACKLIGHT_COMPENSATION_MODE_LOWLIGHTS_PRIORITY:
+									ss << "lowlights priority";
+									break;
+
+								case NUI_BACKLIGHT_COMPENSATION_MODE_CENTER_ONLY:
+									ss << "center only";
+									break;
+
+								default:
+									ss << "unknown backlight compensation mode";
+									break;
+							}
+						}
+						else if constexpr (std::is_same_v<ParamType, NUI_POWER_LINE_FREQUENCY>)
+						{
+							switch (value)
+							{
+								case NUI_POWER_LINE_FREQUENCY_DISABLED:
+									ss << "disabled";
+									break;
+
+								case NUI_POWER_LINE_FREQUENCY_50HZ:
+									ss << "50hz";
+									break;
+
+								case NUI_POWER_LINE_FREQUENCY_60HZ:
+									ss << "60hz";
+									break;
+
+								default:
+									ss << "unknown powerline frequency mode";
+									break;
+							}
+						}
+						else
+							static_assert(AlwaysFalse<ParamType>(), "unhandled type");
+					}
+					else
+						ss << "failed to retrieve data (" << ErrToString(result) << ")";
+
+				}, setting.method);
+
+				ss << '\n';
+			}
+
+			infolog("%s", ss.str().c_str());
+
+			return true;
+		}, m_cameraSettings.get());
+	}
 
 	return props;
 }
