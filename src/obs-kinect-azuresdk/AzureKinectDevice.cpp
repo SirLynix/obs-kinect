@@ -20,6 +20,7 @@
 #include <util/threading.h>
 #include <array>
 #include <optional>
+#include <sstream>
 #include <tlhelp32.h>
 
 #if HAS_BODY_TRACKING
@@ -269,6 +270,77 @@ obs_properties_t* AzureKinectDevice::CreateProperties() const
 	p = obs_properties_add_list(props, "azuresdk_powerline_frequency", Translate("ObsKinectAzure.PowerlineFrequency"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	obs_property_list_add_int(p, Translate("ObsKinectAzure.PowerlineFrequency_50Hz"), static_cast<int>(PowerlineFrequency::Freq50));
 	obs_property_list_add_int(p, Translate("ObsKinectAzure.PowerlineFrequency_60Hz"), static_cast<int>(PowerlineFrequency::Freq60));
+
+	obs_properties_add_button2(props, "azuresdk_dump", Translate("ObsKinectAzure.DumpCameraSettings"), [](obs_properties_t* props, obs_property_t* property, void* data)
+	{
+		k4a_device_t device = static_cast<k4a_device_t>(data);
+
+		std::ostringstream ss;
+		ss << "Color settings dump:\n";
+
+		auto PrintValue = [&](const char* setting, k4a_color_control_command_t command, auto&& printCallback)
+		{
+			ss << setting << ": ";
+
+			k4a_color_control_mode_t mode;
+			std::int32_t value;
+			k4a_result_t result = k4a_device_get_color_control(device, command, &mode, &value);
+
+			if (result == K4A_RESULT_SUCCEEDED)
+			{
+				if (mode == K4A_COLOR_CONTROL_MODE_AUTO)
+					ss << "<automatic>";
+				else
+					printCallback(value);
+			}
+			else
+				ss << "failed to retrieve data (an error occurred)";
+
+			ss << '\n';
+		};
+
+		auto DefaultPrint = [&](std::int32_t value)
+		{
+			ss << value;
+		};
+
+		PrintValue("brightness", K4A_COLOR_CONTROL_BRIGHTNESS, DefaultPrint);
+		PrintValue("contrast", K4A_COLOR_CONTROL_CONTRAST, DefaultPrint);
+		PrintValue("exposure time", K4A_COLOR_CONTROL_EXPOSURE_TIME_ABSOLUTE, DefaultPrint);
+		PrintValue("gain", K4A_COLOR_CONTROL_GAIN, DefaultPrint);
+		PrintValue("saturation", K4A_COLOR_CONTROL_SATURATION, DefaultPrint);
+		PrintValue("sharpness", K4A_COLOR_CONTROL_SHARPNESS, DefaultPrint);
+		PrintValue("white balance", K4A_COLOR_CONTROL_WHITEBALANCE, DefaultPrint);
+
+		PrintValue("backlight compensation", K4A_COLOR_CONTROL_BACKLIGHT_COMPENSATION, [&](std::int32_t value)
+		{
+			switch (value)
+			{
+				case 0: ss << "disabled"; break;
+				case 1: ss << "enabled"; break;
+				default: ss << "unknown (" << value << ")"; break;
+			}
+		});
+		
+		PrintValue("powerline frequency", K4A_COLOR_CONTROL_POWERLINE_FREQUENCY, [&](std::int32_t value)
+		{
+			switch (value)
+			{
+				case 1: ss << "50Hz"; break;
+				case 2: ss << "60Hz"; break;
+				default: ss << "unknown (" << value << ")"; break;
+			}
+		});
+
+		// Remove last '\n'
+		std::string output = std::move(ss).str();
+		assert(!output.empty());
+		output.resize(output.size() - 1);
+
+		infolog("%s", output.c_str());
+
+		return true;
+	}, m_device.handle());
 
 	return props;
 }
