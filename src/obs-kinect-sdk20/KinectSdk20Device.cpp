@@ -271,6 +271,7 @@ obs_properties_t* KinectSdk20Device::CreateProperties() const
 		if (cameraSettings.Execute(static_cast<NUISENSOR_HANDLE>(data)))
 		{
 			std::ostringstream ss;
+			ss << "Color settings dump:\n";
 
 			std::size_t commandIndex = 0;
 			for (const CameraSetting& setting : settings)

@@ -328,7 +328,9 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 			};
 
 			std::ostringstream ss;
+			ss << "Color settings dump:\n";
 
+			std::size_t commandIndex = 0;
 			for (const CameraSetting& setting : settings)
 			{
 				ss << setting.str << ": ";
@@ -367,7 +369,7 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 									break;
 
 								default:
-									ss << "unknown backlight compensation mode";
+									ss << "unknown backlight compensation mode (" << static_cast<int>(value) << ")";
 									break;
 							}
 						}
@@ -380,15 +382,15 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 									break;
 
 								case NUI_POWER_LINE_FREQUENCY_50HZ:
-									ss << "50hz";
+									ss << "50Hz";
 									break;
 
 								case NUI_POWER_LINE_FREQUENCY_60HZ:
-									ss << "60hz";
+									ss << "60Hz";
 									break;
 
 								default:
-									ss << "unknown powerline frequency mode";
+									ss << "unknown powerline frequency mode (" << static_cast<int>(value) << ")";
 									break;
 							}
 						}
@@ -400,7 +402,8 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 
 				}, setting.method);
 
-				ss << '\n';
+				if (++commandIndex < settings.size())
+					ss << '\n';
 			}
 
 			infolog("%s", ss.str().c_str());
