@@ -233,7 +233,7 @@ obs_properties_t* AzureKinectDevice::CreateProperties() const
 	obs_property_list_add_int(p, Translate("ObsKinectAzure.DepthMode_WFOV_2x2Binned"), static_cast<int>(DepthMode::WFOV2x2Binned));
 	obs_property_list_add_int(p, Translate("ObsKinectAzure.DepthMode_Passive"),        static_cast<int>(DepthMode::Passive));
 
-	p = obs_properties_add_bool(props, "azuresdk_exposure_auto", Translate("ObsKinectAzure.AutoExposure"));
+	p = obs_properties_add_bool(props, "azuresdk_exposure_auto", Translate("ObsKinect.AutoExposure"));
 	
 	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
 	{
@@ -244,34 +244,34 @@ obs_properties_t* AzureKinectDevice::CreateProperties() const
 		return true;
 	});
 
-	obs_properties_add_int_slider(props, "azuresdk_exposure_time", Translate("ObsKinectAzure.ExposureTime"), 488, 1000000 / 30, 8);
+	obs_properties_add_int_slider(props, "azuresdk_exposure_time", Translate("ObsKinect.ExposureTime"), 488, 1000000 / 30, 8);
 
-	obs_properties_add_int_slider(props, "azuresdk_brightness", Translate("ObsKinectAzure.Brightness"), 0, 255, 1);
-	obs_properties_add_int_slider(props, "azuresdk_contrast", Translate("ObsKinectAzure.Contrast"), 0, 10, 1);
-	obs_properties_add_int_slider(props, "azuresdk_saturation", Translate("ObsKinectAzure.Saturation"), 0, 63, 1);
-	obs_properties_add_int_slider(props, "azuresdk_sharpness", Translate("ObsKinectAzure.Saturation"), 0, 4, 1);
-	obs_properties_add_int_slider(props, "azuresdk_gain", Translate("ObsKinectAzure.Gain"), 0, 255, 1);
-	obs_properties_add_bool(props, "azuresdk_backlightcompensation", Translate("ObsKinectAzure.BacklightCompensation"));
+	obs_properties_add_int_slider(props, "azuresdk_brightness", Translate("ObsKinect.Brightness"), 0, 255, 1);
+	obs_properties_add_int_slider(props, "azuresdk_contrast", Translate("ObsKinect.Contrast"), 0, 10, 1);
+	obs_properties_add_int_slider(props, "azuresdk_saturation", Translate("ObsKinect.Saturation"), 0, 63, 1);
+	obs_properties_add_int_slider(props, "azuresdk_sharpness", Translate("ObsKinect.Sharpness"), 0, 4, 1);
+	obs_properties_add_int_slider(props, "azuresdk_gain", Translate("ObsKinect.Gain"), 0, 255, 1);
+	obs_properties_add_bool(props, "azuresdk_backlightcompensation", Translate("ObsKinect.BacklightCompensation"));
 
-	p = obs_properties_add_bool(props, "azuresdk_whitebalance_auto", Translate("ObsKinectAzure.AutoWhiteBalance"));
+	p = obs_properties_add_bool(props, "azuresdk_whitebalance_auto", Translate("ObsKinect.AutoWhiteBalance"));
 
 	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
-		{
-			bool autoWhiteBalance = obs_data_get_bool(s, "azuresdk_whitebalance_auto");
+	{
+		bool autoWhiteBalance = obs_data_get_bool(s, "azuresdk_whitebalance_auto");
 
-			set_property_visibility(props, "azuresdk_whitebalance", !autoWhiteBalance);
+		set_property_visibility(props, "azuresdk_whitebalance", !autoWhiteBalance);
 
-			return true;
-		});
+		return true;
+	});
 
-	p = obs_properties_add_int_slider(props, "azuresdk_whitebalance", Translate("ObsKinectAzure.WhiteBalance"), 2500, 12500, 1);
+	p = obs_properties_add_int_slider(props, "azuresdk_whitebalance", Translate("ObsKinect.WhiteBalance"), 2500, 12500, 1);
 	obs_property_int_set_suffix(p, "K");
 
-	p = obs_properties_add_list(props, "azuresdk_powerline_frequency", Translate("ObsKinectAzure.PowerlineFrequency"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	obs_property_list_add_int(p, Translate("ObsKinectAzure.PowerlineFrequency_50Hz"), static_cast<int>(PowerlineFrequency::Freq50));
-	obs_property_list_add_int(p, Translate("ObsKinectAzure.PowerlineFrequency_60Hz"), static_cast<int>(PowerlineFrequency::Freq60));
+	p = obs_properties_add_list(props, "azuresdk_powerline_frequency", Translate("ObsKinect.PowerlineFrequency"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(p, Translate("ObsKinect.PowerlineFrequency_50Hz"), static_cast<int>(PowerlineFrequency::Freq50));
+	obs_property_list_add_int(p, Translate("ObsKinect.PowerlineFrequency_60Hz"), static_cast<int>(PowerlineFrequency::Freq60));
 
-	obs_properties_add_button2(props, "azuresdk_dump", Translate("ObsKinectAzure.DumpCameraSettings"), [](obs_properties_t* props, obs_property_t* property, void* data)
+	obs_properties_add_button2(props, "azuresdk_dump", Translate("ObsKinect.DumpCameraSettings"), [](obs_properties_t* props, obs_property_t* property, void* data)
 	{
 		k4a_device_t device = static_cast<k4a_device_t>(data);
 

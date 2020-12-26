@@ -245,13 +245,13 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 
 	if (m_hasColorSettings)
 	{
-		p = obs_properties_add_list(props, "sdk10_backlight_compensation", Translate("ObsKinectV1.BacklightCompensation"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-		obs_property_list_add_int(p, Translate("ObsKinectV1.BacklightCompensation_AverageBrightness"), static_cast<int>(BacklightCompensation::AverageBrightness));
-		obs_property_list_add_int(p, Translate("ObsKinectV1.BacklightCompensation_CenterOnly"), static_cast<int>(BacklightCompensation::CenterOnly));
-		obs_property_list_add_int(p, Translate("ObsKinectV1.BacklightCompensation_CenterPriority"), static_cast<int>(BacklightCompensation::CenterPriority));
-		obs_property_list_add_int(p, Translate("ObsKinectV1.BacklightCompensation_LowLightsPriority"), static_cast<int>(BacklightCompensation::LowLightsPriority));
-		
-		p = obs_properties_add_bool(props, "sdk10_exposure_auto", Translate("ObsKinectV1.AutoExposure"));
+		p = obs_properties_add_list(props, "sdk10_backlight_compensation", Translate("ObsKinect.BacklightCompensation"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+		obs_property_list_add_int(p, Translate("ObsKinect.BacklightCompensation_AverageBrightness"), static_cast<int>(BacklightCompensation::AverageBrightness));
+		obs_property_list_add_int(p, Translate("ObsKinect.BacklightCompensation_CenterOnly"), static_cast<int>(BacklightCompensation::CenterOnly));
+		obs_property_list_add_int(p, Translate("ObsKinect.BacklightCompensation_CenterPriority"), static_cast<int>(BacklightCompensation::CenterPriority));
+		obs_property_list_add_int(p, Translate("ObsKinect.BacklightCompensation_LowLightsPriority"), static_cast<int>(BacklightCompensation::LowLightsPriority));
+
+		p = obs_properties_add_bool(props, "sdk10_exposure_auto", Translate("ObsKinect.AutoExposure"));
 		
 		obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
 		{
@@ -264,18 +264,18 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 			return true;
 		});
 
-		obs_properties_add_float_slider(props, "sdk10_exposure_time", Translate("ObsKinectV1.Exposure"), ExposureMin, ExposureMax, 20.0);
-		obs_properties_add_float_slider(props, "sdk10_frame_interval", Translate("ObsKinectV1.FrameInterval"), FrameIntervalMin, FrameIntervalMax, 10.0);
-		obs_properties_add_float_slider(props, "sdk10_gain", Translate("ObsKinectV1.Gain"), GainMin, GainMax, 0.1);
+		obs_properties_add_float_slider(props, "sdk10_exposure_time", Translate("ObsKinect.ExposureTime"), ExposureMin, ExposureMax, 20.0);
+		obs_properties_add_float_slider(props, "sdk10_frame_interval", Translate("ObsKinect.FrameInterval"), FrameIntervalMin, FrameIntervalMax, 10.0);
+		obs_properties_add_float_slider(props, "sdk10_gain", Translate("ObsKinect.Gain"), GainMin, GainMax, 0.1);
 
-		obs_properties_add_float_slider(props, "sdk10_brightness", Translate("ObsKinectV1.Brightness"), BrignessMin, BrignessMax, 0.05);
-		obs_properties_add_float_slider(props, "sdk10_contrast", Translate("ObsKinectV1.Contrast"), ContrastMin, ContrastMax, 0.01);
-		obs_properties_add_float_slider(props, "sdk10_gamma", Translate("ObsKinectV1.Gamma"), GammaMin, GammaMax, 0.01);
-		obs_properties_add_float_slider(props, "sdk10_hue", Translate("ObsKinectV1.Hue"), HueMin, HueMax, 0.1);
-		obs_properties_add_float_slider(props, "sdk10_saturation", Translate("ObsKinectV1.Saturation"), SaturationMin, SaturationMax, 0.01);
-		obs_properties_add_float_slider(props, "sdk10_sharpness", Translate("ObsKinectV1.Sharpness"), SharpnessMin, SharpnessMax, 0.01);
+		obs_properties_add_float_slider(props, "sdk10_brightness", Translate("ObsKinect.Brightness"), BrignessMin, BrignessMax, 0.05);
+		obs_properties_add_float_slider(props, "sdk10_contrast", Translate("ObsKinect.Contrast"), ContrastMin, ContrastMax, 0.01);
+		obs_properties_add_float_slider(props, "sdk10_gamma", Translate("ObsKinect.Gamma"), GammaMin, GammaMax, 0.01);
+		obs_properties_add_float_slider(props, "sdk10_hue", Translate("ObsKinect.Hue"), HueMin, HueMax, 0.1);
+		obs_properties_add_float_slider(props, "sdk10_saturation", Translate("ObsKinect.Saturation"), SaturationMin, SaturationMax, 0.01);
+		obs_properties_add_float_slider(props, "sdk10_sharpness", Translate("ObsKinect.Sharpness"), SharpnessMin, SharpnessMax, 0.01);
 
-		p = obs_properties_add_bool(props, "sdk10_whitebalance_auto", Translate("ObsKinectV1.AutoWhiteBalance"));
+		p = obs_properties_add_bool(props, "sdk10_whitebalance_auto", Translate("ObsKinect.AutoWhiteBalance"));
 		obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
 		{
 			bool autoWhiteBalance = obs_data_get_bool(s, "sdk10_whitebalance_auto");
@@ -285,14 +285,14 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 			return true;
 		});
 
-		obs_properties_add_int_slider(props, "sdk10_whitebalance", Translate("ObsKinectV1.WhiteBalance"), WhiteBalanceMin, WhiteBalanceMax, 1);
+		obs_properties_add_int_slider(props, "sdk10_whitebalance", Translate("ObsKinect.WhiteBalance"), WhiteBalanceMin, WhiteBalanceMax, 1);
 
-		p = obs_properties_add_list(props, "sdk10_powerline_frequency", Translate("ObsKinectV1.PowerlineFrequency"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-		obs_property_list_add_int(p, Translate("ObsKinectV1.PowerlineFrequency_Disabled"), static_cast<int>(PowerlineFrequency::Disabled));
-		obs_property_list_add_int(p, Translate("ObsKinectV1.PowerlineFrequency_50Hz"), static_cast<int>(PowerlineFrequency::Freq50));
-		obs_property_list_add_int(p, Translate("ObsKinectV1.PowerlineFrequency_60Hz"), static_cast<int>(PowerlineFrequency::Freq60));
+		p = obs_properties_add_list(props, "sdk10_powerline_frequency", Translate("ObsKinect.PowerlineFrequency"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+		obs_property_list_add_int(p, Translate("ObsKinect.PowerlineFrequency_Disabled"), static_cast<int>(PowerlineFrequency::Disabled));
+		obs_property_list_add_int(p, Translate("ObsKinect.PowerlineFrequency_50Hz"), static_cast<int>(PowerlineFrequency::Freq50));
+		obs_property_list_add_int(p, Translate("ObsKinect.PowerlineFrequency_60Hz"), static_cast<int>(PowerlineFrequency::Freq60));
 
-		obs_properties_add_button2(props, "sdk10_dump", Translate("ObsKinectV1.DumpCameraSettings"), [](obs_properties_t* props, obs_property_t* property, void* data)
+		obs_properties_add_button2(props, "sdk10_dump", Translate("ObsKinect.DumpCameraSettings"), [](obs_properties_t* props, obs_property_t* property, void* data)
 		{
 			INuiColorCameraSettings* cameraSettings = static_cast<INuiColorCameraSettings*>(data);
 

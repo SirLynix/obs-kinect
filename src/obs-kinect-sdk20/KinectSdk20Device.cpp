@@ -189,10 +189,10 @@ obs_properties_t* KinectSdk20Device::CreateProperties() const
 	obs_property_list_add_int(p, Translate("ObsKinectV2.ServicePriority_Normal"), static_cast<int>(ProcessPriority::Normal));
 
 #if HAS_NUISENSOR_LIB
-	p = obs_properties_add_list(props, "sdk20_exposure_mode", Translate("ObsKinectV2.ExposureMode"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	obs_property_list_add_int(p, Translate("ObsKinectV2.ExposureControl_FullyAuto"), static_cast<int>(ExposureControl::FullyAuto));
-	obs_property_list_add_int(p, Translate("ObsKinectV2.ExposureControl_SemiAuto"), static_cast<int>(ExposureControl::SemiAuto));
-	obs_property_list_add_int(p, Translate("ObsKinectV2.ExposureControl_Manual"), static_cast<int>(ExposureControl::Manual));
+	p = obs_properties_add_list(props, "sdk20_exposure_mode", Translate("ObsKinect.ExposureMode"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(p, Translate("ObsKinect.ExposureControl_FullyAuto"), static_cast<int>(ExposureControl::FullyAuto));
+	obs_property_list_add_int(p, Translate("ObsKinect.ExposureControl_SemiAuto"), static_cast<int>(ExposureControl::SemiAuto));
+	obs_property_list_add_int(p, Translate("ObsKinect.ExposureControl_Manual"), static_cast<int>(ExposureControl::Manual));
 	
 	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
 	{
@@ -207,16 +207,16 @@ obs_properties_t* KinectSdk20Device::CreateProperties() const
 		return true;
 	});
 
-	obs_properties_add_float_slider(props, "sdk20_analog_gain", Translate("ObsKinectV2.AnalogGain"), 1.0, 8.0, 0.1);
-	obs_properties_add_float_slider(props, "sdk20_digital_gain", Translate("ObsKinectV2.DigitalGain"), 1.0, 4.0, 0.1);
-	obs_properties_add_float_slider(props, "sdk20_exposure_compensation", Translate("ObsKinectV2.ExposureCompensation"), -2.0, 2.0, 0.1);
-	obs_properties_add_float_slider(props, "sdk20_exposure_integration_time", Translate("ObsKinectV2.ExposureIntegrationTime"), 0.0, 100.0, 0.1);
-	obs_properties_add_float_slider(props, "sdk20_exposure", Translate("ObsKinectV2.ExposureTime"), 0.0, 100.0, 1.0);
+	obs_properties_add_float_slider(props, "sdk20_analog_gain", Translate("ObsKinect.AnalogGain"), 1.0, 8.0, 0.1);
+	obs_properties_add_float_slider(props, "sdk20_digital_gain", Translate("ObsKinect.DigitalGain"), 1.0, 4.0, 0.1);
+	obs_properties_add_float_slider(props, "sdk20_exposure_compensation", Translate("ObsKinect.ExposureCompensation"), -2.0, 2.0, 0.1);
+	obs_properties_add_float_slider(props, "sdk20_exposure_integration_time", Translate("ObsKinect.ExposureIntegrationTime"), 0.0, 100.0, 0.1);
+	obs_properties_add_float_slider(props, "sdk20_exposure", Translate("ObsKinect.ExposureTime"), 0.0, 100.0, 1.0);
 
-	p = obs_properties_add_list(props, "sdk20_white_balance_mode", Translate("ObsKinectV2.WhiteBalanceMode"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	obs_property_list_add_int(p, Translate("ObsKinectV2.WhiteBalanceMode_Auto"), static_cast<int>(WhiteBalanceMode::Auto));
-	obs_property_list_add_int(p, Translate("ObsKinectV2.WhiteBalanceMode_Manual"), static_cast<int>(WhiteBalanceMode::Manual));
-	obs_property_list_add_int(p, Translate("ObsKinectV2.WhiteBalanceMode_Unknown"), static_cast<int>(WhiteBalanceMode::Unknown));
+	p = obs_properties_add_list(props, "sdk20_white_balance_mode", Translate("ObsKinect.WhiteBalanceMode"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(p, Translate("ObsKinect.WhiteBalanceMode_Auto"), static_cast<int>(WhiteBalanceMode::Auto));
+	obs_property_list_add_int(p, Translate("ObsKinect.WhiteBalanceMode_Manual"), static_cast<int>(WhiteBalanceMode::Manual));
+	obs_property_list_add_int(p, Translate("ObsKinect.WhiteBalanceMode_Unknown"), static_cast<int>(WhiteBalanceMode::Unknown));
 	
 	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
 	{
@@ -230,18 +230,18 @@ obs_properties_t* KinectSdk20Device::CreateProperties() const
 		return true;
 	});
 
-	obs_properties_add_float_slider(props, "sdk20_red_gain", Translate("ObsKinectV2.RedGain"), 1.0, 4.0, 0.1);
-	obs_properties_add_float_slider(props, "sdk20_green_gain", Translate("ObsKinectV2.GreenGain"), 1.0, 4.0, 0.1);
-	obs_properties_add_float_slider(props, "sdk20_blue_gain", Translate("ObsKinectV2.BlueGain"), 1.0, 4.0, 0.1);
+	obs_properties_add_float_slider(props, "sdk20_red_gain", Translate("ObsKinect.Gain_Red"), 1.0, 4.0, 0.1);
+	obs_properties_add_float_slider(props, "sdk20_green_gain", Translate("ObsKinect.Gain_Green"), 1.0, 4.0, 0.1);
+	obs_properties_add_float_slider(props, "sdk20_blue_gain", Translate("ObsKinect.Gain_Blue"), 1.0, 4.0, 0.1);
 
-	p = obs_properties_add_list(props, "sdk20_powerline_frequency", Translate("ObsKinectV2.PowerlineFrequency"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-	obs_property_list_add_int(p, Translate("ObsKinectV2.PowerlineFrequency_50Hz"), static_cast<int>(PowerlineFrequency::Freq50));
-	obs_property_list_add_int(p, Translate("ObsKinectV2.PowerlineFrequency_60Hz"), static_cast<int>(PowerlineFrequency::Freq60));
+	p = obs_properties_add_list(props, "sdk20_powerline_frequency", Translate("ObsKinect.PowerlineFrequency"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	obs_property_list_add_int(p, Translate("ObsKinect.PowerlineFrequency_50Hz"), static_cast<int>(PowerlineFrequency::Freq50));
+	obs_property_list_add_int(p, Translate("ObsKinect.PowerlineFrequency_60Hz"), static_cast<int>(PowerlineFrequency::Freq60));
 
 	obs_properties_add_int_slider(props, "sdk20_led_nexus_intensity", Translate("ObsKinectV2.NexusLedIntensity"), 0, 1000, 10);
 	obs_properties_add_int_slider(props, "sdk20_led_privacy_intensity", Translate("ObsKinectV2.PrivacyLedIntensity"), 0, 1000, 10);
 
-	obs_properties_add_button2(props, "sdk20_dump", Translate("ObsKinectV2.DumpCameraSettings"), [](obs_properties_t* props, obs_property_t* property, void* data)
+	obs_properties_add_button2(props, "sdk20_dump", Translate("ObsKinect.DumpCameraSettings"), [](obs_properties_t* props, obs_property_t* property, void* data)
 	{
 		struct CameraSetting
 		{
