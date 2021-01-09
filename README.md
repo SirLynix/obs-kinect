@@ -336,3 +336,4 @@ Thanks a lot to @microsoft for supporting obs-kinect developpment by sending me 
 
 Thanks to @pucgenie and @saphir1997 for the german translation.
 Thanks to @Liskowskyy for the polish translation.
+Thanks to @yeonggille for the Korean translation
