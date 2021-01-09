@@ -58,8 +58,8 @@ TextureLerpShader::~TextureLerpShader()
 
 gs_texture_t* TextureLerpShader::Lerp(gs_texture_t* from, gs_texture_t* to, gs_texture_t* factor)
 {
-	std::uint32_t colorWidth = std::max(gs_texture_get_width(from), gs_texture_get_width(to));
-	std::uint32_t colorHeight = std::max(gs_texture_get_height(from), gs_texture_get_height(to));
+	std::uint32_t colorWidth = gs_texture_get_width(to);
+	std::uint32_t colorHeight = gs_texture_get_height(to);
 
 	gs_texrender_reset(m_workTexture);
 	if (!gs_texrender_begin(m_workTexture, colorWidth, colorHeight))
