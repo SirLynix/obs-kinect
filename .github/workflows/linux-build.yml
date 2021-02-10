@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        arch: [x86, x64]
+        arch: [x64]
         mode: [debug, releasedbg]
 
     runs-on: ${{ matrix.os }}
@@ -25,6 +25,10 @@ jobs:
     # Install xmake
     - name: Setup xmake
       uses: xmake-io/github-action-setup-xmake@v1
+
+    # Prepare environment
+    - name: Prepare files
+      run: mv config.lua.linux.ci config.lua
 
     # Update xmake repository (in order to have the file that will be cached)
     - name: Update xmake repository
@@ -42,9 +46,7 @@ jobs:
 
     # Build the plugin
     - name: Build obs-kinect
-      run: |
-        mv config.lua.linux.ci config.lua
-        xmake
+      run: xmake
 
     # Install the result files
     - name: Install obs-kinect
