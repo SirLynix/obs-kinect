@@ -40,9 +40,11 @@ jobs:
     - name: Configure xmake and install dependencies
       run: xmake config --arch=${{ matrix.arch }} --mode=${{ matrix.mode }} --yes --verbose
 
-    # Build the game
+    # Build the plugin
     - name: Build obs-kinect
-      run: xmake
+      run: |
+        mv config.lua.linux.ci config.lua
+        xmake
 
     # Install the result files
     - name: Install obs-kinect

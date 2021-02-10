@@ -1,0 +1,9 @@
+-- Example config, copy to config.lua before building
+
+LibObs = {
+	Include = "../obs-studio/libobs",
+	Lib32 = "../obs-studio/build32/libobs",
+	Lib64 = "../obs-studio/build64/libobs",
+}
+
+ObsPlugins = {}
