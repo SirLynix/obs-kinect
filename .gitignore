@@ -1,3 +1,8 @@
+# xmake
+.xmake
+Xmake.Custom.*
+build
+
 # obs-kinect specific files
 config.lua
 
@@ -232,6 +237,8 @@ PublishScripts/
 *.snupkg
 # The packages folder can be ignored because of Package Restore
 **/[Pp]ackages/*
+# Don't ignore xmake packages
+!xmake-repo/**
 # except build/, which is used as an MSBuild target.
 !**/[Pp]ackages/build/
 # Uncomment if necessary however generally it will be regenerated when needed
