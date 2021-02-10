@@ -20,7 +20,7 @@ jobs:
 
     # Install libobs
     - name: Update apt repositories
-      run: sudo apt-get update && sudo apt-get install libobs-dev -y
+      run: sudo apt-get update && sudo apt-get install libobs-dev libusb-dev -y
 
     # Install xmake
     - name: Setup xmake
