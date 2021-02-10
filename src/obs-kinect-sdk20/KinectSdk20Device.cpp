@@ -873,20 +873,18 @@ void KinectSdk20Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 	while (IsRunning())
 	{
+		if (auto sourceFlagUpdate = GetSourceFlagsUpdate())
 		{
-			if (auto sourceFlagUpdate = GetSourceFlagsUpdate())
+			try
 			{
-				try
-				{
-					UpdateMultiSourceFrameReader(sourceFlagUpdate.value());
-				}
-				catch (const std::exception& e)
-				{
-					errorlog("%s", e.what());
+				UpdateMultiSourceFrameReader(sourceFlagUpdate.value());
+			}
+			catch (const std::exception& e)
+			{
+				errorlog("%s", e.what());
 
-					os_sleep_ms(10);
-					continue;
-				}
+				os_sleep_ms(10);
+				continue;
 			}
 		}
 

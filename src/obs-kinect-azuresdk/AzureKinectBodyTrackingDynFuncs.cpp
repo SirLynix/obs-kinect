@@ -15,6 +15,8 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
+#if __has_include(<k4abt.hpp>)
+
 #include "AzureKinectBodyTrackingDynFuncs.hpp"
 #include "AzureHelper.hpp"
 #include <util/platform.h>
@@ -69,3 +71,5 @@ void UnloadBodyTrackingSdk()
 #define OBS_KINECT_AZURE_SDK_BODY_TRACKING_FUNC(Ret, Name, ...) Ret (*Name)(__VA_ARGS__) = nullptr;
 OBS_KINECT_AZURE_SDK_BODY_TRACKING_FOREACH_FUNC(OBS_KINECT_AZURE_SDK_BODY_TRACKING_FUNC)
 #undef OBS_KINECT_AZURE_SDK_BODY_TRACKING_FUNC
+
+#endif

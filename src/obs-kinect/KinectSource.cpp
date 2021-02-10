@@ -21,6 +21,7 @@
 #include <util/platform.h>
 #include <algorithm>
 #include <array>
+#include <cstring>
 #include <numeric>
 #include <optional>
 
@@ -102,7 +103,6 @@ void KinectSource::UpdateGreenScreen(GreenScreenSettings greenScreen)
 			m_greenscreenEffect.emplace<E>();
 
 	}, m_greenScreenSettings.effectConfig);
-
 
 	if (m_deviceAccess)
 		m_deviceAccess->SetEnabledSourceFlags(ComputeEnabledSourceFlags());

@@ -49,7 +49,7 @@ class AzureKinectDevice final : public KinectDevice
 		AzureKinectDevice(std::uint32_t deviceIndex);
 		~AzureKinectDevice();
 
-		obs_properties_t* AzureKinectDevice::CreateProperties() const;
+		obs_properties_t* CreateProperties() const;
 
 	private:
 		void HandleBoolParameterUpdate(const std::string& parameterName, bool value);

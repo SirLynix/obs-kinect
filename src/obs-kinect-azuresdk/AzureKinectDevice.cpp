@@ -21,7 +21,6 @@
 #include <array>
 #include <optional>
 #include <sstream>
-#include <tlhelp32.h>
 
 #if HAS_BODY_TRACKING
 #include <k4abt.hpp>

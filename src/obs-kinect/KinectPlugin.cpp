@@ -48,7 +48,7 @@ bool KinectPlugin::Open(const char* path)
 
 	using CreatePlugin = KinectPluginImpl * (*)(std::uint32_t version);
 
-	CreatePlugin createImpl = static_cast<CreatePlugin>(os_dlsym(lib.get(), "ObsKinect_CreatePlugin"));
+	CreatePlugin createImpl = reinterpret_cast<CreatePlugin>(os_dlsym(lib.get(), "ObsKinect_CreatePlugin"));
 	if (!createImpl)
 	{
 		warnlog("failed to get ObsKinect_CreatePlugin symbol, dismissing %s", path);
