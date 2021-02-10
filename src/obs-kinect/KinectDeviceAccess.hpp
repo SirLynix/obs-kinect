@@ -34,6 +34,7 @@ class KinectDeviceAccess
 		KinectDeviceAccess(KinectDeviceAccess&& access) noexcept;
 		~KinectDeviceAccess();
 
+		const KinectDevice& GetDevice() const;
 		SourceFlags GetEnabledSourceFlags() const;
 
 		KinectFrameConstPtr GetLastFrame();

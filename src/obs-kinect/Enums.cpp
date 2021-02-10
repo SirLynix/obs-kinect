@@ -30,6 +30,12 @@ std::string EnabledSourceToString(SourceFlags flags)
 	if (flags & Source_Color)
 		str += "Color | ";
 
+	if (flags & Source_ColorMappedBody)
+		str += "ColorMappedBody | ";
+
+	if (flags & Source_ColorMappedDepth)
+		str += "ColorMappedDepth | ";
+
 	if (flags & Source_ColorToDepthMapping)
 		str += "ColorToDepth | ";
 

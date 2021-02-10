@@ -127,6 +127,7 @@ class KinectSource
 
 		void ClearDeviceAccess();
 		SourceFlags ComputeEnabledSourceFlags() const;
+		SourceFlags ComputeEnabledSourceFlags(const KinectDevice& device) const;
 		std::optional<KinectDeviceAccess> OpenAccess(KinectDevice& device);
 		void RefreshDeviceAccess();
 

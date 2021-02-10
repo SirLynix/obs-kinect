@@ -29,9 +29,11 @@ enum EnabledSources
 	Source_BackgroundRemoval   = 1 << 0,
 	Source_Body                = 1 << 1,
 	Source_Color               = 1 << 2,
-	Source_ColorToDepthMapping = 1 << 3,
-	Source_Depth               = 1 << 4,
-	Source_Infrared            = 1 << 5
+	Source_ColorMappedBody     = 1 << 3,
+	Source_ColorMappedDepth    = 1 << 4,
+	Source_ColorToDepthMapping = 1 << 5,
+	Source_Depth               = 1 << 6,
+	Source_Infrared            = 1 << 7
 };
 
 using SourceFlags = std::uint32_t;

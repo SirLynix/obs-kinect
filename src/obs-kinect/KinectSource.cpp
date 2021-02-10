@@ -205,9 +205,10 @@ void KinectSource::Update(float /*seconds*/)
 
 		ObsGraphics obsGfx;
 
+		bool isDepthColorMapped = frameData->colorMappedDepthFrame.has_value();
 		bool softwareDepthMapping = (!m_greenScreenSettings.gpuDepthMapping || m_greenScreenSettings.maxDirtyDepth > 0);
 
-		if ((m_greenScreenSettings.enabled && DoesRequireDepthFrame(m_greenScreenSettings.filterType) && !softwareDepthMapping) || m_sourceType == SourceType::Depth)
+		if ((m_greenScreenSettings.enabled && DoesRequireDepthFrame(m_greenScreenSettings.filterType) && !softwareDepthMapping && !isDepthColorMapped) || m_sourceType == SourceType::Depth)
 		{
 			if (!frameData->depthFrame)
 				return;
@@ -312,12 +313,12 @@ void KinectSource::Update(float /*seconds*/)
 
 			if (m_sourceType == SourceType::Color)
 			{
-				if (!frameData->depthMappingFrame && !frameData->mappedDepthFrame)
+				if (!frameData->depthMappingFrame && !frameData->colorMappedDepthFrame)
 					return;
 
-				if (frameData->mappedDepthFrame)
+				if (frameData->colorMappedDepthFrame)
 				{
-					const DepthFrameData& mappedDepthFrame = *frameData->mappedDepthFrame;
+					const DepthFrameData& mappedDepthFrame = *frameData->colorMappedDepthFrame;
 
 					UpdateTexture(m_depthTexture, GS_R16, mappedDepthFrame.width, mappedDepthFrame.height, mappedDepthFrame.width * sizeof(std::uint16_t), mappedDepthFrame.ptr.get());
 					depthMappingTexture = nullptr;
@@ -613,6 +614,11 @@ void KinectSource::ClearDeviceAccess()
 
 SourceFlags KinectSource::ComputeEnabledSourceFlags() const
 {
+	return ComputeEnabledSourceFlags(m_deviceAccess->GetDevice());
+}
+
+SourceFlags KinectSource::ComputeEnabledSourceFlags(const KinectDevice& device) const
+{
 	SourceFlags flags = 0;
 	switch (m_sourceType)
 	{
@@ -631,14 +637,35 @@ SourceFlags KinectSource::ComputeEnabledSourceFlags() const
 
 	if (m_greenScreenSettings.enabled)
 	{
-		if (m_sourceType == SourceType::Color)
-			flags |= Source_ColorToDepthMapping;
+		// If device supports depth to color mapping, use it for color source
+		bool colorMapped = (m_sourceType == SourceType::Color);
+		bool hasDepthToColorMapping = (device.GetSupportedSources() & Source_ColorToDepthMapping);
 
 		if (DoesRequireBodyFrame(m_greenScreenSettings.filterType))
-			flags |= Source_Body;
+		{
+			if (colorMapped)
+			{
+				if (hasDepthToColorMapping)
+					flags |= Source_Body | Source_ColorToDepthMapping;
+				else
+					flags |= Source_ColorMappedBody;
+			}
+			else
+				flags |= Source_Body;
+		}
 
 		if (DoesRequireDepthFrame(m_greenScreenSettings.filterType))
-			flags |= Source_Depth;
+		{
+			if (colorMapped)
+			{
+				if (hasDepthToColorMapping)
+					flags |= Source_Depth | Source_ColorToDepthMapping;
+				else
+					flags |= Source_ColorMappedDepth;
+			}
+			else
+				flags |= Source_Depth;
+		}
 
 		if (m_greenScreenSettings.filterType == GreenScreenFilterType::Dedicated)
 			flags |= Source_BackgroundRemoval;
@@ -655,7 +682,7 @@ std::optional<KinectDeviceAccess> KinectSource::OpenAccess(KinectDevice& device)
 
 	try
 	{
-		KinectDeviceAccess deviceAccess = device.AcquireAccess(ComputeEnabledSourceFlags());
+		KinectDeviceAccess deviceAccess = device.AcquireAccess(ComputeEnabledSourceFlags(device));
 		deviceAccess.UpdateDeviceParameters(settings);
 
 		return deviceAccess;

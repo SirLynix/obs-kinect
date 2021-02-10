@@ -80,13 +80,13 @@ namespace
 			deviceConfig.color_resolution = K4A_COLOR_RESOLUTION_OFF;
 		}
 
-		if (enabledSources & (Source_Body | Source_Depth | Source_ColorToDepthMapping | Source_Infrared))
+		if (enabledSources & (Source_Body | Source_ColorMappedBody | Source_Depth | Source_ColorMappedDepth | Source_Infrared))
 		{
 			switch (depthMode)
 			{
 				case DepthMode::Passive:
 					// Passive IR cannot be used to read depth values, use it when infrared only is requested
-					if ((enabledSources & (Source_Depth | Source_ColorToDepthMapping)) == 0)
+					if ((enabledSources & (Source_Depth | Source_ColorMappedBody | Source_ColorMappedDepth)) == 0)
 					{
 						deviceConfig.depth_mode = K4A_DEPTH_MODE_PASSIVE_IR;
 						break;
@@ -172,11 +172,11 @@ m_depthMode(DepthMode::NFOVUnbinned)
 
 	SetUniqueName("#" + std::to_string(deviceIndex) + ": " + m_device.get_serialnum());
 
-	SourceFlags supportedSources = Source_Color | Source_Depth | Source_Infrared | Source_ColorToDepthMapping;
+	SourceFlags supportedSources = Source_Color | Source_Depth | Source_Infrared | Source_ColorMappedDepth;
 
 #if HAS_BODY_TRACKING
 	if (IsBodyTrackingSdkLoaded())
-		supportedSources |= Source_Body;
+		supportedSources |= Source_Body | Source_ColorMappedBody;
 #endif
 
 	SetSupportedSources(supportedSources);
@@ -454,7 +454,7 @@ void AzureKinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 			calibration = m_device.get_calibration(newConfig.depth_mode, newConfig.color_resolution);
 		}
 
-		if (enabledSources & (Source_Body | Source_ColorToDepthMapping))
+		if (enabledSources & (Source_Body | Source_ColorMappedBody | Source_ColorMappedDepth))
 		{
 			if (!transformation || activeConfig.depth_mode != newConfig.depth_mode || activeConfig.color_resolution != newConfig.color_resolution)
 				transformation = k4a::transformation(calibration);
@@ -463,7 +463,7 @@ void AzureKinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 			transformation.reset();
 
 #if HAS_BODY_TRACKING
-		if ((enabledSources & Source_Body) && IsBodyTrackingSdkLoaded())
+		if ((enabledSources & (Source_Body | Source_ColorMappedBody)) && IsBodyTrackingSdkLoaded())
 		{
 			if (!bodyTracker || activeConfig.depth_mode != newConfig.depth_mode || activeConfig.color_resolution != newConfig.color_resolution)
 			{
@@ -523,19 +523,19 @@ void AzureKinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 					framePtr->colorFrame = ToColorFrame(colorImage);
 			}
 
-			if (enabledSourceFlags & (Source_Body | Source_Depth | Source_ColorToDepthMapping))
+			if (enabledSourceFlags & (Source_Body | Source_Depth | Source_ColorMappedBody | Source_ColorMappedDepth))
 			{
 				if (k4a::image depthImage = capture.get_depth_image())
 				{
 					if (enabledSourceFlags & Source_Depth)
 						framePtr->depthFrame = ToDepthFrame(depthImage);
 
-					if (enabledSourceFlags & (Source_Body | Source_ColorToDepthMapping))
+					if (enabledSourceFlags & (Source_Body | Source_ColorMappedBody | Source_ColorMappedDepth))
 					{
 						k4a::image mappedDepthImage;
 
 #if HAS_BODY_TRACKING
-						if ((enabledSourceFlags & Source_Body) && bodyTracker)
+						if ((enabledSourceFlags & (Source_Body | Source_ColorMappedBody)) && bodyTracker)
 						{
 							// Process bodies (TODO: Add possibility to do this asynchronously?)
 							bodyTracker->enqueue_capture(capture);
@@ -546,27 +546,27 @@ void AzureKinectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 								assert(transformation);
 								if (k4a::image bodyIndexMap = bodyTrackingFrame.get_body_index_map())
 								{
-									if (enabledSourceFlags & Source_ColorToDepthMapping)
+									if (enabledSourceFlags & Source_Body)
+										framePtr->bodyIndexFrame = ToBodyIndexFrame(bodyIndexMap);
+
+									if (enabledSourceFlags & Source_ColorMappedBody)
 									{
 										auto [mappedDepth, mappedBodyIndexImage] = transformation->depth_image_to_color_camera_custom(depthImage, bodyIndexMap, K4A_TRANSFORMATION_INTERPOLATION_TYPE_NEAREST, K4ABT_BODY_INDEX_MAP_BACKGROUND);
 										mappedDepthImage = std::move(mappedDepth);
 
 										framePtr->bodyIndexFrame = ToBodyIndexFrame(mappedBodyIndexImage);
 									}
-									else
-										framePtr->bodyIndexFrame = ToBodyIndexFrame(bodyIndexMap);
 								}
-
 							}
 						}
 #endif
 
-						if (enabledSourceFlags & Source_ColorToDepthMapping)
+						if (enabledSourceFlags & Source_ColorMappedDepth)
 						{
 							if (!mappedDepthImage)
 								mappedDepthImage = transformation->depth_image_to_color_camera(depthImage);
 						
-							framePtr->mappedDepthFrame = ToDepthFrame(mappedDepthImage);
+							framePtr->colorMappedDepthFrame = ToDepthFrame(mappedDepthImage);
 						}
 					}
 				}

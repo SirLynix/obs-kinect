@@ -15,6 +15,7 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
+#include <obs-kinect/KinectDeviceAccess.hpp>
 
 KinectDeviceAccess::KinectDeviceAccess(KinectDevice& owner, KinectDevice::AccessData* accessData) :
 m_owner(&owner),
@@ -37,6 +38,12 @@ KinectDeviceAccess::~KinectDeviceAccess()
 		m_owner->ReleaseAccess(m_data);
 }
 
+const KinectDevice& KinectDeviceAccess::GetDevice() const
+{
+	assert(m_owner);
+	return *m_owner;
+}
+
 SourceFlags KinectDeviceAccess::GetEnabledSourceFlags() const
 {
 	return m_data->enabledSources;
@@ -44,6 +51,7 @@ SourceFlags KinectDeviceAccess::GetEnabledSourceFlags() const
 
 KinectFrameConstPtr KinectDeviceAccess::GetLastFrame()
 {
+	assert(m_owner);
 	return m_owner->GetLastFrame();
 }
 

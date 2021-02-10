@@ -81,9 +81,10 @@ struct KinectFrame
 {
 	std::optional<BackgroundRemovalFrameData> backgroundRemovalFrame;
 	std::optional<BodyIndexFrameData> bodyIndexFrame;
+	std::optional<BodyIndexFrameData> colorMappedBodyFrame;
 	std::optional<ColorFrameData> colorFrame;
+	std::optional<DepthFrameData> colorMappedDepthFrame;
 	std::optional<DepthFrameData> depthFrame;
-	std::optional<DepthFrameData> mappedDepthFrame;
 	std::optional<DepthMappingFrameData> depthMappingFrame;
 	std::optional<InfraredFrameData> infraredFrame;
 	std::uint64_t frameIndex;
