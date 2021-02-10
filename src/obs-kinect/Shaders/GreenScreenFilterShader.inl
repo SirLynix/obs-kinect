@@ -15,7 +15,7 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "GreenScreenFilterShader.hpp"
+#include <obs-kinect/Shaders/GreenScreenFilterShader.hpp>
 
 template<typename Params>
 void GreenScreenFilterShader::SetBodyParams(const Params& params)

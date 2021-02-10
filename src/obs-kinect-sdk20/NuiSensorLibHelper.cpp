@@ -16,7 +16,7 @@
 ******************************************************************************/
 
 #include "NuiSensorLibHelper.hpp"
-#include "Win32Helper.hpp"
+#include <obs-kinect/Win32Helper.hpp>
 #include <cassert>
 
 #if HAS_NUISENSOR_LIB

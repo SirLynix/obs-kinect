@@ -15,7 +15,6 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "KinectDeviceAccess.hpp"
 
 KinectDeviceAccess::KinectDeviceAccess(KinectDevice& owner, KinectDevice::AccessData* accessData) :
 m_owner(&owner),

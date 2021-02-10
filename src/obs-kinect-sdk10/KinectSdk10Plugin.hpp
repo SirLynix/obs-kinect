@@ -21,8 +21,8 @@
 #define OBS_KINECT_PLUGIN_KINECTSDK10PLUGIN
 
 #include "Sdk10Helper.hpp"
-#include "KinectPluginImpl.hpp"
-#include "Win32Helper.hpp"
+#include <obs-kinect/KinectPluginImpl.hpp>
+#include <obs-kinect/Win32Helper.hpp>
 #include <combaseapi.h>
 #include <NuiApi.h>
 

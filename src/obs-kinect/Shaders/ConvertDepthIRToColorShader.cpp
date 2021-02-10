@@ -15,8 +15,8 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "ConvertDepthIRToColorShader.hpp"
-#include "Helper.hpp"
+#include <obs-kinect/Shaders/ConvertDepthIRToColorShader.hpp>
+#include <obs-kinect/Helper.hpp>
 #include <string>
 #include <stdexcept>
 

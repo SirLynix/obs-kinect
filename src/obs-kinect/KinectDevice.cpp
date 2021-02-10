@@ -15,8 +15,8 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "KinectDevice.hpp"
-#include "KinectDeviceAccess.hpp"
+#include <obs-kinect/KinectDevice.hpp>
+#include <obs-kinect/KinectDeviceAccess.hpp>
 #include <algorithm>
 #include <type_traits>
 

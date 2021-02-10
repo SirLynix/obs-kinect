@@ -15,8 +15,8 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "KinectDeviceRegistry.hpp"
-#include "KinectSource.hpp"
+#include <obs-kinect/KinectDeviceRegistry.hpp>
+#include <obs-kinect/KinectSource.hpp>
 #include <cassert>
 
 void KinectDeviceRegistry::ForEachDevice(const Callback& callback) const

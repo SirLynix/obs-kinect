@@ -20,15 +20,15 @@
 #ifndef OBS_KINECT_PLUGIN_KINECTSOURCE
 #define OBS_KINECT_PLUGIN_KINECTSOURCE
 
-#include "Enums.hpp"
-#include "Helper.hpp"
-#include "KinectDeviceAccess.hpp"
-#include "GreenscreenEffects.hpp"
-#include "Shaders/AlphaMaskShader.hpp"
-#include "Shaders/ConvertDepthIRToColorShader.hpp"
-#include "Shaders/GaussianBlurShader.hpp"
-#include "Shaders/GreenScreenFilterShader.hpp"
-#include "Shaders/TextureLerpShader.hpp"
+#include <obs-kinect/Enums.hpp>
+#include <obs-kinect/Helper.hpp>
+#include <obs-kinect/KinectDeviceAccess.hpp>
+#include <obs-kinect/GreenscreenEffects.hpp>
+#include <obs-kinect/Shaders/AlphaMaskShader.hpp>
+#include <obs-kinect/Shaders/ConvertDepthIRToColorShader.hpp>
+#include <obs-kinect/Shaders/GaussianBlurShader.hpp>
+#include <obs-kinect/Shaders/GreenScreenFilterShader.hpp>
+#include <obs-kinect/Shaders/TextureLerpShader.hpp>
 #include <obs-module.h>
 #include <atomic>
 #include <condition_variable>

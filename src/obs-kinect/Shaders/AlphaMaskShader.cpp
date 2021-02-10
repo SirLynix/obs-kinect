@@ -15,8 +15,8 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "AlphaMaskShader.hpp"
-#include "Helper.hpp"
+#include <obs-kinect/Shaders/AlphaMaskShader.hpp>
+#include <obs-kinect/Helper.hpp>
 #include <string>
 #include <stdexcept>
 

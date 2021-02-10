@@ -20,8 +20,8 @@
 #ifndef OBS_KINECT_PLUGIN_BLURBACKGROUNDEFFECT
 #define OBS_KINECT_PLUGIN_BLURBACKGROUNDEFFECT
 
-#include <Shaders/GaussianBlurShader.hpp>
-#include <Shaders/TextureLerpShader.hpp>
+#include <obs-kinect/Shaders/GaussianBlurShader.hpp>
+#include <obs-kinect/Shaders/TextureLerpShader.hpp>
 
 class BlurBackgroundEffect
 {

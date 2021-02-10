@@ -20,7 +20,7 @@
 #ifndef OBS_KINECT_PLUGIN_KINECTFRAME
 #define OBS_KINECT_PLUGIN_KINECTFRAME
 
-#include "Helper.hpp"
+#include <obs-kinect/Helper.hpp>
 #include <cstdint>
 #include <memory>
 #include <optional>

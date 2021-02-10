@@ -20,7 +20,7 @@
 #ifndef OBS_KINECT_PLUGIN_KINECTPLUGINIMPL
 #define OBS_KINECT_PLUGIN_KINECTPLUGINIMPL
 
-#include "Helper.hpp"
+#include <obs-kinect/Helper.hpp>
 #include <memory>
 #include <string>
 #include <vector>

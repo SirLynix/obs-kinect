@@ -26,7 +26,7 @@
 
 #define logprefix "[obs-kinect] [sdk10] "
 
-#include "Helper.hpp"
+#include <obs-kinect/Helper.hpp>
 
 enum class BacklightCompensation
 {

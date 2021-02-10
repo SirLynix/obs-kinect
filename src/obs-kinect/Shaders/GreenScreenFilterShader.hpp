@@ -99,6 +99,6 @@ class GreenScreenFilterShader
 		gs_texrender_t* m_workTexture;
 };
 
-#include "GreenScreenFilterShader.inl"
+#include <obs-kinect/Shaders/GreenScreenFilterShader.inl>
 
 #endif

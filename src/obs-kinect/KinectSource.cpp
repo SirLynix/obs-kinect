@@ -15,9 +15,9 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "KinectSource.hpp"
-#include "KinectDevice.hpp"
-#include "KinectDeviceRegistry.hpp"
+#include <obs-kinect/KinectSource.hpp>
+#include <obs-kinect/KinectDevice.hpp>
+#include <obs-kinect/KinectDeviceRegistry.hpp>
 #include <util/platform.h>
 #include <algorithm>
 #include <array>

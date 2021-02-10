@@ -15,9 +15,9 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "KinectPlugin.hpp"
-#include "KinectPluginImpl.hpp"
-#include "KinectDevice.hpp"
+#include <obs-kinect/KinectPlugin.hpp>
+#include <obs-kinect/KinectPluginImpl.hpp>
+#include <obs-kinect/KinectDevice.hpp>
 
 KinectPlugin::~KinectPlugin()
 {

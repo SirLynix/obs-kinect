@@ -20,9 +20,9 @@
 #ifndef OBS_KINECT_PLUGIN_GREENSCREENEFFECTS
 #define OBS_KINECT_PLUGIN_GREENSCREENEFFECTS
 
-#include <GreenscreenEffects/BlurBackgroundEffect.hpp>
-#include <GreenscreenEffects/RemoveBackgroundEffect.hpp>
-#include <GreenscreenEffects/ReplaceBackgroundEffect.hpp>
+#include <obs-kinect/GreenscreenEffects/BlurBackgroundEffect.hpp>
+#include <obs-kinect/GreenscreenEffects/RemoveBackgroundEffect.hpp>
+#include <obs-kinect/GreenscreenEffects/ReplaceBackgroundEffect.hpp>
 #include <variant>
 
 using GreenscreenEffects = std::variant<BlurBackgroundEffect, RemoveBackgroundEffect, ReplaceBackgroundEffect>;

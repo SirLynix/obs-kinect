@@ -20,9 +20,9 @@
 #ifndef OBS_KINECT_PLUGIN_KINECTDEVICEACCESS
 #define OBS_KINECT_PLUGIN_KINECTDEVICEACCESS
 
-#include "Enums.hpp"
-#include "Helper.hpp"
-#include "KinectDevice.hpp"
+#include <obs-kinect/Enums.hpp>
+#include <obs-kinect/Helper.hpp>
+#include <obs-kinect/KinectDevice.hpp>
 #include <memory>
 
 class KinectDeviceAccess

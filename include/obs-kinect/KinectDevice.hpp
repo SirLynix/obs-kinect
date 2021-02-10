@@ -20,8 +20,8 @@
 #ifndef OBS_KINECT_PLUGIN_KINECTDEVICE
 #define OBS_KINECT_PLUGIN_KINECTDEVICE
 
-#include "Enums.hpp"
-#include "Helper.hpp"
+#include <obs-kinect/Enums.hpp>
+#include <obs-kinect/Helper.hpp>
 #include "KinectFrame.hpp"
 #include <atomic>
 #include <condition_variable>

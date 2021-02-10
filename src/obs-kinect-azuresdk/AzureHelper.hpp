@@ -26,6 +26,6 @@
 
 #define logprefix "[obs-kinect] [azure] "
 
-#include "Helper.hpp"
+#include <obs-kinect/Helper.hpp>
 
 #endif

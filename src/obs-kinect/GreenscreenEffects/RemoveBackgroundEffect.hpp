@@ -20,7 +20,7 @@
 #ifndef OBS_KINECT_PLUGIN_REMOVEBACKGROUNDEFFECT
 #define OBS_KINECT_PLUGIN_REMOVEBACKGROUNDEFFECT
 
-#include <Shaders/AlphaMaskShader.hpp>
+#include <obs-kinect/Shaders/AlphaMaskShader.hpp>
 
 class RemoveBackgroundEffect
 {

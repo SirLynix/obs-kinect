@@ -21,8 +21,7 @@
 #define OBS_KINECT_PLUGIN_AZUREKINECTDEVICE
 
 #include "AzureHelper.hpp"
-#include "KinectDevice.hpp"
-#include "Win32Helper.hpp"
+#include <obs-kinect/KinectDevice.hpp>
 #include <k4a/k4a.hpp>
 
 enum class ColorResolution

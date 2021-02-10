@@ -20,7 +20,7 @@
 #ifndef OBS_KINECT_PLUGIN_ENUMS
 #define OBS_KINECT_PLUGIN_ENUMS
 
-#include "Helper.hpp"
+#include <obs-kinect/Helper.hpp>
 #include <cstdint>
 #include <string>
 

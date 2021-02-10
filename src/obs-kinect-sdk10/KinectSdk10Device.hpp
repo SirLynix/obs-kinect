@@ -21,7 +21,7 @@
 #define OBS_KINECT_PLUGIN_KINECTDEVICESDK10
 
 #include "Sdk10Helper.hpp"
-#include "KinectDevice.hpp"
+#include <obs-kinect/KinectDevice.hpp>
 #include "KinectSdk10Plugin.hpp"
 #include <functional>
 

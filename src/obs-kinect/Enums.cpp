@@ -15,7 +15,7 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include "Enums.hpp"
+#include <obs-kinect/Enums.hpp>
 
 std::string EnabledSourceToString(SourceFlags flags)
 {

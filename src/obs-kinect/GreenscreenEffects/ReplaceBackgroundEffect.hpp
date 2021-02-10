@@ -20,8 +20,8 @@
 #ifndef OBS_KINECT_PLUGIN_REPLACEBACKGROUNDEFFECT
 #define OBS_KINECT_PLUGIN_REPLACEBACKGROUNDEFFECT
 
-#include <Shaders/TextureLerpShader.hpp>
-#include "Helper.hpp"
+#include <obs-kinect/Shaders/TextureLerpShader.hpp>
+#include <obs-kinect/Helper.hpp>
 #include <string>
 
 class ReplaceBackgroundEffect
