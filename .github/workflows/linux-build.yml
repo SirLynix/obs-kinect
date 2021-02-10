@@ -21,7 +21,7 @@ jobs:
     # Install libobs
     - name: Update apt repositories
       run: sudo apt-get update && \
-        sudo apt-get install 
+        sudo apt-get install \
         libobs-dev \
         gcc-aarch64-linux-gnu \
         g++-aarch64-linux-gnu \
