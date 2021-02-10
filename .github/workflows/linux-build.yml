@@ -20,7 +20,41 @@ jobs:
 
     # Install libobs
     - name: Update apt repositories
-      run: sudo apt-get update && sudo apt-get install libobs-dev libudev-dev -y
+      run: sudo apt-get update && \
+        sudo apt-get install 
+        libobs-dev \
+        gcc-aarch64-linux-gnu \
+        g++-aarch64-linux-gnu \
+        file \
+        dpkg-dev \
+        qemu \
+        binfmt-support \
+        qemu-user-static \
+        pkg-config \
+        ninja-build \
+        doxygen \
+        clang \
+        python3 \
+        gcc \
+        g++ \
+        git \
+        git-lfs \
+        nasm \
+        cmake \
+        powershell \
+        libgl1-mesa-dev \
+        libsoundio-dev \
+        libjpeg-dev \
+        libvulkan-dev \
+        libx11-dev \
+        libxcursor-dev \
+        libxinerama-dev \
+        libxrandr-dev \
+        libusb-1.0-0-dev \
+        libssl-dev \
+        libudev-dev \
+        mesa-common-dev \
+        uuid-dev -y
 
     # Install xmake
     - name: Setup xmake
