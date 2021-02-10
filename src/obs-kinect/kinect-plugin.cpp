@@ -519,6 +519,7 @@ bool obs_module_load()
 MODULE_EXPORT
 void obs_module_unload()
 {
+	infolog("unloading obs-kinect");
 	s_deviceRegistry.reset();
 }
 
