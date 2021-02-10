@@ -11,7 +11,7 @@ package("libfreenect2")
         -- base libusb doesn't work with libfreenect2, force it as a .dll to replace it with a custom version
         add_deps("libusb", { configs = {shared = true}})
     else
-        add_deps("libusb")
+        add_deps("libusb", { system = true })
     end
 
     on_install("windows", "linux", "macosx", function (package)
