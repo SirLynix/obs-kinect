@@ -685,7 +685,7 @@ std::optional<KinectDeviceAccess> KinectSource::OpenAccess(KinectDevice& device)
 		KinectDeviceAccess deviceAccess = device.AcquireAccess(ComputeEnabledSourceFlags(device));
 		deviceAccess.UpdateDeviceParameters(settings);
 
-		return deviceAccess;
+		return std::make_optional(std::move(deviceAccess));
 	}
 	catch (const std::exception& e)
 	{
