@@ -9,7 +9,7 @@ package("libfreenect2")
 
     if (is_plat("windows")) then
         -- base libusb doesn't work with libfreenect2, force it as a .dll to replace it with a custom version
-        add_deps("libusb", { configs = {shared = true}})
+        add_deps("libusb", {configs = {shared = true}})
     else
         add_deps("libusb")
     end
@@ -22,6 +22,11 @@ package("libfreenect2")
             io.replace("CMakeLists.txt", "FIND_PACKAGE(LibUSB REQUIRED)", "", {plain = true})
         end
 
+        local cxflags
+        if package:config("pic") then
+            cxflags = {"-fPIC"}
+        end
+
         local configs = {}
         table.insert(configs, "-DBUILD_EXAMPLES=OFF")
         table.insert(configs, "-DENABLE_CXX11=ON")
@@ -31,7 +36,7 @@ package("libfreenect2")
         table.insert(configs, "-DTurboJPEG_LIBRARIES=" .. table.concat(libjpegturbo:fetch().libfiles, ";"))
         table.insert(configs, "-DLibUSB_INCLUDE_DIRS=" .. libusb:installdir("include"))
         table.insert(configs, "-DLibUSB_LIBRARIES=" .. table.concat(libusb:fetch().libfiles, ";"))
-        import("package.tools.cmake").install(package, configs, {packagedeps="libusb"})
+        import("package.tools.cmake").install(package, configs, {cxflags=cxflags})
     end)
 
     on_test(function (package)

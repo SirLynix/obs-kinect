@@ -10,6 +10,11 @@ package("libjpeg-turbo")
     add_deps("cmake")
 
     on_install("windows", "linux", "macosx", function (package)
+        local cxflags
+        if package:config("pic") then
+            cxflags = {"-fPIC"}
+        end
+
         local configs = {}
         table.insert(configs, "-DCMAKE_BUILD_TYPE=" .. (package:debug() and "Debug" or "Release"))
         if package:config("shared") then
@@ -22,7 +27,7 @@ package("libjpeg-turbo")
         if package:config("vs_runtime"):startswith("MD") then
             table.insert(configs, "-DWITH_CRT_DLL=ON")
         end
-        import("package.tools.cmake").install(package, configs)
+        import("package.tools.cmake").install(package, configs, {cxflags=cxflags})
     end)
 
     on_test(function (package)
