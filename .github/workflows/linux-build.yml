@@ -15,12 +15,118 @@ jobs:
     runs-on: ${{ matrix.os }}
     if: "!contains(github.event.head_commit.message, 'ci skip')"
 
+    env:
+      OBS_VERSION: '26.0.0'
+
     steps:
     - uses: actions/checkout@v2
 
-    # Install libobs
-    - name: Update apt repositories
-      run: sudo apt-get update && sudo apt-get install libobs-dev gcc-aarch64-linux-gnu g++-aarch64-linux-gnu file dpkg-dev qemu binfmt-support qemu-user-static pkg-config ninja-build doxygen clang python3 gcc g++ git git-lfs nasm cmake powershell libgl1-mesa-dev libsoundio-dev libjpeg-dev libvulkan-dev libx11-dev libxcursor-dev libxinerama-dev libxrandr-dev libusb-1.0-0-dev libssl-dev libudev-dev mesa-common-dev uuid-dev -y
+    # Install OBS studio & Kinect for Azure dependencies
+    - name: Install apt dependencies
+      run: | 
+          sudo apt-get -qq update
+          sudo apt-get install -y \
+          build-essential \
+          checkinstall \
+          cmake \
+          git \
+          libmbedtls-dev \
+          libasound2-dev \
+          libavcodec-dev \
+          libavdevice-dev \
+          libavfilter-dev \
+          libavformat-dev \
+          libavutil-dev \
+          libcurl4-openssl-dev \
+          libfdk-aac-dev \
+          libfontconfig-dev \
+          libfreetype6-dev \
+          libgl1-mesa-dev \
+          libjack-jackd2-dev \
+          libjansson-dev \
+          libluajit-5.1-dev \
+          libpulse-dev \
+          libqt5x11extras5-dev \
+          libspeexdsp-dev \
+          libswresample-dev \
+          libswscale-dev \
+          libudev-dev \
+          libv4l-dev \
+          libvlc-dev \
+          libx11-dev \
+          libx264-dev \
+          libxcb-shm0-dev \
+          libxcb-xinerama0-dev \
+          libxcomposite-dev \
+          libxinerama-dev \
+          pkg-config \
+          python3-dev \
+          qtbase5-dev \
+          libqt5svg5-dev \
+          swig \
+          libxcb-randr0-dev \
+          libxcb-xfixes0-dev \
+          libx11-xcb-dev \
+          libxcb1-dev \
+          libxss-dev \
+          gcc-aarch64-linux-gnu \
+          g++-aarch64-linux-gnu \
+          file \
+          dpkg-dev \
+          qemu \
+          binfmt-support \
+          qemu-user-static \
+          pkg-config \
+          ninja-build \
+          doxygen \
+          clang \
+          python3 \
+          gcc \
+          g++ \
+          git \
+          git-lfs \
+          nasm \
+          cmake \
+          powershell \
+          libgl1-mesa-dev \
+          libsoundio-dev \
+          libjpeg-dev \
+          libvulkan-dev \
+          libx11-dev \
+          libxcursor-dev \
+          libxinerama-dev \
+          libxrandr-dev \
+          libusb-1.0-0-dev \
+          libssl-dev \
+          libudev-dev \
+          mesa-common-dev \
+          uuid-dev
+
+    # Build obs-studio
+    - name: 'Checkout OBS'
+      uses: actions/checkout@v2
+      with:
+        repository: obsproject/obs-studio
+        path: ${{ github.workspace }}/obs-studio
+        submodules: 'recursive'
+
+    # Checkout OBS to the wanted version
+    - name: 'Checkout last OBS-Studio release (${{ env.OBS_VERSION }})'
+      shell: bash
+      working-directory: ${{ github.workspace }}/obs-studio
+      run: |
+        git checkout ${{ env.OBS_VERSION }}
+        git submodule update
+
+    # Configure and build obs
+    - name: 'Build OBS-Studio'
+      working-directory: ${{ github.workspace }}/obs-studio
+      shell: bash
+      run: |
+        mkdir ./build64
+        cd ./build64
+        cmake -DDISABLE_PLUGINS=YES -DENABLE_SCRIPTING=NO -DUNIX_STRUCTURE=YES ..
+        make -j4 libobs
 
     # Install xmake
     - name: Setup xmake
