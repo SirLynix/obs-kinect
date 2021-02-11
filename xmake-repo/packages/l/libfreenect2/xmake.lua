@@ -9,7 +9,7 @@ package("libfreenect2")
 
     if (is_plat("windows")) then
         -- base libusb doesn't work with libfreenect2, force it as a .dll to replace it with a custom version
-        add_deps("libusb", { configs = {shared = true}})
+        add_deps("libusb", {configs = {shared = true}})
     else
         add_deps("libusb")
     end
@@ -31,6 +31,9 @@ package("libfreenect2")
         table.insert(configs, "-DTurboJPEG_LIBRARIES=" .. table.concat(libjpegturbo:fetch().libfiles, ";"))
         table.insert(configs, "-DLibUSB_INCLUDE_DIRS=" .. libusb:installdir("include"))
         table.insert(configs, "-DLibUSB_LIBRARIES=" .. table.concat(libusb:fetch().libfiles, ";"))
+        if package:config("pic") then
+            table.insert(configs, "-DCMAKE_POSITION_INDEPENDENT_CODE=ON")
+        end
         import("package.tools.cmake").install(package, configs, {packagedeps="libusb"})
     end)
 
