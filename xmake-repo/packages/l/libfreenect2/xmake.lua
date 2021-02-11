@@ -22,11 +22,6 @@ package("libfreenect2")
             io.replace("CMakeLists.txt", "FIND_PACKAGE(LibUSB REQUIRED)", "", {plain = true})
         end
 
-        local cxflags
-        if package:config("pic") then
-            cxflags = {"-fPIC"}
-        end
-
         local configs = {}
         table.insert(configs, "-DBUILD_EXAMPLES=OFF")
         table.insert(configs, "-DENABLE_CXX11=ON")
@@ -36,7 +31,12 @@ package("libfreenect2")
         table.insert(configs, "-DTurboJPEG_LIBRARIES=" .. table.concat(libjpegturbo:fetch().libfiles, ";"))
         table.insert(configs, "-DLibUSB_INCLUDE_DIRS=" .. libusb:installdir("include"))
         table.insert(configs, "-DLibUSB_LIBRARIES=" .. table.concat(libusb:fetch().libfiles, ";"))
-        import("package.tools.cmake").install(package, configs, {cxflags=cxflags})
+
+        if package:config("pic") then
+            table.insert(configs, "-DCMAKE_POSITION_INDEPENDENT_CODE=ON")
+        end
+
+        import("package.tools.cmake").install(package, configs)
     end)
 
     on_test(function (package)
