@@ -27,7 +27,7 @@ package("libjpeg-turbo")
         if package:config("vs_runtime"):startswith("MD") then
             table.insert(configs, "-DWITH_CRT_DLL=ON")
         end
-        import("package.tools.cmake").install(package, configs, {cxflags=cxflags})
+        import("package.tools.cmake").install(package, configs, {cxflags=cxflags, packagedeps="libusb"})
     end)
 
     on_test(function (package)
