@@ -24,7 +24,7 @@ if (not AzureKinectSdk) then
     add_requires("k4a")
 end 
 
-add_requireconfs("libfreenect2.libusb", { configs = { shared = true, debug = is_mode("debug") } })
+add_requireconfs("libfreenect2", { configs = { pic = true }})
 
 set_project("obs-kinect")
 set_version("1.0")
