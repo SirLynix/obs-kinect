@@ -158,10 +158,10 @@ jobs:
 
     # Install the result files
     - name: Install obs-kinect
-      run: xmake install -vo package
+      run: xmake package -vo package
 
     # Upload artifacts
     - uses: actions/upload-artifact@v2
       with:
         name: ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.mode }}
-        path: package/lib
+        path: package
