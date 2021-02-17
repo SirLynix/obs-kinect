@@ -495,8 +495,7 @@ void RegisterKinectSource()
 	obs_register_source(&info);
 }
 
-MODULE_EXPORT
-bool obs_module_load()
+OBSKINECT_EXPORT bool obs_module_load()
 {
 	if (obs_get_version() < MAKE_SEMANTIC_VERSION(25, 0, 0))
 	{
@@ -516,8 +515,7 @@ bool obs_module_load()
 	return true;
 }
 
-MODULE_EXPORT
-void obs_module_unload()
+OBSKINECT_EXPORT void obs_module_unload()
 {
 	infolog("unloading obs-kinect");
 	s_deviceRegistry.reset();
