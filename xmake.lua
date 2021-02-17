@@ -113,7 +113,7 @@ target("obs-kinect")
 
 	add_includedirs("src")
 
-	add_rules("override_filename", "copy_to_obs", "package_plugin")
+	add_rules("copy_to_obs", "package_plugin")
 
 	on_package(function (target)
 		import("core.base.option")
