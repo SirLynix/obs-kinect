@@ -7,6 +7,20 @@ local KinectSdk10Toolkit = KinectSdk10Toolkit
 local KinectSdk20 = KinectSdk20
 local ObsPlugins = ObsPlugins
 
+rule("override_filename")
+	on_load("windows", function (target)
+		target:set("filename", target:name() .. ".dll")
+	end)
+
+	on_load("linux", function (target)
+		target:set("filename", target:name() .. ".so")
+	end)
+
+	on_load("macosx", function (target)
+		target:set("filename", target:name() .. ".dynlib")
+	end)
+rule_end()
+
 rule("copy_to_obs")
 	after_build(function(target)
 		local folderKey = (is_mode("debug") and "Debug" or "Release") .. (is_arch("x86") and "32" or "64")
@@ -99,7 +113,7 @@ target("obs-kinect")
 
 	add_includedirs("src")
 
-	add_rules("copy_to_obs", "package_plugin")
+	add_rules("override_filename", "copy_to_obs", "package_plugin")
 
 	on_package(function (target)
 		import("core.base.option")
@@ -125,7 +139,7 @@ target("obs-kinect-azuresdk")
 	add_headerfiles("src/obs-kinect-azuresdk/**.hpp", "src/obs-kinect-azuresdk/**.inl")
 	add_files("src/obs-kinect-azuresdk/**.cpp")
 
-	add_rules("copy_to_obs", "package_plugin")
+	add_rules("override_filename", "copy_to_obs", "package_plugin")
 
 if KinectSdk10 then
 	target("obs-kinect-sdk10")
@@ -146,7 +160,7 @@ if KinectSdk10 then
 		add_headerfiles("src/obs-kinect-sdk10/**.hpp", "src/obs-kinect-sdk10/**.inl")
 		add_files("src/obs-kinect-sdk10/**.cpp")
 
-		add_rules("copy_to_obs", "package_plugin")
+		add_rules("override_filename", "copy_to_obs", "package_plugin")
 
 		if KinectSdk10Toolkit then
 			on_package(function (target)
@@ -188,7 +202,7 @@ if KinectSdk20 then
 		add_sysincludedirs(path.relative(KinectSdk20.Include, "."))
 		add_linkdirs(path.translate(is_arch("x86") and KinectSdk20.Lib32 or KinectSdk20.Lib64))
 
-		add_rules("copy_to_obs", "package_plugin")
+		add_rules("override_filename", "copy_to_obs", "package_plugin")
 end
 
 target("obs-kinect-freenect2")
@@ -201,7 +215,7 @@ target("obs-kinect-freenect2")
 	add_headerfiles("src/obs-kinect-freenect2/**.hpp", "src/obs-kinect-freenect2/**.inl")
 	add_files("src/obs-kinect-freenect2/**.cpp")
 
-	add_rules("copy_to_obs", "package_plugin")
+	add_rules("override_filename", "copy_to_obs", "package_plugin")
 
 --[[
 
