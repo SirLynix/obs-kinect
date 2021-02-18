@@ -48,7 +48,7 @@ class KinectDeviceRegistry
 
 		void Refresh();
 
-		bool RegisterPlugin(const char* path);
+		bool RegisterPlugin(const std::string& path);
 
 		KinectDeviceRegistry& operator=(const KinectDeviceRegistry&) = delete;
 		KinectDeviceRegistry& operator=(KinectDeviceRegistry&&) = delete;

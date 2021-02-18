@@ -67,7 +67,7 @@ void KinectDeviceRegistry::Refresh()
 		source->RefreshDeviceAccess();
 }
 
-bool KinectDeviceRegistry::RegisterPlugin(const char* path)
+bool KinectDeviceRegistry::RegisterPlugin(const std::string& path)
 {
 	KinectPlugin newPlugin;
 	if (!newPlugin.Open(path))

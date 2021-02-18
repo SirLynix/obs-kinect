@@ -42,7 +42,7 @@ class KinectPlugin
 
 		bool IsOpen() const;
 
-		bool Open(const char* path);
+		bool Open(const std::string& path);
 
 		std::vector<std::unique_ptr<KinectDevice>> Refresh() const;
 
