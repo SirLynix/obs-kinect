@@ -271,7 +271,7 @@ static obs_properties_t* kinect_source_properties(void *unused)
 
 	update_device_list(p);
 
-	obs_properties_add_button(props, "device_refresh", obs_module_text("ObsKinect.RefreshDevices"), [](obs_properties_t* props, obs_property_t* property, void* data)
+	obs_properties_add_button(props, "device_refresh", obs_module_text("ObsKinect.RefreshDevices"), [](obs_properties_t* props, obs_property_t* /*property*/, void* /*data*/)
 	{
 		s_deviceRegistry->Refresh();
 
@@ -291,7 +291,7 @@ static obs_properties_t* kinect_source_properties(void *unused)
 
 	obs_property_set_modified_callback(p, [](obs_properties_t* props, obs_property_t*, obs_data_t* s)
 	{
-		s_deviceRegistry->ForEachDevice([=](const std::string& /*pluginName*/, const std::string& uniqueName, const KinectDevice& device)
+		s_deviceRegistry->ForEachDevice([=](const std::string& /*pluginName*/, const std::string& uniqueName, const KinectDevice& /*device*/)
 		{
 			set_property_visibility(props, ("device_properties_" + uniqueName).c_str(), false);
 			return true;
@@ -425,7 +425,7 @@ static void kinect_source_defaults(obs_data_t* settings)
 	obs_data_set_default_string(settings, "device", NoDevice);
 
 	// Set the first device of the list as the default one
-	s_deviceRegistry->ForEachDevice([=](const std::string& pluginName, const std::string& uniqueName, const KinectDevice& device)
+	s_deviceRegistry->ForEachDevice([=](const std::string& /*pluginName*/, const std::string& uniqueName, const KinectDevice& /*device*/)
 	{
 		obs_data_set_default_string(settings, "device", uniqueName.c_str());
 		return false; //< Stop at first device
@@ -450,7 +450,7 @@ static void kinect_source_defaults(obs_data_t* settings)
 	obs_data_set_default_int(settings, "greenscreen_type", static_cast<int>(KinectSource::GreenScreenFilterType::Depth));
 	
 	// Register default values
-	s_deviceRegistry->ForEachDevice([=](const std::string& pluginName, const std::string& uniqueName, const KinectDevice& device)
+	s_deviceRegistry->ForEachDevice([=](const std::string& /*pluginName*/, const std::string& /*uniqueName*/, const KinectDevice& device)
 	{
 		device.SetDefaultValues(settings);
 		return true;
@@ -517,10 +517,10 @@ OBSKINECT_EXPORT bool obs_module_load()
 	});
 
 	s_deviceRegistry.emplace();
-	s_deviceRegistry->RegisterPlugin("./obs-kinect-azuresdk");
-	s_deviceRegistry->RegisterPlugin("./obs-kinect-freenect2");
-	s_deviceRegistry->RegisterPlugin("./obs-kinect-sdk10");
-	s_deviceRegistry->RegisterPlugin("./obs-kinect-sdk20");
+	s_deviceRegistry->RegisterPlugin("obs-kinect-azuresdk");
+	s_deviceRegistry->RegisterPlugin("obs-kinect-freenect2");
+	s_deviceRegistry->RegisterPlugin("obs-kinect-sdk10");
+	s_deviceRegistry->RegisterPlugin("obs-kinect-sdk20");
 
 	s_deviceRegistry->Refresh();
 

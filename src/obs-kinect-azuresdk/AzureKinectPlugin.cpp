@@ -19,7 +19,7 @@
 #include "AzureKinectDevice.hpp"
 #include <k4a/k4a.hpp>
 
-void ErrorCallback(void* context, k4a_log_level_t level, const char* file, const int line, const char* message)
+void ErrorCallback(void* /*context*/, k4a_log_level_t level, const char* file, const int line, const char* message)
 {
 	switch (level)
 	{

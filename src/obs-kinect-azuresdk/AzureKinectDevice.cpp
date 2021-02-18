@@ -270,7 +270,7 @@ obs_properties_t* AzureKinectDevice::CreateProperties() const
 	obs_property_list_add_int(p, Translate("ObsKinect.PowerlineFrequency_50Hz"), static_cast<int>(PowerlineFrequency::Freq50));
 	obs_property_list_add_int(p, Translate("ObsKinect.PowerlineFrequency_60Hz"), static_cast<int>(PowerlineFrequency::Freq60));
 
-	obs_properties_add_button2(props, "azuresdk_dump", Translate("ObsKinect.DumpCameraSettings"), [](obs_properties_t* props, obs_property_t* property, void* data)
+	obs_properties_add_button2(props, "azuresdk_dump", Translate("ObsKinect.DumpCameraSettings"), [](obs_properties_t* /*props*/, obs_property_t* /*property*/, void* data)
 	{
 		k4a_device_t device = static_cast<k4a_device_t>(data);
 
@@ -616,14 +616,18 @@ BodyIndexFrameData AzureKinectDevice::ToBodyIndexFrame(const k4a::image& image)
 
 	const uint8_t* imageBuffer = image.get_buffer();
 	int imagePitch = image.get_stride_bytes();
-	if (bodyIndexFrame.pitch == imagePitch)
+	if (imagePitch <= 0)
+		throw std::runtime_error("invalid texture pitch (<= 0)");
+
+	std::uint32_t texturePitch = static_cast<std::uint32_t>(imagePitch);
+	if (bodyIndexFrame.pitch == texturePitch)
 		std::memcpy(memPtr, imageBuffer, bodyIndexFrame.pitch * bodyIndexFrame.height);
 	else
 	{
-		std::uint32_t bestPitch = std::min<std::uint32_t>(bodyIndexFrame.pitch, imagePitch);
+		std::uint32_t bestPitch = std::min(bodyIndexFrame.pitch, texturePitch);
 		for (std::size_t y = 0; y < bodyIndexFrame.height; ++y)
 		{
-			const std::uint8_t* input = &imageBuffer[y * imagePitch];
+			const std::uint8_t* input = &imageBuffer[y * texturePitch];
 			std::uint8_t* output = memPtr + y * bodyIndexFrame.pitch;
 
 			std::memcpy(output, input, bestPitch);
@@ -651,14 +655,18 @@ ColorFrameData AzureKinectDevice::ToColorFrame(const k4a::image& image)
 
 	const uint8_t* imageBuffer = image.get_buffer();
 	int imagePitch = image.get_stride_bytes();
-	if (colorFrame.pitch == imagePitch)
+	if (imagePitch <= 0)
+		throw std::runtime_error("invalid texture pitch (<= 0)");
+
+	std::uint32_t texturePitch = static_cast<std::uint32_t>(imagePitch);
+	if (colorFrame.pitch == texturePitch)
 		std::memcpy(memPtr, imageBuffer, colorFrame.pitch * colorFrame.height);
 	else
 	{
-		std::uint32_t bestPitch = std::min<std::uint32_t>(colorFrame.pitch, imagePitch);
+		std::uint32_t bestPitch = std::min(colorFrame.pitch, texturePitch);
 		for (std::size_t y = 0; y < colorFrame.height; ++y)
 		{
-			const std::uint8_t* input = &imageBuffer[y * imagePitch];
+			const std::uint8_t* input = &imageBuffer[y * texturePitch];
 			std::uint8_t* output = memPtr + y * colorFrame.pitch;
 
 			std::memcpy(output, input, bestPitch);
@@ -685,14 +693,18 @@ DepthFrameData AzureKinectDevice::ToDepthFrame(const k4a::image& image)
 
 	const uint8_t* imageBuffer = image.get_buffer();
 	int imagePitch = image.get_stride_bytes();
-	if (depthFrame.pitch == imagePitch)
+	if (imagePitch <= 0)
+		throw std::runtime_error("invalid texture pitch (<= 0)");
+
+	std::uint32_t texturePitch = static_cast<std::uint32_t>(imagePitch);
+	if (depthFrame.pitch == texturePitch)
 		std::memcpy(memPtr, imageBuffer, depthFrame.pitch * depthFrame.height);
 	else
 	{
-		std::uint32_t bestPitch = std::min<std::uint32_t>(depthFrame.pitch, imagePitch);
+		std::uint32_t bestPitch = std::min(depthFrame.pitch, texturePitch);
 		for (std::size_t y = 0; y < depthFrame.height; ++y)
 		{
-			const std::uint8_t* input = &imageBuffer[y * imagePitch];
+			const std::uint8_t* input = &imageBuffer[y * texturePitch];
 			std::uint8_t* output = memPtr + y * depthFrame.pitch;
 
 			std::memcpy(output, input, bestPitch);
@@ -719,14 +731,18 @@ InfraredFrameData AzureKinectDevice::ToInfraredFrame(const k4a::image& image)
 
 	const uint8_t* imageBuffer = image.get_buffer();
 	int imagePitch = image.get_stride_bytes();
-	if (irFrame.pitch == imagePitch)
+	if (imagePitch <= 0)
+		throw std::runtime_error("invalid texture pitch (<= 0)");
+
+	std::uint32_t texturePitch = static_cast<std::uint32_t>(imagePitch);
+	if (irFrame.pitch == texturePitch)
 		std::memcpy(memPtr, imageBuffer, irFrame.pitch * irFrame.height);
 	else
 	{
-		std::uint32_t bestPitch = std::min<std::uint32_t>(irFrame.pitch, imagePitch);
+		std::uint32_t bestPitch = std::min(irFrame.pitch, texturePitch);
 		for (std::size_t y = 0; y < irFrame.height; ++y)
 		{
-			const std::uint8_t* input = &imageBuffer[y * imagePitch];
+			const std::uint8_t* input = &imageBuffer[y * texturePitch];
 			std::uint8_t* output = memPtr + y * irFrame.pitch;
 
 			std::memcpy(output, input, bestPitch);

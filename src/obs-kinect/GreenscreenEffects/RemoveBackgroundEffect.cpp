@@ -20,7 +20,7 @@
 #include <string>
 #include <stdexcept>
 
-gs_texture_t* RemoveBackgroundEffect::Apply(const Config& config, gs_texture_t* sourceTexture, gs_texture_t* filterTexture)
+gs_texture_t* RemoveBackgroundEffect::Apply(const Config& /*config*/, gs_texture_t* sourceTexture, gs_texture_t* filterTexture)
 {
 	return m_alphaMaskFilter.Filter(sourceTexture, filterTexture);
 }

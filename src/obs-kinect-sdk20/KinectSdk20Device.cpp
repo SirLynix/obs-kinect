@@ -241,7 +241,7 @@ obs_properties_t* KinectSdk20Device::CreateProperties() const
 	obs_properties_add_int_slider(props, "sdk20_led_nexus_intensity", Translate("ObsKinectV2.NexusLedIntensity"), 0, 1000, 10);
 	obs_properties_add_int_slider(props, "sdk20_led_privacy_intensity", Translate("ObsKinectV2.PrivacyLedIntensity"), 0, 1000, 10);
 
-	obs_properties_add_button2(props, "sdk20_dump", Translate("ObsKinect.DumpCameraSettings"), [](obs_properties_t* props, obs_property_t* property, void* data)
+	obs_properties_add_button2(props, "sdk20_dump", Translate("ObsKinect.DumpCameraSettings"), [](obs_properties_t* /*props*/, obs_property_t* /*property*/, void* data)
 	{
 		struct CameraSetting
 		{
@@ -760,6 +760,9 @@ void KinectSdk20Device::HandleIntParameterUpdate(const std::string& parameterNam
 
 		switch (powerlineFrequency)
 		{
+			case PowerlineFrequency::Disabled:
+				break; //< Shouldn't happen
+
 			case PowerlineFrequency::Freq50:
 				cameraSettings.AddCommand(NUISENSOR_RGB_COMMAND_SET_FLICKER_FREE_FREQUENCY, 50);
 				break;

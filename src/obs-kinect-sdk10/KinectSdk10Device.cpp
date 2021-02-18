@@ -292,7 +292,7 @@ obs_properties_t* KinectSdk10Device::CreateProperties() const
 		obs_property_list_add_int(p, Translate("ObsKinect.PowerlineFrequency_50Hz"), static_cast<int>(PowerlineFrequency::Freq50));
 		obs_property_list_add_int(p, Translate("ObsKinect.PowerlineFrequency_60Hz"), static_cast<int>(PowerlineFrequency::Freq60));
 
-		obs_properties_add_button2(props, "sdk10_dump", Translate("ObsKinect.DumpCameraSettings"), [](obs_properties_t* props, obs_property_t* property, void* data)
+		obs_properties_add_button2(props, "sdk10_dump", Translate("ObsKinect.DumpCameraSettings"), [](obs_properties_t* /*props*/, obs_property_t* /*property*/, void* data)
 		{
 			INuiColorCameraSettings* cameraSettings = static_cast<INuiColorCameraSettings*>(data);
 
@@ -658,7 +658,7 @@ void KinectSdk10Device::StartElevationThread()
 	m_elevationThread = std::thread(&KinectSdk10Device::ElevationThreadFunc, this);
 }
 
-void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& exceptionPtr)
+void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, std::exception_ptr& /*exceptionPtr*/)
 {
 	os_set_thread_name("KinectDeviceSdk10");
 
@@ -685,7 +685,6 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 
 	ReleasePtr<INuiBackgroundRemovedColorStream> backgroundRemovalStream;
 	std::int64_t backgroundRemovalTimestamp = 0;
-	std::int64_t skeletonTimestamp = 0;
 #endif
 
 	SourceFlags enabledSourceFlags = 0;
@@ -1107,7 +1106,7 @@ void KinectSdk10Device::ThreadFunc(std::condition_variable& cv, std::mutex& m, s
 	infolog("exiting thread");
 }
 
-DepthMappingFrameData KinectSdk10Device::BuildDepthMappingFrame(INuiSensor* sensor, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, std::vector<std::uint8_t>& tempMemory)
+DepthMappingFrameData KinectSdk10Device::BuildDepthMappingFrame(INuiSensor* /*sensor*/, const ColorFrameData& colorFrame, const DepthFrameData& depthFrame, std::vector<std::uint8_t>& tempMemory)
 {
 	DepthMappingFrameData outputFrameData;
 	outputFrameData.width = colorFrame.width;
@@ -1295,7 +1294,9 @@ ColorFrameData KinectSdk10Device::RetrieveColorFrame(INuiSensor* sensor, HANDLE 
 	std::unique_ptr<INuiFrameTexture, decltype(UnlockRect)> unlockRect(texture, UnlockRect);
 
 	if (lockedRect.Pitch <= 0)
-		throw std::runtime_error("texture pitch is zero");
+		throw std::runtime_error("invalid texture pitch (<= 0)");
+
+	std::uint32_t texturePitch = static_cast<std::uint32_t>(lockedRect.Pitch);
 
 	ColorFrameData frameData;
 	ConvertResolutionToSize(colorFrame.eResolution, frameData);
@@ -1310,14 +1311,14 @@ ColorFrameData KinectSdk10Device::RetrieveColorFrame(INuiSensor* sensor, HANDLE 
 	frameData.pitch = frameData.width * bpp;
 	frameData.format = GS_BGRA;
 
-	if (frameData.pitch == lockedRect.Pitch)
+	if (frameData.pitch == texturePitch)
 		std::memcpy(memPtr, lockedRect.pBits, frameData.pitch * frameData.height);
 	else
 	{
-		std::uint32_t bestPitch = std::min<std::uint32_t>(frameData.pitch, lockedRect.Pitch);
+		std::uint32_t bestPitch = std::min(frameData.pitch, texturePitch);
 		for (std::size_t y = 0; y < frameData.height; ++y)
 		{
-			const std::uint8_t* input = &lockedRect.pBits[y * lockedRect.Pitch];
+			const std::uint8_t* input = &lockedRect.pBits[y * texturePitch];
 			std::uint8_t* output = memPtr + y * frameData.pitch;
 
 			std::memcpy(output, input, bestPitch);
@@ -1369,7 +1370,9 @@ DepthFrameData KinectSdk10Device::RetrieveDepthFrame(INuiSensor* sensor, HANDLE 
 	std::unique_ptr<INuiFrameTexture, decltype(UnlockRect)> unlockRect(texture, UnlockRect);
 
 	if (lockedRect.Pitch <= 0)
-		throw std::runtime_error("texture pitch is zero");
+		throw std::runtime_error("invalid texture pitch (<= 0)");
+
+	std::uint32_t texturePitch = static_cast<std::uint32_t>(lockedRect.Pitch);
 
 	DepthFrameData frameData;
 	ConvertResolutionToSize(depthFrame.eResolution, frameData);
@@ -1383,14 +1386,14 @@ DepthFrameData KinectSdk10Device::RetrieveDepthFrame(INuiSensor* sensor, HANDLE 
 	frameData.ptr.reset(reinterpret_cast<std::uint16_t*>(memPtr));
 	frameData.pitch = frameData.width * bpp;
 
-	if (frameData.pitch == lockedRect.Pitch)
+	if (frameData.pitch == texturePitch)
 		std::memcpy(memPtr, lockedRect.pBits, frameData.pitch * frameData.height);
 	else
 	{
-		std::uint32_t bestPitch = std::min<std::uint32_t>(frameData.pitch, lockedRect.Pitch);
+		std::uint32_t bestPitch = std::min(frameData.pitch, texturePitch);
 		for (std::size_t y = 0; y < frameData.height; ++y)
 		{
-			const std::uint8_t* input = &lockedRect.pBits[y * lockedRect.Pitch];
+			const std::uint8_t* input = &lockedRect.pBits[y * texturePitch];
 			std::uint8_t* output = memPtr + y * frameData.pitch;
 
 			std::memcpy(output, input, bestPitch);
@@ -1432,7 +1435,9 @@ InfraredFrameData KinectSdk10Device::RetrieveInfraredFrame(INuiSensor* sensor, H
 	std::unique_ptr<INuiFrameTexture, decltype(UnlockRect)> unlockRect(texture, UnlockRect);
 
 	if (lockedRect.Pitch <= 0)
-		throw std::runtime_error("texture pitch is zero");
+		throw std::runtime_error("invalid texture pitch (<= 0)");
+
+	std::uint32_t texturePitch = static_cast<std::uint32_t>(lockedRect.Pitch);
 
 	InfraredFrameData frameData;
 	ConvertResolutionToSize(irFrame.eResolution, frameData);
@@ -1446,14 +1451,14 @@ InfraredFrameData KinectSdk10Device::RetrieveInfraredFrame(INuiSensor* sensor, H
 	frameData.ptr.reset(reinterpret_cast<std::uint16_t*>(frameData.memory.data()));
 	frameData.pitch = frameData.width * bpp;
 
-	if (frameData.pitch == lockedRect.Pitch)
+	if (frameData.pitch == texturePitch)
 		std::memcpy(memPtr, lockedRect.pBits, frameData.pitch * frameData.height);
 	else
 	{
-		std::uint32_t bestPitch = std::min<std::uint32_t>(frameData.pitch, lockedRect.Pitch);
+		std::uint32_t bestPitch = std::min(frameData.pitch, texturePitch);
 		for (std::size_t y = 0; y < frameData.height; ++y)
 		{
-			const std::uint8_t* input = &lockedRect.pBits[y * lockedRect.Pitch];
+			const std::uint8_t* input = &lockedRect.pBits[y * texturePitch];
 			std::uint8_t* output = memPtr + y * frameData.pitch;
 
 			std::memcpy(output, input, bestPitch);

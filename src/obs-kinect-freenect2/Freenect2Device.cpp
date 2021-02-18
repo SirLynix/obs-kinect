@@ -216,8 +216,8 @@ ColorFrameData KinectFreenect2Device::RetrieveColorFrame(const libfreenect2::Fra
 		throw std::runtime_error("invalid color frame");
 
 	ColorFrameData frameData;
-	frameData.width = frame->width;
-	frameData.height = frame->height;
+	frameData.width = static_cast<std::uint32_t>(frame->width);
+	frameData.height = static_cast<std::uint32_t>(frame->height);
 
 	// Convert to RGBA
 	std::size_t memSize = frame->width * frame->height * 4;
@@ -257,7 +257,7 @@ ColorFrameData KinectFreenect2Device::RetrieveColorFrame(const libfreenect2::Fra
 	}
 
 	frameData.ptr.reset(frameData.memory.data());
-	frameData.pitch = frame->width * 4;
+	frameData.pitch = static_cast<std::uint32_t>(frame->width * 4);
 	frameData.format = GS_RGBA;
 
 	return frameData;
@@ -272,8 +272,8 @@ DepthFrameData KinectFreenect2Device::RetrieveDepthFrame(const libfreenect2::Fra
 		throw std::runtime_error("unexpected format " + std::to_string(frame->format));
 
 	DepthFrameData frameData;
-	frameData.width = frame->width;
-	frameData.height = frame->height;
+	frameData.width = static_cast<std::uint32_t>(frame->width);
+	frameData.height = static_cast<std::uint32_t>(frame->height);
 
 	// Convert from floating point meters to uint16 millimeters (TODO: Allow depth frame output to be float?)
 	std::size_t memSize = frame->width * frame->height * 2;
@@ -291,7 +291,7 @@ DepthFrameData KinectFreenect2Device::RetrieveDepthFrame(const libfreenect2::Fra
 	}
 
 	frameData.ptr.reset(reinterpret_cast<std::uint16_t*>(frameData.memory.data()));
-	frameData.pitch = frame->width * 2;
+	frameData.pitch = static_cast<std::uint32_t>(frame->width * 2);
 
 	return frameData;
 }
@@ -305,8 +305,8 @@ InfraredFrameData KinectFreenect2Device::RetrieveInfraredFrame(const libfreenect
 		throw std::runtime_error("unexpected format " + std::to_string(frame->format));
 
 	InfraredFrameData frameData;
-	frameData.width = frame->width;
-	frameData.height = frame->height;
+	frameData.width = static_cast<std::uint32_t>(frame->width);
+	frameData.height = static_cast<std::uint32_t>(frame->height);
 
 	// Convert from floating point meters to uint16 millimeters (TODO: Allow depth frame output to be float?)
 	std::size_t memSize = frame->width * frame->height * 2;
@@ -323,7 +323,7 @@ InfraredFrameData KinectFreenect2Device::RetrieveInfraredFrame(const libfreenect
 	}
 
 	frameData.ptr.reset(reinterpret_cast<std::uint16_t*>(frameData.memory.data()));
-	frameData.pitch = frame->width * 2;
+	frameData.pitch = static_cast<std::uint32_t>(frame->width * 2);
 
 	return frameData;
 }

@@ -217,7 +217,7 @@ void KinectSource::Update(float /*seconds*/)
 			UpdateTexture(m_depthTexture, GS_R16, depthFrame.width, depthFrame.height, depthFrame.pitch, depthFrame.ptr.get());
 		}
 
-		gs_texture_t* sourceTexture;
+		gs_texture_t* sourceTexture = nullptr;
 		switch (m_sourceType)
 		{
 			case SourceType::Color:
@@ -290,6 +290,9 @@ void KinectSource::Update(float /*seconds*/)
 			default:
 				break;
 		}
+
+		if (!sourceTexture)
+			return;
 
 		m_width = gs_texture_get_width(sourceTexture);
 		m_height = gs_texture_get_height(sourceTexture);
@@ -390,7 +393,7 @@ void KinectSource::Update(float /*seconds*/)
 							// Map body info as well
 							const BodyIndexFrameData& bodyIndexFrame = *frameData->bodyIndexFrame;
 
-							const std::uint16_t* depthPixels = reinterpret_cast<const std::uint16_t*>(bodyIndexFrame.ptr.get());
+							const std::uint8_t* bodyPixels = reinterpret_cast<const std::uint8_t*>(bodyIndexFrame.ptr.get());
 
 							constexpr std::uint8_t InvalidBodyIndexOutput = 255;
 
@@ -425,7 +428,7 @@ void KinectSource::Update(float /*seconds*/)
 										continue;
 									}
 
-									*output = bodyIndexFrame.ptr[depthFrame.width * dY + dX];
+									*output = bodyPixels[depthFrame.width * dY + dX];
 									dirtyCounter = 0;
 								}
 							}
@@ -532,6 +535,9 @@ void KinectSource::Update(float /*seconds*/)
 						filterTexture = m_greenScreenFilterEffect.Filter(m_width, m_height, filterParams);
 						break;
 					}
+
+					case GreenScreenFilterType::Dedicated:
+						break; //< Already handled in a branch
 				}
 
 				if (!filterTexture)
