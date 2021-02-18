@@ -20,12 +20,12 @@
 #ifndef OBS_KINECT_PLUGIN_KINECTDEVICEACCESS
 #define OBS_KINECT_PLUGIN_KINECTDEVICEACCESS
 
-#include <obs-kinect/Enums.hpp>
-#include <obs-kinect/Helper.hpp>
-#include <obs-kinect/KinectDevice.hpp>
+#include <obs-kinect-core/Enums.hpp>
+#include <obs-kinect-core/Helper.hpp>
+#include <obs-kinect-core/KinectDevice.hpp>
 #include <memory>
 
-class KinectDeviceAccess
+class OBSKINECT_API KinectDeviceAccess
 {
 	friend KinectDevice;
 

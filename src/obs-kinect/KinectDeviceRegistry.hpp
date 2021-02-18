@@ -20,8 +20,8 @@
 #ifndef OBS_KINECT_PLUGIN_KINECTDEVICEREGISTRY
 #define OBS_KINECT_PLUGIN_KINECTDEVICEREGISTRY
 
-#include <obs-kinect/Enums.hpp>
-#include <obs-kinect/KinectDevice.hpp>
+#include <obs-kinect-core/Enums.hpp>
+#include <obs-kinect-core/KinectDevice.hpp>
 #include <obs-kinect/KinectPlugin.hpp>
 #include <functional>
 #include <unordered_map>
@@ -30,7 +30,7 @@
 
 class KinectSource;
 
-class OBSKINECT_API KinectDeviceRegistry
+class KinectDeviceRegistry
 {
 	friend KinectSource;
 

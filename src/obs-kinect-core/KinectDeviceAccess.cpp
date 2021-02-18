@@ -15,7 +15,7 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include <obs-kinect/KinectDeviceAccess.hpp>
+#include <obs-kinect-core/KinectDeviceAccess.hpp>
 
 KinectDeviceAccess::KinectDeviceAccess(KinectDevice& owner, KinectDevice::AccessData* accessData) :
 m_owner(&owner),

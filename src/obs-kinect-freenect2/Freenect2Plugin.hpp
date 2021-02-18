@@ -21,8 +21,8 @@
 #define OBS_KINECT_PLUGIN_KINECTSDK20PLUGIN
 
 #include "Freenect2Helper.hpp"
-#include <obs-kinect/Enums.hpp>
-#include <obs-kinect/KinectPluginImpl.hpp>
+#include <obs-kinect-core/Enums.hpp>
+#include <obs-kinect-core/KinectPluginImpl.hpp>
 #include <libfreenect2/libfreenect2.hpp>
 
 class KinectFreenect2Plugin : public KinectPluginImpl

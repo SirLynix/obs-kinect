@@ -16,8 +16,8 @@
 ******************************************************************************/
 
 #include <obs-kinect/KinectPlugin.hpp>
-#include <obs-kinect/KinectPluginImpl.hpp>
-#include <obs-kinect/KinectDevice.hpp>
+#include <obs-kinect-core/KinectPluginImpl.hpp>
+#include <obs-kinect-core/KinectDevice.hpp>
 
 KinectPlugin::~KinectPlugin()
 {

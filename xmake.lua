@@ -5,9 +5,13 @@ local AzureKinectSdk = AzureKinectSdk
 local KinectSdk10 = KinectSdk10
 local KinectSdk10Toolkit = KinectSdk10Toolkit
 local KinectSdk20 = KinectSdk20
-local ObsPlugins = ObsPlugins
+local ObsFolder = ObsFolder
 
-rule("override_filename")
+rule("kinect_dynlib")
+	after_load(function (target)
+		target:add("rpathdirs", "@executable_path")
+	end)
+
 	on_load("windows", function (target)
 		target:set("filename", target:name() .. ".dll")
 	end)
@@ -17,14 +21,33 @@ rule("override_filename")
 	end)
 
 	on_load("macosx", function (target)
-		target:set("filename", target:name() .. ".dynlib")
+		target:set("filename", target:name() .. ".dylib")
 	end)
 rule_end()
 
 rule("copy_to_obs")
 	after_build(function(target)
 		local folderKey = (is_mode("debug") and "Debug" or "Release") .. (is_arch("x86") and "32" or "64")
-		local dir = ObsPlugins[folderKey]
+		local obsDir = ObsFolder[folderKey]
+		if not obsDir then 
+			return
+		end
+
+		local outputFolder
+		if target:name() == "obs-kinectcore" then 
+			outputFolder = "bin"
+		else
+			outputFolder = "obs-plugins"
+		end
+
+		local archDir
+		if target:is_arch("x86_64", "x64") then
+			archDir = "64bit"
+		else
+			archDir = "32bit"
+		end
+
+   		local outputdir = path.join(obsDir, outputFolder, archDir)
 		if dir and os.isdir(dir) then
 			for _, path in ipairs({ target:targetfile(), target:symbolfile() }) do
 				if os.isfile(path) then
@@ -35,10 +58,16 @@ rule("copy_to_obs")
 	end)
 rule_end()
 
-rule("package_plugin")
+rule("package")
 	after_package(function(target)
 		import("core.base.option")
-   		local outputdir = option.get("outputdir") or config.buildir()
+
+		local outputFolder
+		if target:name() == "obs-kinectcore" then 
+			outputFolder = "bin"
+		else
+			outputFolder = "obs-plugins"
+		end
 
 		local archDir
 		if target:is_arch("x86_64", "x64") then
@@ -47,9 +76,10 @@ rule("package_plugin")
 			archDir = "32bit"
 		end
 
+   		local outputdir = path.join(option.get("outputdir") or config.buildir(), outputFolder, archDir)
 		for _, filepath in ipairs({ target:targetfile(), target:symbolfile() }) do
 			if os.isfile(filepath) then
-				os.vcp(filepath, path.join(outputdir, "obs-plugins", archDir, path.filename(filepath)))
+				os.vcp(filepath, path.join(outputdir, path.filename(filepath)))
 			end
 		end
 	end)
@@ -102,18 +132,32 @@ end
 -- Override default package function
 on_package(function() end)
 
-target("obs-kinect")
+target("obs-kinectcore")
 	set_kind("shared")
 	set_group("Core")
 
 	add_defines("OBS_KINECT_CORE_EXPORT")
-	add_headerfiles("include/obs-kinect/**.hpp", "include/obs-kinect/**.inl")
+
+	add_headerfiles("include/obs-kinect-core/**.hpp", "include/obs-kinect-core/**.inl")
+	add_headerfiles("src/obs-kinect-core/**.hpp", "src/obs-kinect-core/**.inl")
+	add_files("src/obs-kinect-core/**.cpp")
+
+	add_includedirs("src")
+
+	add_rules("copy_to_obs", "package")
+
+target("obs-kinect")
+	set_kind("shared")
+	set_group("Core")
+
+	add_deps("obs-kinectcore")
+
 	add_headerfiles("src/obs-kinect/**.hpp", "src/obs-kinect/**.inl")
 	add_files("src/obs-kinect/**.cpp")
 
 	add_includedirs("src")
 
-	add_rules("copy_to_obs", "package_plugin")
+	add_rules("kinect_dynlib", "copy_to_obs", "package")
 
 	on_package(function (target)
 		import("core.base.option")
@@ -126,7 +170,7 @@ target("obs-kinect-azuresdk")
 	set_kind("shared")
 	set_group("Azure")
 
-	add_deps("obs-kinect")
+	add_deps("obs-kinectcore")
 
 	if AzureKinectSdk then
 		add_sysincludedirs(AzureKinectSdk.Include)
@@ -139,7 +183,7 @@ target("obs-kinect-azuresdk")
 	add_headerfiles("src/obs-kinect-azuresdk/**.hpp", "src/obs-kinect-azuresdk/**.inl")
 	add_files("src/obs-kinect-azuresdk/**.cpp")
 
-	add_rules("override_filename", "copy_to_obs", "package_plugin")
+	add_rules("kinect_dynlib", "copy_to_obs", "package")
 
 if KinectSdk10 then
 	target("obs-kinect-sdk10")
@@ -147,7 +191,7 @@ if KinectSdk10 then
 		set_group("KinectV1")
 
 		add_defines("UNICODE")
-		add_deps("obs-kinect")
+		add_deps("obs-kinectcore")
 
 		add_sysincludedirs(KinectSdk10.Include)
 		add_linkdirs(path.translate(is_arch("x86") and KinectSdk10.Lib32 or KinectSdk10.Lib64))
@@ -160,7 +204,7 @@ if KinectSdk10 then
 		add_headerfiles("src/obs-kinect-sdk10/**.hpp", "src/obs-kinect-sdk10/**.inl")
 		add_files("src/obs-kinect-sdk10/**.cpp")
 
-		add_rules("override_filename", "copy_to_obs", "package_plugin")
+		add_rules("kinect_dynlib", "copy_to_obs", "package")
 
 		if KinectSdk10Toolkit then
 			on_package(function (target)
@@ -189,7 +233,7 @@ if KinectSdk20 then
 		set_group("KinectV2")
 
 		add_defines("UNICODE")
-		add_deps("obs-kinect")
+		add_deps("obs-kinectcore")
 
 		add_sysincludedirs(KinectSdk10.Include)
 		add_linkdirs(path.translate(is_arch("x86") and KinectSdk10.Lib32 or KinectSdk10.Lib64))
@@ -202,20 +246,27 @@ if KinectSdk20 then
 		add_sysincludedirs(path.relative(KinectSdk20.Include, "."))
 		add_linkdirs(path.translate(is_arch("x86") and KinectSdk20.Lib32 or KinectSdk20.Lib64))
 
-		add_rules("override_filename", "copy_to_obs", "package_plugin")
+		add_rules("kinect_dynlib", "copy_to_obs", "package")
+
+		if not is_arch("x86") and os.isdir("thirdparty/NuiSensorLib") then
+			add_sysincludedirs("thirdparty/NuiSensorLib/include")
+			add_linkdirs("thirdparty/NuiSensorLib/lib/x64")
+			add_links("NuiSensorLib")
+			add_syslinks("SetupAPI")
+		end
 end
 
 target("obs-kinect-freenect2")
 	set_kind("shared")
 	set_group("KinectV2")
 
-	add_deps("obs-kinect")
+	add_deps("obs-kinectcore")
 	add_packages("libfreenect2")
 
 	add_headerfiles("src/obs-kinect-freenect2/**.hpp", "src/obs-kinect-freenect2/**.inl")
 	add_files("src/obs-kinect-freenect2/**.cpp")
 
-	add_rules("override_filename", "copy_to_obs", "package_plugin")
+	add_rules("kinect_dynlib", "copy_to_obs", "package")
 
 --[[
 

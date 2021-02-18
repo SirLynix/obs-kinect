@@ -15,32 +15,19 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#pragma once
+#include <obs-kinect-core/Helper.hpp>
 
-#ifndef OBS_KINECT_PLUGIN_KINECTPLUGINIMPL
-#define OBS_KINECT_PLUGIN_KINECTPLUGINIMPL
+TranslateSig translateFunction = nullptr;
 
-#include <obs-kinect/Helper.hpp>
-#include <memory>
-#include <string>
-#include <vector>
-
-class KinectDevice;
-
-class OBSKINECT_API KinectPluginImpl
+void SetTranslateFunction(TranslateSig translateFunc)
 {
-	public:
-		KinectPluginImpl() = default;
-		KinectPluginImpl(const KinectPluginImpl&) = delete;
-		KinectPluginImpl(KinectPluginImpl&&) = delete;
-		virtual ~KinectPluginImpl();
+	translateFunction = translateFunc;
+}
 
-		virtual std::string GetUniqueName() const = 0;
+const char* Translate(const char* key)
+{
+	if (!translateFunction)
+		return key;
 
-		virtual std::vector<std::unique_ptr<KinectDevice>> Refresh() const = 0;
-
-		KinectPluginImpl& operator=(const KinectPluginImpl&) = delete;
-		KinectPluginImpl& operator=(KinectPluginImpl&&) = delete;
-};
-
-#endif
+	return translateFunction(key);
+}

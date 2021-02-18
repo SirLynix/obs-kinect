@@ -16,7 +16,7 @@
 ******************************************************************************/
 
 #include <obs-kinect/Shaders/TextureLerpShader.hpp>
-#include <obs-kinect/Helper.hpp>
+#include <obs-kinect-core/Helper.hpp>
 #include <string>
 #include <stdexcept>
 

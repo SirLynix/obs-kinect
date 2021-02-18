@@ -17,39 +17,56 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_REPLACEBACKGROUNDEFFECT
-#define OBS_KINECT_PLUGIN_REPLACEBACKGROUNDEFFECT
+#ifndef OBS_KINECT_PLUGIN_ENUMS
+#define OBS_KINECT_PLUGIN_ENUMS
 
-#include <obs-kinect/Shaders/TextureLerpShader.hpp>
 #include <obs-kinect-core/Helper.hpp>
+#include <cstdint>
 #include <string>
 
-class ReplaceBackgroundEffect
+enum EnabledSources
 {
-	public:
-		struct Config;
-
-		ReplaceBackgroundEffect();
-		~ReplaceBackgroundEffect() = default;
-
-		gs_texture_t* Apply(const Config& config, gs_texture_t* sourceTexture, gs_texture_t* filterTexture);
-
-		static obs_properties_t* BuildProperties();
-		static void SetDefaultValues(obs_data_t* settings);
-		static Config ToConfig(obs_data_t* settings);
-
-		struct Config
-		{
-			using Effect = ReplaceBackgroundEffect;
-
-			std::string replacementTexturePath;
-		};
-
-	private:
-		std::string m_texturePath;
-		uint64_t m_lastTextureTick;
-		ObsImageFilePtr m_imageFile;
-		TextureLerpShader m_textureLerp;
+	Source_BackgroundRemoval   = 1 << 0,
+	Source_Body                = 1 << 1,
+	Source_Color               = 1 << 2,
+	Source_ColorMappedBody     = 1 << 3,
+	Source_ColorMappedDepth    = 1 << 4,
+	Source_ColorToDepthMapping = 1 << 5,
+	Source_Depth               = 1 << 6,
+	Source_Infrared            = 1 << 7
 };
+
+using SourceFlags = std::uint32_t;
+
+enum class ExposureControl
+{
+	FullyAuto,
+	SemiAuto,
+	Manual
+};
+
+enum class PowerlineFrequency
+{
+	Disabled,
+	Freq50,
+	Freq60
+};
+
+enum class ProcessPriority
+{
+	Normal = 0,
+	AboveNormal = 1,
+	High = 2
+};
+
+enum class WhiteBalanceMode
+{
+	Auto,
+	Manual,
+	Unknown
+};
+
+OBSKINECT_API std::string EnabledSourceToString(SourceFlags flags);
+OBSKINECT_API const char* ProcessPriorityToString(ProcessPriority priority);
 
 #endif

@@ -21,7 +21,7 @@
 #define OBS_KINECT_PLUGIN_KINECTDEVICESDK20
 
 #include "Freenect2Helper.hpp"
-#include <obs-kinect/KinectDevice.hpp>
+#include <obs-kinect-core/KinectDevice.hpp>
 
 namespace libfreenect2
 {

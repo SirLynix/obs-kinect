@@ -26,6 +26,6 @@
 
 #define logprefix "[obs-kinect] [sdk20] "
 
-#include <obs-kinect/Helper.hpp>
+#include <obs-kinect-core/Helper.hpp>
 
 #endif

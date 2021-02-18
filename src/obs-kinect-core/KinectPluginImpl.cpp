@@ -15,6 +15,6 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include <obs-kinect/KinectPluginImpl.hpp>
+#include <obs-kinect-core/KinectPluginImpl.hpp>
 
 KinectPluginImpl::~KinectPluginImpl() = default;

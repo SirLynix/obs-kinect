@@ -21,8 +21,8 @@
 #define OBS_KINECT_PLUGIN_AZUREKINECT
 
 #include "AzureHelper.hpp"
-#include <obs-kinect/Enums.hpp>
-#include <obs-kinect/KinectPluginImpl.hpp>
+#include <obs-kinect-core/Enums.hpp>
+#include <obs-kinect-core/KinectPluginImpl.hpp>
 
 #if __has_include(<k4abt.hpp>)
 #define HAS_BODY_TRACKING 1

@@ -511,6 +511,11 @@ OBSKINECT_EXPORT bool obs_module_load()
 		return false;
 	}
 
+	SetTranslateFunction([](const char* key)
+	{
+		return obs_module_text(key);
+	});
+
 	s_deviceRegistry.emplace();
 	s_deviceRegistry->RegisterPlugin("./obs-kinect-azuresdk");
 	s_deviceRegistry->RegisterPlugin("./obs-kinect-freenect2");
@@ -527,9 +532,6 @@ OBSKINECT_EXPORT void obs_module_unload()
 {
 	infolog("unloading obs-kinect");
 	s_deviceRegistry.reset();
-}
 
-const char* Translate(const char* key)
-{
-	return obs_module_text(key);
+	SetTranslateFunction(nullptr);
 }

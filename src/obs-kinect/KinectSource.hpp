@@ -20,9 +20,9 @@
 #ifndef OBS_KINECT_PLUGIN_KINECTSOURCE
 #define OBS_KINECT_PLUGIN_KINECTSOURCE
 
-#include <obs-kinect/Enums.hpp>
-#include <obs-kinect/Helper.hpp>
-#include <obs-kinect/KinectDeviceAccess.hpp>
+#include <obs-kinect-core/Enums.hpp>
+#include <obs-kinect-core/Helper.hpp>
+#include <obs-kinect-core/KinectDeviceAccess.hpp>
 #include <obs-kinect/GreenscreenEffects.hpp>
 #include <obs-kinect/Shaders/AlphaMaskShader.hpp>
 #include <obs-kinect/Shaders/ConvertDepthIRToColorShader.hpp>

@@ -16,7 +16,7 @@
 ******************************************************************************/
 
 #include <obs-kinect/KinectSource.hpp>
-#include <obs-kinect/KinectDevice.hpp>
+#include <obs-kinect-core/KinectDevice.hpp>
 #include <obs-kinect/KinectDeviceRegistry.hpp>
 #include <util/platform.h>
 #include <algorithm>

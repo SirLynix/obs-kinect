@@ -21,8 +21,8 @@
 #define OBS_KINECT_PLUGIN_KINECTSDK20PLUGIN
 
 #include "Sdk20Helper.hpp"
-#include <obs-kinect/Enums.hpp>
-#include <obs-kinect/KinectPluginImpl.hpp>
+#include <obs-kinect-core/Enums.hpp>
+#include <obs-kinect-core/KinectPluginImpl.hpp>
 
 class KinectSdk20Plugin : public KinectPluginImpl
 {

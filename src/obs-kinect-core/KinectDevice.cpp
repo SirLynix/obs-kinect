@@ -15,8 +15,8 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include <obs-kinect/KinectDevice.hpp>
-#include <obs-kinect/KinectDeviceAccess.hpp>
+#include <obs-kinect-core/KinectDevice.hpp>
+#include <obs-kinect-core/KinectDeviceAccess.hpp>
 #include <algorithm>
 #include <type_traits>
 
@@ -369,14 +369,14 @@ void KinectDevice::UpdateFrame(KinectFramePtr kinectFrame)
 	m_lastFrame->frameIndex = m_frameIndex++;
 }
 
-void KinectDevice::HandleBoolParameterUpdate(const std::string& parameterName, bool value)
+void KinectDevice::HandleBoolParameterUpdate(const std::string& /*parameterName*/, bool /*value*/)
 {
 }
 
-void KinectDevice::HandleDoubleParameterUpdate(const std::string& parameterName, double value)
+void KinectDevice::HandleDoubleParameterUpdate(const std::string& /*parameterName*/, double /*value*/)
 {
 }
 
-void KinectDevice::HandleIntParameterUpdate(const std::string& parameterName, long long value)
+void KinectDevice::HandleIntParameterUpdate(const std::string& /*parameterName*/, long long /*value*/)
 {
 }

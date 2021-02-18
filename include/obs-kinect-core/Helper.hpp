@@ -113,6 +113,9 @@ struct ObsTextureDeleter
 
 using ObsTexturePtr = std::unique_ptr<gs_texture_t, ObsTextureDeleter>;
 
-OBSKINECT_API const char* Translate(const char* key); //< implemented in kinect-plugin.cpp
+using TranslateSig = const char*(*)(const char*);
+
+OBSKINECT_API void SetTranslateFunction(TranslateSig translateFunc);
+OBSKINECT_API const char* Translate(const char* key);
 
 #endif

@@ -17,56 +17,42 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_ENUMS
-#define OBS_KINECT_PLUGIN_ENUMS
+#ifndef OBS_KINECT_PLUGIN_KINECTPLUGIN
+#define OBS_KINECT_PLUGIN_KINECTPLUGIN
 
-#include <obs-kinect/Helper.hpp>
-#include <cstdint>
+#include <obs-kinect-core/Helper.hpp>
+#include <obs-kinect-core/KinectPluginImpl.hpp>
+#include <util/platform.h>
 #include <string>
+#include <vector>
 
-enum EnabledSources
+class KinectDevice;
+
+class KinectPlugin
 {
-	Source_BackgroundRemoval   = 1 << 0,
-	Source_Body                = 1 << 1,
-	Source_Color               = 1 << 2,
-	Source_ColorMappedBody     = 1 << 3,
-	Source_ColorMappedDepth    = 1 << 4,
-	Source_ColorToDepthMapping = 1 << 5,
-	Source_Depth               = 1 << 6,
-	Source_Infrared            = 1 << 7
+	public:
+		KinectPlugin() = default;
+		KinectPlugin(const KinectPlugin&) = delete;
+		KinectPlugin(KinectPlugin&&) noexcept = default;
+		~KinectPlugin();
+
+		void Close();
+
+		const std::string& GetUniqueName() const;
+
+		bool IsOpen() const;
+
+		bool Open(const char* path);
+
+		std::vector<std::unique_ptr<KinectDevice>> Refresh() const;
+
+		KinectPlugin& operator=(const KinectPlugin&) = delete;
+		KinectPlugin& operator=(KinectPlugin&&) noexcept = default;
+
+	private:
+		std::unique_ptr<KinectPluginImpl> m_impl;
+		std::string m_uniqueName;
+		ObsLibPtr m_lib;
 };
-
-using SourceFlags = std::uint32_t;
-
-enum class ExposureControl
-{
-	FullyAuto,
-	SemiAuto,
-	Manual
-};
-
-enum class PowerlineFrequency
-{
-	Disabled,
-	Freq50,
-	Freq60
-};
-
-enum class ProcessPriority
-{
-	Normal = 0,
-	AboveNormal = 1,
-	High = 2
-};
-
-enum class WhiteBalanceMode
-{
-	Auto,
-	Manual,
-	Unknown
-};
-
-OBSKINECT_API std::string EnabledSourceToString(SourceFlags flags);
-OBSKINECT_API const char* ProcessPriorityToString(ProcessPriority priority);
 
 #endif
