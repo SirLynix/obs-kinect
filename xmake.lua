@@ -5,7 +5,7 @@ local AzureKinectSdk = AzureKinectSdk
 local KinectSdk10 = KinectSdk10
 local KinectSdk10Toolkit = KinectSdk10Toolkit
 local KinectSdk20 = KinectSdk20
-local ObsFolder = ObsFolder
+local ObsFolder = ObsFolder or {}
 
 rule("kinect_dynlib")
 	after_load(function (target)
