@@ -24,8 +24,13 @@ VertData VSDefault(VertData vert_in)
 
 float4 PSColorFilterRGBA(VertData vert_in) : TARGET
 {
+#ifdef _OPENGL
 	const float KernelOffsets[3] = float[3](0.0f, 1.3846153846f, 3.2307692308f);
 	const float BlurWeights[3] = float[3](0.2270270270f, 0.3162162162f, 0.0702702703f);
+#else
+	static const float KernelOffsets[3] = { 0.0f, 1.3846153846f, 3.2307692308f };
+	static const float BlurWeights[3] = { 0.2270270270f, 0.3162162162f, 0.0702702703f };
+#endif
 
 	/* Grab the current pixel to perform operations on. */
 	float3 color = Image.Sample(textureSampler, vert_in.uv).xyz * BlurWeights[0];
