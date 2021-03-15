@@ -255,6 +255,8 @@ ColorFrameData KinectFreenect2Device::RetrieveColorFrame(const libfreenect2::Fra
 			}
 		}
 	}
+	else
+		throw std::runtime_error("unhandled color frame format (" + std::to_string(frame->format) + ")");
 
 	frameData.ptr.reset(frameData.memory.data());
 	frameData.pitch = static_cast<std::uint32_t>(frame->width * 4);
