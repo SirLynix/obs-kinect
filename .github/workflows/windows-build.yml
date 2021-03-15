@@ -43,8 +43,8 @@ jobs:
     - name: Install OBS dependencies
       working-directory: ${{ github.workspace }}/obs-studio
       run: |
-        wget https://obsproject.com/downloads/dependencies2019.zip
-        unzip dependencies2019.zip -d obsdeps
+        curl https://obsproject.com/downloads/dependencies2019.zip --output dependencies2019.zip
+        tar -xfv -C obsdeps dependencies2019.zip
 
     # Configure and build obs
     - name: 'Build OBS-Studio'
