@@ -8,6 +8,28 @@ package("k4a")
 
     add_deps("cmake", "libusb")
 
+    on_fetch("windows", function (package)
+        -- KINECTSDKAZURE_DIR is not an official Microsoft env
+        local defaultInstallPath = os.getenv("KINECTSDKAZURE_DIR") or path.join(os.getenv("ProgramFiles"), "Azure Kinect SDK v1.4.1", "sdk")
+        if os.isdir(defaultInstallPath) then
+            local archFolder = package:is_arch("x86") and "x86" or "amd64"
+
+            local platformFolder = path.join(defaultInstallPath, "windows-desktop", archFolder, "release")
+
+            local result = {}
+            result.includedirs = { defaultInstallPath .. "/include" }
+            result.linkdirs = { platformFolder .. "/lib/" }
+
+            result.links = { "k4a" }
+            result.libfiles = {
+                platformFolder .. "/bin/depthengine_2_0.dll",
+                platformFolder .. "/bin/k4a.dll"
+            }
+
+            return result
+        end
+    end)
+
     on_install("windows", "linux", "macosx", function (package)
         -- There's no option to disable examples, tests or tool building
         io.replace("CMakeLists.txt", "add_subdirectory(examples)", "", {plain = true})

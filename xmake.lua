@@ -1,10 +1,5 @@
 includes(path.join(os.scriptdir(), "config.lua"))
 
-local AzureKinectBodyTrackingSdk = AzureKinectBodyTrackingSdk
-local AzureKinectSdk = AzureKinectSdk
-local KinectSdk10 = KinectSdk10
-local KinectSdk10Toolkit = KinectSdk10Toolkit
-local KinectSdk20 = KinectSdk20
 local ObsFolder = ObsFolder or {}
 
 rule("kinect_dynlib")
@@ -86,14 +81,44 @@ rule("package_plugin")
 	after_package(packageGen("obs-plugins"))
 rule_end()
 
+rule("package_deps")
+	local installed_packages = {}
+
+	after_package("windows", function (target)
+		import("core.base.option")
+
+		local archDir
+		if target:is_arch("x86_64", "x64") then
+			archDir = "64bit"
+		else
+			archDir = "32bit"
+		end
+
+		local outputdir = path.join(option.get("outputdir") or config.buildir(), "bin", archDir)
+
+		for _, pkg in ipairs(target:orderpkgs()) do
+			if not installed_packages[pkg:name()] then
+				if pkg:enabled() and pkg:get("libfiles") then
+					for _, dllpath in ipairs(table.wrap(pkg:get("libfiles"))) do
+						if dllpath:endswith(".dll") then
+							os.vcp(dllpath, outputdir)
+						end
+					end
+				end
+				installed_packages[pkg:name()] = true
+			end
+		end
+	end)
+rule_end()
+
 add_repositories("local-repo xmake-repo")
 add_requires("libfreenect2", { configs = { debug = is_mode("debug") } })
+add_requires("kinect-sdk1", "kinect-sdk1-toolkit", "kinect-sdk2")
 
-if not AzureKinectSdk then
-	add_requires("k4a")
-end 
-
+add_requireconfs("kinect-sdk1-toolkit", { configs = { background_removal = true, facetrack = false, fusion = false, interaction = false, shared = true }})
 add_requireconfs("libfreenect2", "libfreenect2.libusb", { configs = { pic = true }})
+
+add_requires("k4a")
 
 set_project("obs-kinect")
 set_version("1.0")
@@ -173,81 +198,44 @@ target("obs-kinect-azuresdk")
 
 	add_deps("obs-kinectcore")
 
-	if AzureKinectSdk then
-		add_sysincludedirs(AzureKinectSdk.Include)
-		add_linkdirs(path.translate(is_arch("x86") and AzureKinectSdk.Lib32 or AzureKinectSdk.Lib64))
-		add_links("k4a")
-	else
-		add_packages("k4a")
-	end
+	add_packages("k4a")
 
 	add_headerfiles("src/obs-kinect-azuresdk/**.hpp", "src/obs-kinect-azuresdk/**.inl")
 	add_files("src/obs-kinect-azuresdk/**.cpp")
 
-	add_rules("kinect_dynlib", "copy_to_obs", "package_bin")
+	add_rules("kinect_dynlib", "copy_to_obs", "package_bin", "package_deps")
 
-if KinectSdk10 then
+if is_plat("windows") then
 	target("obs-kinect-sdk10")
 		set_kind("shared")
 		set_group("KinectV1")
 
 		add_defines("UNICODE")
 		add_deps("obs-kinectcore")
+		add_packages("kinect-sdk1")
 
-		add_sysincludedirs(KinectSdk10.Include)
-		add_linkdirs(path.translate(is_arch("x86") and KinectSdk10.Lib32 or KinectSdk10.Lib64))
-		add_links("Kinect10")
-
-		if KinectSdk10Toolkit then
-			add_sysincludedirs(KinectSdk10Toolkit.Include)
+		if has_package("kinect-sdk1-toolkit") then
+			add_packages("kinect-sdk1-toolkit", { links = {} })
 		end
 
 		add_headerfiles("src/obs-kinect-sdk10/**.hpp", "src/obs-kinect-sdk10/**.inl")
 		add_files("src/obs-kinect-sdk10/**.cpp")
 
-		add_rules("kinect_dynlib", "copy_to_obs", "package_bin")
+		add_rules("kinect_dynlib", "copy_to_obs", "package_bin", "package_deps")
 
-		if KinectSdk10Toolkit then
-			on_package(function (target)
-				import("core.base.option")
-				local outputdir = option.get("outputdir") or config.buildir()
-
-				local archDir
-				local archSuffix
-				if target:is_arch("x86_64", "x64") then
-					archDir = "64bit"
-					archSuffix = "64"
-				else
-					archDir = "32bit"
-					archSuffix = "32"
-				end
-
-				local filepath = KinectSdk10Toolkit.Bin .. "/KinectBackgroundRemoval180_" .. archSuffix .. ".dll"
-				os.vcp(filepath, path.join(outputdir, "bin", archDir, path.filename(filepath)))
-			end)
-		end
-end
-
-if KinectSdk20 then
 	target("obs-kinect-sdk20")
 		set_kind("shared")
 		set_group("KinectV2")
 
 		add_defines("UNICODE")
 		add_deps("obs-kinectcore")
-
-		add_sysincludedirs(KinectSdk10.Include)
-		add_linkdirs(path.translate(is_arch("x86") and KinectSdk10.Lib32 or KinectSdk10.Lib64))
-		add_links("Kinect20")
+		add_packages("kinect-sdk2")
 		add_syslinks("Advapi32")
 
 		add_headerfiles("src/obs-kinect-sdk20/**.hpp", "src/obs-kinect-sdk20/**.inl")
 		add_files("src/obs-kinect-sdk20/**.cpp")
 
-		add_sysincludedirs(path.relative(KinectSdk20.Include, "."))
-		add_linkdirs(path.translate(is_arch("x86") and KinectSdk20.Lib32 or KinectSdk20.Lib64))
-
-		add_rules("kinect_dynlib", "copy_to_obs", "package_bin")
+		add_rules("kinect_dynlib", "copy_to_obs", "package_bin", "package_deps")
 
 		if not is_arch("x86") and os.isdir("thirdparty/NuiSensorLib") then
 			add_sysincludedirs("thirdparty/NuiSensorLib/include")
@@ -267,4 +255,4 @@ target("obs-kinect-freenect2")
 	add_headerfiles("src/obs-kinect-freenect2/**.hpp", "src/obs-kinect-freenect2/**.inl")
 	add_files("src/obs-kinect-freenect2/**.cpp")
 
-	add_rules("kinect_dynlib", "copy_to_obs", "package_bin")
+	add_rules("kinect_dynlib", "copy_to_obs", "package_bin", "package_deps")
