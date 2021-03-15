@@ -1,0 +1,57 @@
+name: Windows-Build
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest]
+        arch: [x64]
+        mode: [debug, releasedbg]
+
+    runs-on: ${{ matrix.os }}
+    if: "!contains(github.event.head_commit.message, 'ci skip')"
+
+    steps:
+    - uses: actions/checkout@v2
+
+    # Install Qt
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v2
+
+    # Build obs-studio
+    - name: 'Clone OBS'
+      uses: actions/checkout@v2
+      with:
+        repository: obsproject/obs-studio
+        path: ${{ github.workspace }}/obs-studio
+        submodules: 'recursive'
+        fetch-depth: 0 # for tags
+
+    # Checkout OBS to the wanted version
+    - name: 'Checkout OBS-Studio release (${{ env.OBS_VERSION }})'
+      shell: bash
+      working-directory: ${{ github.workspace }}/obs-studio
+      run: |
+        git checkout ${{ env.OBS_VERSION }}
+        git submodule update
+
+    # Install OBS dependencies
+    - name: Install OBS dependencies
+      working-directory: ${{ github.workspace }}/obs-studio
+      run: |
+        wget https://obsproject.com/downloads/dependencies2019.zip
+        unzip dependencies2019.zip -d obsdeps
+
+    # Configure and build obs
+    - name: 'Build OBS-Studio'
+      working-directory: ${{ github.workspace }}/obs-studio
+      shell: bash
+      run: |
+        mkdir ./build64
+        cd ./build64
+        cmake -DDepsPath64=../obsdeps/win64 -DDISABLE_PLUGINS=YES -DENABLE_SCRIPTING=NO ..
+        make -j4 libobs
