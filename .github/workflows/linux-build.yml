@@ -159,7 +159,7 @@ jobs:
 
     # Build the plugin
     - name: Build obs-kinect
-      run: xmake -vD
+      run: xmake --verbose
 
     # Install the result files
     - name: Install obs-kinect

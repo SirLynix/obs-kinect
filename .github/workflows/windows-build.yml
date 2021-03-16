@@ -118,11 +118,19 @@ jobs:
 
     # Build the plugin
     - name: Build obs-kinect
-      run: xmake -vD
+      run: xmake --verbose
+      env:
+        KINECTSDK10_DIR: ${{ github.workspace }}/kinect-sdks/sdk1
+        KINECT_TOOLKIT_DIR: ${{ github.workspace }}/kinect-sdks/sdk1-toolkit
+        KINECTSDK20_DIR: ${{ github.workspace }}/kinect-sdks/sdk2
 
     # Install the result files
     - name: Install obs-kinect
       run: xmake package -vo package
+      env:
+        KINECTSDK10_DIR: ${{ github.workspace }}/kinect-sdks/sdk1
+        KINECT_TOOLKIT_DIR: ${{ github.workspace }}/kinect-sdks/sdk1-toolkit
+        KINECTSDK20_DIR: ${{ github.workspace }}/kinect-sdks/sdk2
 
     # Upload artifacts
     - uses: actions/upload-artifact@v2
