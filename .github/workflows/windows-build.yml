@@ -89,7 +89,7 @@ jobs:
     # Prepare environment
     - name: Configure build
       run:
-        printf "LibObs = {\n  Include = [[${{ github.workspace }}\obs-studio\libobs]],\n  Lib64 = [[${{ github.workspace }}\obs-studio\build64\libobs]]\n}\n\nObsPlugins={}" > config.lua
+        echo "LibObs = {   Include = [[${{ github.workspace }}\obs-studio\libobs]],   Lib64 = [[${{ github.workspace }}\obs-studio\build64\libobs]] }  ObsPlugins={}" > config.lua
 
     # Update xmake repository (in order to have the file that will be cached)
     - name: Update xmake repository
