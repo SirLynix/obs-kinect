@@ -61,7 +61,7 @@ jobs:
       run: |
         mkdir ./build64
         cd ./build64
-        cmake -DDepsPath=${{ github.workspace }}/obsdeps/win64 -DQTDIR=${{ env.Qt5_DIR }} -DDISABLE_PLUGINS=YES -DENABLE_SCRIPTING=NO ..
+        cmake -G "${{ env.CMAKE_GENERATOR }}" -A x64 -DDepsPath=${{ github.workspace }}/obsdeps/win64 -DQTDIR=${{ env.Qt5_DIR }} -DDISABLE_PLUGINS=YES -DENABLE_SCRIPTING=NO ..
         msbuild /m /p:Configuration=RelWithDebInfo ./libobs/libobs.vcxproj
 
     # Install xmake
