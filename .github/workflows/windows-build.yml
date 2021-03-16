@@ -27,6 +27,9 @@ jobs:
     - name: Add msbuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
 
+    - name: Enable longpath in git for Windows
+      runs: git config --system core.longpaths true
+
     # Install Qt
     - name: Install Qt
       uses: jurplel/install-qt-action@v2
