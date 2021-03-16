@@ -119,7 +119,7 @@ add_requireconfs("*.libusb", { configs = { pic = true, shared = is_plat("windows
 
 if is_plat("windows") then
 	add_requires("kinect-sdk1", "kinect-sdk2", { optional = true })
-	add_requires("kinect-sdk1-toolkit", { configs = { background_removal = true, facetrack = false, fusion = false, interaction = false, shared = true }})
+	add_requires("kinect-sdk1-toolkit", { optional = true, configs = { background_removal = true, facetrack = false, fusion = false, interaction = false, shared = true }})
 end
 
 set_project("obs-kinect")
