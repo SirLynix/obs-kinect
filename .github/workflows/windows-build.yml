@@ -21,7 +21,11 @@ jobs:
       CMAKE_GENERATOR: 'Visual Studio 16 2019'
 
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.0
 
     # Install Qt
     - name: Install Qt
@@ -30,7 +34,7 @@ jobs:
         version: ${{ env.QT_VERSION }}
 
     # Build obs-studio
-    - name: 'Clone OBS'
+    - name: Clone OBS
       uses: actions/checkout@v2
       with:
         repository: obsproject/obs-studio
@@ -39,7 +43,7 @@ jobs:
         fetch-depth: 0 # for tags
 
     # Checkout OBS to the wanted version
-    - name: 'Checkout OBS-Studio release (${{ env.OBS_VERSION }})'
+    - name: Checkout OBS-Studio release (${{ env.OBS_VERSION }})
       working-directory: ${{ github.workspace }}/obs-studio
       run: |
         git checkout ${{ env.OBS_VERSION }}
@@ -53,7 +57,8 @@ jobs:
         mkdir obsdeps
         tar -xv -C obsdeps -f dependencies2019.zip
 
-    - uses: haya14busa/action-cond@v1
+    - name: Choose OBS Debug or Release build
+      uses: haya14busa/action-cond@v1
       id: cmake_target
       with:
         cond: ${{ matrix.mode == 'debug' }}
@@ -61,7 +66,7 @@ jobs:
         if_false: "RelWithDebInfo"
 
     # Configure and build obs
-    - name: 'Build OBS-Studio'
+    - name: Build OBS-Studio
       working-directory: ${{ github.workspace }}/obs-studio
       run: |
         mkdir ./build64

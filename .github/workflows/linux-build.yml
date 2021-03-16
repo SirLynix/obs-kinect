@@ -103,7 +103,7 @@ jobs:
           uuid-dev
 
     # Build obs-studio
-    - name: 'Clone OBS'
+    - name: Clone OBS
       uses: actions/checkout@v2
       with:
         repository: obsproject/obs-studio
@@ -112,7 +112,7 @@ jobs:
         fetch-depth: 0 # for tags
 
     # Checkout OBS to the wanted version
-    - name: 'Checkout OBS-Studio release (${{ env.OBS_VERSION }})'
+    - name: Checkout OBS-Studio release (${{ env.OBS_VERSION }})
       shell: bash
       working-directory: ${{ github.workspace }}/obs-studio
       run: |
@@ -120,7 +120,7 @@ jobs:
         git submodule update
 
     # Configure and build obs
-    - name: 'Build OBS-Studio'
+    - name: Build OBS-Studio
       working-directory: ${{ github.workspace }}/obs-studio
       shell: bash
       run: |
