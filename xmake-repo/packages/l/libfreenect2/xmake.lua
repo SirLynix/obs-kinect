@@ -14,23 +14,19 @@ package("libfreenect2")
         add_deps("libusb")
     end
 
-    on_install("windows", "linux", "macosx", function (package)
-        local libjpegturbo = package:dep("libjpeg-turbo")
-        local libusb = package:dep("libusb")
+    if is_plat("linux") then
+        add_syslinks("pthread")
+    end
 
-        if (libusb:fetch()) then
-            io.replace("CMakeLists.txt", "FIND_PACKAGE(LibUSB REQUIRED)", "", {plain = true})
-        end
+    on_install("windows", "linux", "macosx", function (package)
+        io.replace("CMakeLists.txt", "FIND_PACKAGE(LibUSB REQUIRED)", "", {plain = true})
 
         local configs = {}
         table.insert(configs, "-DBUILD_EXAMPLES=OFF")
         table.insert(configs, "-DENABLE_CXX11=ON")
         table.insert(configs, "-DCMAKE_BUILD_TYPE=" .. (package:debug() and "Debug" or "Release"))
         table.insert(configs, "-DBUILD_SHARED_LIBS=" .. (package:config("shared") and "ON" or "OFF"))
-        table.insert(configs, "-DTurboJPEG_INCLUDE_DIRS=" .. libjpegturbo:installdir("include"))
-        table.insert(configs, "-DTurboJPEG_LIBRARIES=" .. table.concat(libjpegturbo:fetch().libfiles, ";"))
-        table.insert(configs, "-DLibUSB_INCLUDE_DIRS=" .. libusb:installdir("include"))
-        table.insert(configs, "-DLibUSB_LIBRARIES=" .. table.concat(libusb:fetch().libfiles, ";"))
+
         if package:config("pic") then
             table.insert(configs, "-DCMAKE_POSITION_INDEPENDENT_CODE=ON")
         end

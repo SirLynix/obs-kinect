@@ -113,12 +113,14 @@ rule_end()
 
 add_repositories("local-repo xmake-repo")
 add_requires("libfreenect2", { configs = { debug = is_mode("debug") } })
-add_requires("kinect-sdk1", "kinect-sdk1-toolkit", "kinect-sdk2")
+add_requires("k4a")
 
-add_requireconfs("kinect-sdk1-toolkit", { configs = { background_removal = true, facetrack = false, fusion = false, interaction = false, shared = true }})
 add_requireconfs("libfreenect2", "libfreenect2.libusb", { configs = { pic = true }})
 
-add_requires("k4a")
+if is_plat("windows") then
+	add_requires("kinect-sdk1", "kinect-sdk1-toolkit", "kinect-sdk2", { optional = true })
+	add_requireconfs("kinect-sdk1-toolkit", { configs = { background_removal = true, facetrack = false, fusion = false, interaction = false, shared = true }})
+end
 
 set_project("obs-kinect")
 set_version("1.0")
@@ -206,43 +208,49 @@ target("obs-kinect-azuresdk")
 	add_rules("kinect_dynlib", "copy_to_obs", "package_bin", "package_deps")
 
 if is_plat("windows") then
-	target("obs-kinect-sdk10")
-		set_kind("shared")
-		set_group("KinectV1")
 
-		add_defines("UNICODE")
-		add_deps("obs-kinectcore")
-		add_packages("kinect-sdk1")
+	if has_package("kinect-sdk1") then
+		target("obs-kinect-sdk10")
+			set_kind("shared")
+			set_group("KinectV1")
 
-		if has_package("kinect-sdk1-toolkit") then
-			add_packages("kinect-sdk1-toolkit", { links = {} })
-		end
+			add_defines("UNICODE")
+			add_deps("obs-kinectcore")
+			add_packages("kinect-sdk1")
 
-		add_headerfiles("src/obs-kinect-sdk10/**.hpp", "src/obs-kinect-sdk10/**.inl")
-		add_files("src/obs-kinect-sdk10/**.cpp")
+			if has_package("kinect-sdk1-toolkit") then
+				add_packages("kinect-sdk1-toolkit", { links = {} })
+			end
 
-		add_rules("kinect_dynlib", "copy_to_obs", "package_bin", "package_deps")
+			add_headerfiles("src/obs-kinect-sdk10/**.hpp", "src/obs-kinect-sdk10/**.inl")
+			add_files("src/obs-kinect-sdk10/**.cpp")
 
-	target("obs-kinect-sdk20")
-		set_kind("shared")
-		set_group("KinectV2")
+			add_rules("kinect_dynlib", "copy_to_obs", "package_bin", "package_deps")
+	end
 
-		add_defines("UNICODE")
-		add_deps("obs-kinectcore")
-		add_packages("kinect-sdk2")
-		add_syslinks("Advapi32")
+	if has_package("kinect-sdk2") then
+		target("obs-kinect-sdk20")
+			set_kind("shared")
+			set_group("KinectV2")
 
-		add_headerfiles("src/obs-kinect-sdk20/**.hpp", "src/obs-kinect-sdk20/**.inl")
-		add_files("src/obs-kinect-sdk20/**.cpp")
+			add_defines("UNICODE")
+			add_deps("obs-kinectcore")
+			add_packages("kinect-sdk2")
+			add_syslinks("Advapi32")
 
-		add_rules("kinect_dynlib", "copy_to_obs", "package_bin", "package_deps")
+			add_headerfiles("src/obs-kinect-sdk20/**.hpp", "src/obs-kinect-sdk20/**.inl")
+			add_files("src/obs-kinect-sdk20/**.cpp")
 
-		if not is_arch("x86") and os.isdir("thirdparty/NuiSensorLib") then
-			add_sysincludedirs("thirdparty/NuiSensorLib/include")
-			add_linkdirs("thirdparty/NuiSensorLib/lib/x64")
-			add_links("NuiSensorLib")
-			add_syslinks("SetupAPI")
-		end
+			add_rules("kinect_dynlib", "copy_to_obs", "package_bin", "package_deps")
+
+			if not is_arch("x86") and os.isdir("thirdparty/NuiSensorLib") then
+				add_sysincludedirs("thirdparty/NuiSensorLib/include")
+				add_linkdirs("thirdparty/NuiSensorLib/lib/x64")
+				add_links("NuiSensorLib")
+				add_syslinks("SetupAPI")
+			end
+	end
+
 end
 
 target("obs-kinect-freenect2")
