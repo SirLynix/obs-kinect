@@ -29,6 +29,13 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
+    - name: Checkout Kinect SDKs
+      uses: actions/checkout@v2
+      with:
+        repository: SirLynix/kinect-sdks
+        token: ${{ secrets.KINECT_SDKS_PAT }}
+        path: ${{ github.workspace }}/kinect-sdks
+
     - name: Add msbuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
 
@@ -104,6 +111,10 @@ jobs:
     # Setup compilation mode and install project dependencies
     - name: Configure xmake and install dependencies
       run: xmake config --arch=${{ matrix.arch }} --mode=${{ matrix.mode }} --yes --verbose
+      env:
+        KINECTSDK10_DIR: ${{ github.workspace }}/kinect-sdks/sdk1
+        KINECT_TOOLKIT_DIR: ${{ github.workspace }}/kinect-sdks/sdk1-toolkit
+        KINECTSDK20_DIR: ${{ github.workspace }}/kinect-sdks/sdk2
 
     # Build the plugin
     - name: Build obs-kinect
