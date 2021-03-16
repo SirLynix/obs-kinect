@@ -24,7 +24,7 @@ package("kinect-sdk1-toolkit")
             result.libfiles = {}
 
             local function AddLib(name)
-                table.insert(result.libfiles, toolkitDir .. "/bin/" .. name .. ".dll")
+                table.insert(result.libfiles, toolkitDir .. "/Redist/" .. libFolder .. "/" .. name .. ".dll")
                 table.insert(result.links, name)
             end
 
