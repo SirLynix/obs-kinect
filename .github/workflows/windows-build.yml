@@ -40,7 +40,6 @@ jobs:
 
     # Checkout OBS to the wanted version
     - name: 'Checkout OBS-Studio release (${{ env.OBS_VERSION }})'
-      shell: bash
       working-directory: ${{ github.workspace }}/obs-studio
       run: |
         git checkout ${{ env.OBS_VERSION }}
@@ -54,15 +53,21 @@ jobs:
         mkdir obsdeps
         tar -xv -C obsdeps -f dependencies2019.zip
 
+    - uses: haya14busa/action-cond@v1
+      id: cmake_target
+      with:
+        cond: ${{ matrix.mode == 'debug' }}
+        if_true: "Debug"
+        if_false: "RelWithDebInfo"
+
     # Configure and build obs
     - name: 'Build OBS-Studio'
       working-directory: ${{ github.workspace }}/obs-studio
-      shell: bash
       run: |
         mkdir ./build64
         cd ./build64
-        cmake -G "${{ env.CMAKE_GENERATOR }}" -A x64 -DDepsPath=${{ github.workspace }}/obsdeps/win64 -DQTDIR=${{ env.Qt5_DIR }} -DDISABLE_PLUGINS=YES -DENABLE_SCRIPTING=NO ..
-        msbuild /m /p:Configuration=RelWithDebInfo ./libobs/libobs.vcxproj
+        cmake -G "${{ env.CMAKE_GENERATOR }}" -A x64 -DDepsPath=${{ github.workspace }}\obsdeps\win64 -DQTDIR=${{ env.Qt5_DIR }} -DDISABLE_PLUGINS=YES -DENABLE_SCRIPTING=NO ..
+        msbuild /m /p:Configuration=${{ steps.cmake_target.outputs.value }} ./libobs/libobs.vcxproj
 
     # Install xmake
     - name: Setup xmake
