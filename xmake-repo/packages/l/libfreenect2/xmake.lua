@@ -5,14 +5,7 @@ package("libfreenect2")
 
     set_urls("https://github.com/OpenKinect/libfreenect2.git")
 
-    add_deps("cmake", "libjpeg-turbo")
-
-    if (is_plat("windows")) then
-        -- base libusb doesn't work with libfreenect2, force it as a .dll to replace it with a custom version
-        add_deps("libusb", {configs = {shared = true}})
-    else
-        add_deps("libusb")
-    end
+    add_deps("cmake", "libjpeg-turbo", "libusb")
 
     if is_plat("linux") then
         add_syslinks("pthread")

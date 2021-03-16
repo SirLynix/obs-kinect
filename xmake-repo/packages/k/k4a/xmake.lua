@@ -6,7 +6,7 @@ package("k4a")
     set_urls("https://github.com/microsoft/Azure-Kinect-Sensor-SDK.git")
     add_versions("v1.4.1", "73106554449c64aff6b068078f0eada50c4474e99945b5ceb6ea4aab9a68457f")
 
-    add_deps("cmake", "libusb")
+    add_deps("cmake")
 
     on_fetch("windows", function (package)
         -- KINECTSDKAZURE_DIR is not an official Microsoft env
@@ -39,7 +39,7 @@ package("k4a")
         local configs = {}
         table.insert(configs, "-DCMAKE_BUILD_TYPE=" .. (package:debug() and "Debug" or "Release"))
         table.insert(configs, "-DBUILD_SHARED_LIBS=" .. (package:config("shared") and "ON" or "OFF"))
-        import("package.tools.cmake").install(package, configs, {packagedeps={"libsoundio", "libusb"}})
+        import("package.tools.cmake").install(package, configs)
     end)
 
     on_test(function (package)

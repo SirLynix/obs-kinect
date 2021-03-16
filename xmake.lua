@@ -115,11 +115,11 @@ add_repositories("local-repo xmake-repo")
 add_requires("libfreenect2", { configs = { debug = is_mode("debug") } })
 add_requires("k4a")
 
-add_requireconfs("libfreenect2", "libfreenect2.libusb", { configs = { pic = true }})
+add_requireconfs("*.libusb", { configs = { pic = true, shared = is_plat("windows") }})
 
 if is_plat("windows") then
-	add_requires("kinect-sdk1", "kinect-sdk1-toolkit", "kinect-sdk2", { optional = true })
-	add_requireconfs("kinect-sdk1-toolkit", { configs = { background_removal = true, facetrack = false, fusion = false, interaction = false, shared = true }})
+	add_requires("kinect-sdk1", "kinect-sdk2", { optional = true })
+	add_requires("kinect-sdk1-toolkit", { configs = { background_removal = true, facetrack = false, fusion = false, interaction = false, shared = true }})
 end
 
 set_project("obs-kinect")
