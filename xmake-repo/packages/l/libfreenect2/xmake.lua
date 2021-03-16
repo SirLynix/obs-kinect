@@ -19,6 +19,8 @@ package("libfreenect2")
     end
 
     on_install("windows", "linux", "macosx", function (package)
+        local libjpegturbo = package:dep("libjpeg-turbo")
+
         io.replace("CMakeLists.txt", "FIND_PACKAGE(LibUSB REQUIRED)", "", {plain = true})
 
         local configs = {}
@@ -26,6 +28,11 @@ package("libfreenect2")
         table.insert(configs, "-DENABLE_CXX11=ON")
         table.insert(configs, "-DCMAKE_BUILD_TYPE=" .. (package:debug() and "Debug" or "Release"))
         table.insert(configs, "-DBUILD_SHARED_LIBS=" .. (package:config("shared") and "ON" or "OFF"))
+
+        if libjpegturbo:fetch() and libjpegturbo:fetch().libfiles then
+            table.insert(configs, "-DTurboJPEG_INCLUDE_DIRS=" .. libjpegturbo:installdir("include"))
+            table.insert(configs, "-DTurboJPEG_LIBRARIES=" .. table.concat(libjpegturbo:fetch().libfiles, ";"))
+        end
 
         if package:config("pic") then
             table.insert(configs, "-DCMAKE_POSITION_INDEPENDENT_CODE=ON")
