@@ -3,6 +3,11 @@ name: Linux-Build
 on:
   pull_request:
   push:
+    paths-ignore:
+      - '.github/workflows/windows-build.yml'
+      - '.gitignore'
+      - 'LICENSE'
+      - 'README.md'
 
 jobs:
   build:
@@ -154,7 +159,7 @@ jobs:
 
     # Build the plugin
     - name: Build obs-kinect
-      run: xmake
+      run: xmake -vD
 
     # Install the result files
     - name: Install obs-kinect
