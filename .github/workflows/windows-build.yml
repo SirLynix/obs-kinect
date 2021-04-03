@@ -31,6 +31,7 @@ jobs:
 
     - name: Checkout Kinect SDKs
       uses: actions/checkout@v2
+      continue-on-error: true
       with:
         repository: SirLynix/kinect-sdks
         token: ${{ secrets.KINECT_SDKS_PAT }}
