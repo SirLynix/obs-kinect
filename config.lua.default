@@ -3,47 +3,22 @@
 -- Where is libobs located (found in OBS repository)
 LibObs = {
 	Include = "../obs-studio/libobs",
-	Lib32 = "../obs-studio/build32/libobs/Release",
-	Lib64 = "../obs-studio/build64/libobs/Release",
+	Lib32 = "../obs-studio/build32/libobs",
+	Lib64 = "../obs-studio/build64/libobs",
 }
 
--- Where is Azure Kinect SDK located
-KinectSdkAzure = [[C:\Program Files\Azure Kinect SDK v1.4.1\sdk]]
+ObsFolder = {
+	Debug32 = "../obs-studio/build32/rundir/Debug",
+	Debug64 = "../obs-studio/build64/rundir/Debug",
+	Release32 = "../obs-studio/build32/rundir/Release",
+	Release64 = "../obs-studio/build64/rundir/Release"
+}
 
 -- Where to copy generated plugin file after a successful build (depending on configuration/arch)
 -- If you don't want the plugin to be copied, just comment out/delete thoses lines
-CopyToDebug32 = [[C:\Users\Lynix\Documents\GitHub\obs-studio\build32\rundir\Debug\obs-plugins\32bit]]
-CopyToDebug64 = [[C:\Users\Lynix\Documents\GitHub\obs-studio\build64\rundir\Debug\obs-plugins\64bit]]
-CopyToRelease32 = [[C:\Users\Lynix\Documents\GitHub\obs-studio\build32\rundir\Release\obs-plugins\32bit]]
-CopyToRelease64 = [[C:\Users\Lynix\Documents\GitHub\obs-studio\build64\rundir\Release\obs-plugins\64bit]]
+--CopyToDebug32 = [[C:\Projets\obs-kinect\obs-studio\build32\rundir\Debug\obs-plugins\32bit]]
+CopyToDebug64 = [[C:\Projets\obs-kinect\obs-studio\build64\rundir\Debug\obs-plugins\64bit]]
+--CopyToRelease32 = [[C:\Projets\obs-kinect\obs-studio\build32\rundir\Release\obs-plugins\32bit]]
+CopyToRelease64 = [[C:\Projets\obs-kinect\obs-studio\build64\rundir\Release\obs-plugins\64bit]]
 
 -- You shouldn't have to change anything under this line
-if (os.getenv("KINECTSDK10_DIR")) then
-	KinectSdk10 = {
-		Include = "$(KINECTSDK10_DIR)/inc",
-		Lib32 = "$(KINECTSDK10_DIR)/lib/x86",
-		Lib64 = "$(KINECTSDK10_DIR)/lib/amd64",
-	}
-elseif (os.istarget("windows")) then
-	print("Kinect SDK doesn't seem to be installed, skipping KinectSdk10 backend")
-end
-
-if (os.getenv("KINECT_TOOLKIT_DIR")) then
-	KinectSdk10Toolkit = {
-		Include = "$(KINECT_TOOLKIT_DIR)/inc",
-		Lib32 = "$(KINECT_TOOLKIT_DIR)/lib/x86",
-		Lib64 = "$(KINECT_TOOLKIT_DIR)/lib/amd64"
-	}
-elseif (os.istarget("windows")) then
-	print("Kinect SDK ToolKit doesn't seem to be installed, dedicated background removal won't be available")
-end
-
-if (os.getenv("KINECTSDK20_DIR")) then
-	KinectSdk20 = {
-		Include = "$(KINECTSDK20_DIR)/inc",
-		Lib32 = "$(KINECTSDK20_DIR)/lib/x86",
-		Lib64 = "$(KINECTSDK20_DIR)/lib/x64",
-	}
-elseif (os.istarget("windows")) then
-	print("Kinect SDK 2 doesn't seem to be installed, skipping KinectSdk20 backend")
-end

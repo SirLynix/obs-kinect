@@ -97,9 +97,11 @@ You can/must install all SDK if you want to support all Kinect versions (recomme
 
 Copy the config.lua.default to config.lua and changes the values accordingly.
 
-This project relies on [Premake](https://github.com/premake/premake-core) to generate its files, [download the last version](https://github.com/premake/premake-core/releases) and use it the main folder (for example, to generate a Visual Studio 2019 solution use the `premake5 vs2019` command).
+This project relies on [xmake](https://xmake.io) to build, [download the last version](https://xmake.io/#/getting_started?id=installation) and use it the main folder (use `xmake` in a shell), xmake may ask you to install some packages required for this project, type `y`.
 
-Open the project workspace/solution (located in build/<actionfolder>) and build it.
+Once the plugin is built, you can type `xmake install -o obs-kinect-install` to have xmake copy all the plugin files in the `obs-kinect-install` directory.
+
+If you wish to generate a workspace/solution, you can use [xmake to generate projects file](https://xmake.io/#/plugin/builtin_plugins?id=generate-ide-project-files) (use `xmake project -k vsxmake` for example to build a Visual Studio Project).
 
 # Commonly asked questions
 
