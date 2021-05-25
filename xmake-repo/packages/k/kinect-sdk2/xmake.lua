@@ -1,4 +1,4 @@
-package("kinect-sdk1")
+package("kinect-sdk2")
     set_homepage("https://www.microsoft.com/en-us/download/details.aspx?id=44561")
     set_description("The Kinect for Windows Software Development Kit (SDK) 2.0 enables developers to create applications that support gesture and voice recognition, using Kinect sensor technology.")
 
