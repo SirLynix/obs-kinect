@@ -24,7 +24,7 @@ rule("copy_to_obs")
 	after_build(function(target)
 		local folderKey = (is_mode("debug") and "Debug" or "Release") .. (is_arch("x86") and "32" or "64")
 		local obsDir = ObsFolder[folderKey]
-		if not obsDir then 
+		if not obsDir then
 			return
 		end
 
@@ -43,10 +43,10 @@ rule("copy_to_obs")
 		end
 
    		local outputdir = path.join(obsDir, outputFolder, archDir)
-		if dir and os.isdir(dir) then
+		if outputdir and os.isdir(outputdir) then
 			for _, path in ipairs({ target:targetfile(), target:symbolfile() }) do
 				if os.isfile(path) then
-					os.vcp(path, dir)
+					os.vcp(path, outputdir)
 				end
 			end
 		end
