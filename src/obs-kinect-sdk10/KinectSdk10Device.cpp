@@ -444,6 +444,7 @@ void KinectSdk10Device::ElevationThreadFunc()
 					{
 						// Kinect doesn't like moving too quick, wait a bit and try again
 						case ERROR_RETRY:
+						case ERROR_NOT_READY:
 						case ERROR_TOO_MANY_CMDS:
 							os_sleep_ms(100);
 							SetEvent(m_elevationUpdateEvent.get());
