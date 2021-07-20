@@ -112,7 +112,7 @@ rule("package_deps")
 rule_end()
 
 add_repositories("local-repo xmake-repo")
-add_requires("libfreenect2", { configs = { debug = is_mode("debug") } })
+add_requires("libfreenect", "libfreenect2", { configs = { debug = is_mode("debug") } })
 add_requires("k4a")
 
 add_requireconfs("*.libusb", { configs = { pic = true, shared = is_plat("windows") }})
@@ -257,6 +257,18 @@ if is_plat("windows") then
 	end
 
 end
+
+target("obs-kinect-freenect")
+	set_kind("shared")
+	set_group("KinectV1")
+
+	add_deps("obs-kinectcore")
+	add_packages("libfreenect")
+
+	add_headerfiles("src/obs-kinect-freenect/**.hpp", "src/obs-kinect-freenect/**.inl")
+	add_files("src/obs-kinect-freenect/**.cpp")
+
+	add_rules("kinect_dynlib", "copy_to_obs", "package_bin", "package_deps")
 
 target("obs-kinect-freenect2")
 	set_kind("shared")
