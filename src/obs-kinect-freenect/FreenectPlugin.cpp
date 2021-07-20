@@ -17,6 +17,8 @@
 
 #include "FreenectPlugin.hpp"
 #include "FreenectDevice.hpp"
+#include <util/threading.h>
+#include <libusb.h>
 #include <stdexcept>
 
 void ErrorCallback(freenect_context* /*device*/, freenect_loglevel level, const char* message)
@@ -35,7 +37,8 @@ void ErrorCallback(freenect_context* /*device*/, freenect_loglevel level, const 
 }
 
 KinectFreenectPlugin::KinectFreenectPlugin() :
-m_context(nullptr)
+m_context(nullptr),
+m_contextThreadRunning(true)
 {
 	if (freenect_init(&m_context, nullptr) != 0)
 		throw std::runtime_error("failed to initialize freenect context");
@@ -51,10 +54,31 @@ m_context(nullptr)
 
 	// we're not supporting audio for now
 	freenect_select_subdevices(m_context, static_cast<freenect_device_flags>(FREENECT_DEVICE_MOTOR | FREENECT_DEVICE_CAMERA));
+
+	m_contextThread = std::thread([this]()
+	{
+		os_set_thread_name("KinectPluginFreenectEvents");
+
+		while (m_contextThreadRunning)
+		{
+			timeval timeout = { 0, 100 * 1000 };
+			int res = freenect_process_events_timeout(m_context, &timeout);
+			if (res < 0)
+			{
+				if (res == LIBUSB_ERROR_INTERRUPTED)
+					continue; //< Ignore interruption signals
+
+				errorlog("freenect event processing errored (libusb error code: %d)", res);
+			}
+		}
+	});
 }
 
 KinectFreenectPlugin::~KinectFreenectPlugin()
 {
+	m_contextThreadRunning = false;
+	m_contextThread.join();
+
 	if (freenect_shutdown(m_context) < 0)
 		warnlog("freenect shutdown failed");
 }

@@ -24,6 +24,8 @@
 #include <obs-kinect-core/Enums.hpp>
 #include <obs-kinect-core/KinectPluginImpl.hpp>
 #include <libfreenect/libfreenect.h>
+#include <atomic>
+#include <thread>
 
 class KinectFreenectPlugin : public KinectPluginImpl
 {
@@ -42,6 +44,8 @@ class KinectFreenectPlugin : public KinectPluginImpl
 
 	private:
 		freenect_context* m_context;
+		std::atomic_bool m_contextThreadRunning;
+		std::thread m_contextThread;
 };
 
 #endif

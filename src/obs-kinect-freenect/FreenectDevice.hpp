@@ -37,6 +37,7 @@ class KinectFreenectDevice final : public KinectDevice
 		static DepthFrameData RetrieveDepthFrame(const libfreenect2::Frame* frame);
 		static InfraredFrameData RetrieveInfraredFrame(const libfreenect2::Frame* frame);*/
 
+		freenect_context* m_context;
 		freenect_device* m_device;
 };
 
