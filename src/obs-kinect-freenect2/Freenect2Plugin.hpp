@@ -17,8 +17,8 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_KINECTSDK20PLUGIN
-#define OBS_KINECT_PLUGIN_KINECTSDK20PLUGIN
+#ifndef OBS_KINECT_PLUGIN_KINECTFREENECT2PLUGIN
+#define OBS_KINECT_PLUGIN_KINECTFREENECT2PLUGIN
 
 #include "Freenect2Helper.hpp"
 #include <obs-kinect-core/Enums.hpp>

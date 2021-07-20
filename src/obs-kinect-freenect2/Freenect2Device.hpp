@@ -17,8 +17,8 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_KINECTDEVICESDK20
-#define OBS_KINECT_PLUGIN_KINECTDEVICESDK20
+#ifndef OBS_KINECT_PLUGIN_KINECTFREENECT2DEVICE
+#define OBS_KINECT_PLUGIN_KINECTFREENECT2DEVICE
 
 #include "Freenect2Helper.hpp"
 #include <obs-kinect-core/KinectDevice.hpp>
