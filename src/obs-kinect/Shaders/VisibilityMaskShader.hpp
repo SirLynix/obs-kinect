@@ -17,39 +17,26 @@
 
 #pragma once
 
-#ifndef OBS_KINECT_PLUGIN_REPLACEBACKGROUNDEFFECT
-#define OBS_KINECT_PLUGIN_REPLACEBACKGROUNDEFFECT
+#ifndef OBS_KINECT_PLUGIN_VISIBILITYMASKSHADER
+#define OBS_KINECT_PLUGIN_VISIBILITYMASKSHADER
 
-#include <obs-kinect/Shaders/TextureLerpShader.hpp>
-#include <obs-kinect-core/Helper.hpp>
-#include <string>
+#include <obs-module.h>
+#include <cstddef>
 
-class ReplaceBackgroundEffect
+class VisibilityMaskShader
 {
 	public:
-		struct Config;
+		VisibilityMaskShader();
+		~VisibilityMaskShader();
 
-		ReplaceBackgroundEffect();
-		~ReplaceBackgroundEffect() = default;
-
-		gs_texture_t* Apply(const Config& config, gs_texture_t* sourceTexture, gs_texture_t* filterTexture);
-
-		static obs_properties_t* BuildProperties();
-		static void SetDefaultValues(obs_data_t* settings);
-		static Config ToConfig(obs_data_t* settings);
-
-		struct Config
-		{
-			using Effect = ReplaceBackgroundEffect;
-
-			std::string replacementTexturePath;
-		};
+		gs_texture_t* Mask(gs_texture_t* filter, gs_texture_t* mask);
 
 	private:
-		std::string m_texturePath;
-		std::uint64_t m_lastTextureTick;
-		ObsImageFilePtr m_imageFile;
-		TextureLerpShader m_textureLerp;
+		gs_effect_t* m_effect;
+		gs_eparam_t* m_params_FilterImage;
+		gs_eparam_t* m_params_MaskImage;
+		gs_technique_t* m_tech_Draw;
+		gs_texrender_t* m_workTexture;
 };
 
 #endif

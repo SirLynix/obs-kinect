@@ -33,6 +33,7 @@ m_source(source),
 m_height(0),
 m_width(0),
 m_lastFrameIndex(KinectDevice::InvalidFrameIndex),
+m_lastTextureTick(0),
 m_isVisible(false),
 m_stopOnHide(false)
 {
@@ -111,6 +112,27 @@ void KinectSource::UpdateGreenScreen(GreenScreenSettings greenScreen)
 void KinectSource::UpdateInfraredToColor(InfraredToColorSettings infraredToColor)
 {
 	m_infraredToColorSettings = infraredToColor;
+}
+
+void KinectSource::UpdateVisibilityMaskFile(const std::string_view& filePath)
+{
+	if (m_visibilityMaskPath != filePath)
+	{
+		if (!filePath.empty())
+		{
+			if (!m_visibilityMaskImage)
+				m_visibilityMaskImage.reset(new gs_image_file_t);
+
+			gs_image_file_init(m_visibilityMaskImage.get(), filePath.data());
+
+			ObsGraphics gfx;
+			gs_image_file_init_texture(m_visibilityMaskImage.get());
+		}
+		else
+			m_visibilityMaskImage.reset();
+
+		m_visibilityMaskPath = filePath;
+	}
 }
 
 void KinectSource::ShouldStopOnHide(bool shouldStop)
@@ -198,6 +220,18 @@ void KinectSource::Update(float /*seconds*/)
 		if (!frameData || frameData->frameIndex == m_lastFrameIndex)
 			return;
 
+		// Update animated textures, if any
+		std::uint64_t now = obs_get_video_frame_time();
+		if (m_lastTextureTick == 0)
+			m_lastTextureTick = now;
+
+		if (m_visibilityMaskImage && m_visibilityMaskImage->texture && gs_image_file_tick(m_visibilityMaskImage.get(), now - m_lastTextureTick))
+		{
+			ObsGraphics gfx;
+			gs_image_file_update_texture(m_visibilityMaskImage.get());
+		}
+
+		// Process frame
 		m_height = 0;
 		m_width = 0;
 
@@ -217,6 +251,7 @@ void KinectSource::Update(float /*seconds*/)
 			UpdateTexture(m_depthTexture, GS_R16, depthFrame.width, depthFrame.height, depthFrame.pitch, depthFrame.ptr.get());
 		}
 
+		// Fetch/compute color texture
 		gs_texture_t* sourceTexture = nullptr;
 		switch (m_sourceType)
 		{
@@ -297,6 +332,7 @@ void KinectSource::Update(float /*seconds*/)
 		m_width = gs_texture_get_width(sourceTexture);
 		m_height = gs_texture_get_height(sourceTexture);
 
+		// Apply greenscreen effected if enabled
 		if (m_greenScreenSettings.enabled)
 		{
 			// All green screen types (except depth/dedicated) require body index texture
@@ -545,8 +581,12 @@ void KinectSource::Update(float /*seconds*/)
 
 				if (m_greenScreenSettings.blurPassCount > 0)
 					filterTexture = m_filterBlur.Blur(filterTexture, m_greenScreenSettings.blurPassCount);
+
+				if (m_visibilityMaskImage && m_visibilityMaskImage->texture)
+					filterTexture = m_visibilityMaskEffect.Mask(filterTexture, m_visibilityMaskImage->texture);
 			}
 
+			// Present processed texture
 			m_finalTexture.reset(std::visit([&](auto&& effect) -> gs_texture_t*
 			{
 				using E = std::decay_t<decltype(effect)>;

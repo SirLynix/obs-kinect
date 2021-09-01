@@ -26,6 +26,7 @@
 #include <obs-kinect/GreenscreenEffects.hpp>
 #include <obs-kinect/Shaders/AlphaMaskShader.hpp>
 #include <obs-kinect/Shaders/ConvertDepthIRToColorShader.hpp>
+#include <obs-kinect/Shaders/VisibilityMaskShader.hpp>
 #include <obs-kinect/Shaders/GaussianBlurShader.hpp>
 #include <obs-kinect/Shaders/GreenScreenFilterShader.hpp>
 #include <obs-kinect/Shaders/TextureLerpShader.hpp>
@@ -71,6 +72,7 @@ class KinectSource
 		void UpdateDepthToColor(DepthToColorSettings depthToColor);
 		void UpdateGreenScreen(GreenScreenSettings greenScreen);
 		void UpdateInfraredToColor(InfraredToColorSettings infraredToColor);
+		void UpdateVisibilityMaskFile(const std::string_view& filePath);
 
 		enum class GreenScreenFilterType
 		{
@@ -155,11 +157,15 @@ class KinectSource
 		ObsTexturePtr m_depthTexture;
 		ObsTexturePtr m_infraredTexture;
 		SourceType m_sourceType;
+		ObsImageFilePtr m_visibilityMaskImage;
+		VisibilityMaskShader m_visibilityMaskEffect;
 		const obs_source_t* m_source;
 		std::string m_deviceName;
+		std::string m_visibilityMaskPath;
 		std::uint32_t m_height;
 		std::uint32_t m_width;
 		std::uint64_t m_lastFrameIndex;
+		std::uint64_t m_lastTextureTick;
 		bool m_isVisible;
 		bool m_stopOnHide;
 };

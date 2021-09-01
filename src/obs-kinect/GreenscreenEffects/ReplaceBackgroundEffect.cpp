@@ -42,7 +42,7 @@ gs_texture_t* ReplaceBackgroundEffect::Apply(const Config& config, gs_texture_t*
 		return sourceTexture;
 
 	// Tick the texture if it's animated
-	uint64_t now = obs_get_video_frame_time();
+	std::uint64_t now = obs_get_video_frame_time();
 	if (m_lastTextureTick == 0)
 		m_lastTextureTick = now;
 

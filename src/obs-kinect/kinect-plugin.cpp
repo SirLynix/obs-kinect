@@ -231,7 +231,7 @@ static void kinect_source_update(void* data, obs_data_t* settings)
 
 	}, s_greenscreenEffects[activeEffect].value);
 
-	kinectSource->UpdateGreenScreen(greenScreen);
+	kinectSource->UpdateGreenScreen(std::move(greenScreen));
 
 	KinectSource::InfraredToColorSettings infraredToColor;
 	infraredToColor.averageValue = float(obs_data_get_double(settings, "infrared_average"));
@@ -239,6 +239,8 @@ static void kinect_source_update(void* data, obs_data_t* settings)
 	infraredToColor.standardDeviation = float(obs_data_get_double(settings, "infrared_standard_deviation"));
 
 	kinectSource->UpdateInfraredToColor(infraredToColor);
+
+	kinectSource->UpdateVisibilityMaskFile(obs_data_get_string(settings, "greenscreen_visibilitymaskpath"));
 }
 
 static void* kinect_source_create(obs_data_t* settings, obs_source_t* source)
@@ -370,6 +372,13 @@ static obs_properties_t* kinect_source_properties(void *unused)
 		update_greenscreen_visibility(props, s);
 		return true;
 	});
+
+	std::string filter = obs_module_text("BrowsePath.Images");
+	filter += " (*.bmp *.jpg *.jpeg *.tga *.gif *.png);;";
+	filter += obs_module_text("BrowsePath.AllFiles");
+	filter += " (*.*)";
+
+	obs_properties_add_path(greenscreenProps, "greenscreen_visibilitymaskpath", obs_module_text("ObsKinect.GreenScreenVisibilityMask"), OBS_PATH_FILE, filter.data(), nullptr);
 
 	// Greenscreen effect (remove background, blur background, ...)
 	p = obs_properties_add_list(greenscreenProps, "greenscreen_effect", obs_module_text("ObsKinect.GreenScreenEffect"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);

@@ -1,0 +1,40 @@
+uniform float4x4 ViewProj;
+uniform texture2d FilterImage;
+uniform texture2d MaskImage;
+
+sampler_state textureSampler {
+	Filter   = Linear;
+	AddressU = Clamp;
+	AddressV = Clamp;
+};
+
+struct VertData {
+	float4 pos : POSITION;
+	float2 uv : TEXCOORD0;
+};
+
+VertData VSDefault(VertData vert_in)
+{
+	VertData vert_out;
+	vert_out.pos = mul(float4(vert_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv = vert_in.uv;
+	return vert_out;
+}
+
+float4 PSDepthMask(VertData vert_in) : TARGET
+{
+	float currentFilter = FilterImage.Sample(textureSampler, vert_in.uv).r;
+	float4 mask = MaskImage.Sample(textureSampler, vert_in.uv);
+
+	float value = lerp(currentFilter, mask.r, mask.a);
+	return float4(value, value, value, value);
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = VSDefault(vert_in);
+		pixel_shader = PSDepthMask(vert_in);
+	}
+}
