@@ -23,7 +23,7 @@
 KinectFreenectDevice::KinectFreenectDevice(freenect_device* device, const char* serial) :
 m_device(device)
 {
-	SetSupportedSources(Source_Color);
+	SetSupportedSources(Source_Color | Source_Depth);
 	SetUniqueName("Kinect " + std::string(serial));
 }
 
@@ -41,6 +41,9 @@ void KinectFreenectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m
 	freenect_frame_mode currentColorMode;
 	currentColorMode.is_valid = 0;
 
+	freenect_frame_mode currentDepthMode;
+	currentDepthMode.is_valid = 0;
+
 	try
 	{
 		freenect_frame_mode colorMode = freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_VIDEO_RGB);
@@ -51,6 +54,13 @@ void KinectFreenectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m
 			throw std::runtime_error("failed to set video mode");
 
 		currentColorMode = colorMode;
+
+		freenect_frame_mode depthMode = freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_MM);
+
+		if (freenect_set_depth_mode(m_device, depthMode) < 0)
+			throw std::runtime_error("failed to set video mode");
+
+		currentDepthMode = depthMode;
 	}
 	catch (const std::exception&)
 	{
@@ -68,32 +78,63 @@ void KinectFreenectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m
 	if (freenect_start_video(m_device) != 0)
 		errorlog("failed to start video");
 
+	if (freenect_start_depth(m_device) != 0)
+		errorlog("failed to start depth");
+
 	struct FreenectUserdata
 	{
-		const std::uint8_t* rgbPtr = nullptr;
-		std::mutex mutex;
-		std::uint32_t rgbTimestamp = 0;
+		std::mutex depthMutex;
+		std::mutex videoMutex;
+		std::uint32_t depthTimestamp = 0;
+		std::uint32_t videoTimestamp = 0;
+		std::vector<std::uint16_t> depthBackBuffer;
+		std::vector<std::uint16_t> depthFrontBuffer;
+		std::vector<std::uint8_t> videoBackBuffer;
+		std::vector<std::uint8_t> videoFrontBuffer;
+
 	};
 
 	FreenectUserdata ud;
+	ud.depthBackBuffer.resize(currentDepthMode.bytes);
+	ud.depthFrontBuffer.resize(currentDepthMode.bytes);
+	ud.videoBackBuffer.resize(currentColorMode.bytes);
+	ud.videoFrontBuffer.resize(currentColorMode.bytes);
 
 	freenect_set_user(m_device, &ud);
-	freenect_set_video_callback(m_device, [](freenect_device* device, void* rgb, uint32_t timestamp)
+	
+	freenect_set_depth_buffer(m_device, ud.depthBackBuffer.data());
+	freenect_set_depth_callback(m_device, [](freenect_device* device, void* /*depth*/, uint32_t timestamp)
 	{
 		FreenectUserdata* userdata = static_cast<FreenectUserdata*>(freenect_get_user(device));
 
-		std::scoped_lock lock(userdata->mutex);
-		userdata->rgbPtr = static_cast<const std::uint8_t*>(rgb);
-		userdata->rgbTimestamp = timestamp;
+		std::scoped_lock lock(userdata->depthMutex);
+		userdata->depthTimestamp = timestamp;
+
+		std::swap(userdata->depthBackBuffer, userdata->depthFrontBuffer);
+		freenect_set_depth_buffer(device, userdata->depthBackBuffer.data());
+	});
+
+	freenect_set_video_buffer(m_device, ud.videoBackBuffer.data());
+	freenect_set_video_callback(m_device, [](freenect_device* device, void* /*rgb*/, uint32_t timestamp)
+	{
+		FreenectUserdata* userdata = static_cast<FreenectUserdata*>(freenect_get_user(device));
+
+		std::scoped_lock lock(userdata->videoMutex);
+		userdata->videoTimestamp = timestamp;
+
+		std::swap(userdata->videoBackBuffer, userdata->videoFrontBuffer);
+		freenect_set_video_buffer(device, userdata->videoBackBuffer.data());
 	});
 
 	while (IsRunning())
 	{
 		KinectFramePtr framePtr = std::make_shared<KinectFrame>();
-		{
-			std::scoped_lock lock(ud.mutex);
 
-			const std::uint8_t* frameMem = ud.rgbPtr;
+		// Video
+		{
+			std::scoped_lock lock(ud.videoMutex);
+
+			const std::uint8_t* frameMem = ud.videoFrontBuffer.data();
 			if (!frameMem)
 				continue;
 
@@ -124,9 +165,33 @@ void KinectFreenectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m
 			frameData.format = GS_RGBA;
 		}
 
+		// Depth
+		{
+			std::scoped_lock lock(ud.depthMutex);
+
+			const std::uint16_t* frameMem = ud.depthFrontBuffer.data();
+			if (!frameMem)
+				continue;
+
+			DepthFrameData& frameData = framePtr->depthFrame.emplace();
+			frameData.width = currentDepthMode.width;
+			frameData.height = currentDepthMode.height;
+
+			// Convert to R16
+			std::size_t memSize = frameData.width * frameData.height * 2;
+			frameData.memory.resize(memSize);
+			std::memcpy(frameData.memory.data(), frameMem, memSize);
+
+			frameData.ptr.reset(reinterpret_cast<std::uint16_t*>(frameData.memory.data()));
+			frameData.pitch = static_cast<std::uint32_t>(frameData.width * 2);
+		}
+
 		UpdateFrame(std::move(framePtr));
 		os_sleep_ms(1000 / 30);
 	}
+
+	if (freenect_stop_depth(m_device) != 0)
+		errorlog("failed to stop depth");
 
 	if (freenect_stop_video(m_device) != 0)
 		errorlog("failed to stop video");
