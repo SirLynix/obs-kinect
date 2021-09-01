@@ -17,6 +17,7 @@
 
 #include "FreenectDevice.hpp"
 #include <util/threading.h>
+#include <cstring>
 #include <mutex>
 #include <sstream>
 
