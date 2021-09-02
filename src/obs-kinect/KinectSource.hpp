@@ -33,6 +33,7 @@
 #include <obs-module.h>
 #include <atomic>
 #include <condition_variable>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <thread>
@@ -52,7 +53,7 @@ class KinectSource
 		struct GreenScreenSettings;
 		struct InfraredToColorSettings;
 
-		KinectSource(KinectDeviceRegistry& registry, const obs_source_t* source);
+		KinectSource(std::shared_ptr<KinectDeviceRegistry> registry, const obs_source_t* source);
 		~KinectSource();
 
 		std::uint32_t GetHeight() const;
@@ -136,7 +137,7 @@ class KinectSource
 		static DynamicValues ComputeDynamicValues(const std::uint16_t* values, std::size_t valueCount);
 
 		std::optional<KinectDeviceAccess> m_deviceAccess;
-		GreenscreenEffects m_greenscreenEffect;
+		std::shared_ptr<KinectDeviceRegistry> m_registry;
 		std::vector<std::uint8_t> m_bodyMappingMemory;
 		std::vector<std::uint8_t> m_bodyMappingDirtyCounter;
 		std::vector<std::uint8_t> m_depthMappingMemory;
@@ -144,12 +145,12 @@ class KinectSource
 		ConvertDepthIRToColorShader m_depthIRConvertEffect;
 		GaussianBlurShader m_filterBlur;
 		GreenScreenFilterShader m_greenScreenFilterEffect;
-		ObserverPtr<gs_texture_t> m_finalTexture;
+		GreenscreenEffects m_greenscreenEffect;
 		DepthToColorSettings m_depthToColorSettings;
 		GreenScreenSettings m_greenScreenSettings;
 		InfraredToColorSettings m_infraredToColorSettings;
 		TextureLerpShader m_textureLerpEffect;
-		KinectDeviceRegistry& m_registry;
+		ObserverPtr<gs_texture_t> m_finalTexture;
 		ObsTexturePtr m_backgroundRemovalTexture;
 		ObsTexturePtr m_bodyIndexTexture;
 		ObsTexturePtr m_colorTexture;

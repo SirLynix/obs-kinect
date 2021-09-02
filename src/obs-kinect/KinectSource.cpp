@@ -25,9 +25,9 @@
 #include <numeric>
 #include <optional>
 
-KinectSource::KinectSource(KinectDeviceRegistry& registry, const obs_source_t* source) :
+KinectSource::KinectSource(std::shared_ptr<KinectDeviceRegistry> registry, const obs_source_t* source) :
 m_filterBlur(GS_RGBA),
-m_registry(registry),
+m_registry(std::move(registry)),
 m_sourceType(SourceType::Color),
 m_source(source),
 m_height(0),
@@ -37,12 +37,12 @@ m_lastTextureTick(0),
 m_isVisible(false),
 m_stopOnHide(false)
 {
-	m_registry.RegisterSource(this);
+	m_registry->RegisterSource(this);
 }
 
 KinectSource::~KinectSource()
 {
-	m_registry.UnregisterSource(this);
+	m_registry->UnregisterSource(this);
 }
 
 std::uint32_t KinectSource::GetHeight() const
@@ -750,7 +750,7 @@ void KinectSource::RefreshDeviceAccess()
 
 	if (m_isVisible)
 	{
-		KinectDevice* device = m_registry.GetDevice(m_deviceName);
+		KinectDevice* device = m_registry->GetDevice(m_deviceName);
 		if (device)
 			m_deviceAccess = OpenAccess(*device);
 		else

@@ -34,7 +34,7 @@ OBS_MODULE_USE_DEFAULT_LOCALE("kinect_source", "en-US")
 #pragma GCC visibility pop
 #endif
 
-static std::optional<KinectDeviceRegistry> s_deviceRegistry;
+static std::shared_ptr<KinectDeviceRegistry> s_deviceRegistry;
 
 static const char* NoDevice = "none_none";
 
@@ -245,7 +245,7 @@ static void kinect_source_update(void* data, obs_data_t* settings)
 
 static void* kinect_source_create(obs_data_t* settings, obs_source_t* source)
 {
-	KinectSource* kinect = new KinectSource(*s_deviceRegistry, source);
+	KinectSource* kinect = new KinectSource(s_deviceRegistry, source);
 	kinect_source_update(kinect, settings);
 
 	kinect->OnVisibilityUpdate(obs_source_showing(source));
@@ -525,7 +525,7 @@ OBSKINECT_EXPORT bool obs_module_load()
 		return obs_module_text(key);
 	});
 
-	s_deviceRegistry.emplace();
+	s_deviceRegistry = std::make_shared<KinectDeviceRegistry>();
 	s_deviceRegistry->RegisterPlugin("obs-kinect-azuresdk");
 	s_deviceRegistry->RegisterPlugin("obs-kinect-freenect");
 	s_deviceRegistry->RegisterPlugin("obs-kinect-freenect2");
