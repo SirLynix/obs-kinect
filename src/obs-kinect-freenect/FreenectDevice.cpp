@@ -16,6 +16,7 @@
 ******************************************************************************/
 
 #include "FreenectDevice.hpp"
+#include <libfreenect/libfreenect_registration.h>
 #include <util/threading.h>
 #include <cstring>
 #include <mutex>
@@ -24,7 +25,7 @@
 KinectFreenectDevice::KinectFreenectDevice(freenect_device* device, const char* serial) :
 m_device(device)
 {
-	SetSupportedSources(Source_Color | Source_Depth);
+	SetSupportedSources(Source_Color | Source_Depth | Source_ColorMappedDepth);
 	SetUniqueName("Kinect " + std::string(serial));
 }
 
@@ -56,7 +57,7 @@ void KinectFreenectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m
 
 		currentColorMode = colorMode;
 
-		freenect_frame_mode depthMode = freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_MM);
+		freenect_frame_mode depthMode = freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_11BIT_PACKED);
 
 		if (freenect_set_depth_mode(m_device, depthMode) < 0)
 			throw std::runtime_error("failed to set video mode");
@@ -166,25 +167,43 @@ void KinectFreenectDevice::ThreadFunc(std::condition_variable& cv, std::mutex& m
 			frameData.format = GS_RGBA;
 		}
 
-		// Depth
+		// Depth (and color mapped depth)
 		{
 			std::scoped_lock lock(ud.depthMutex);
 
-			const std::uint16_t* frameMem = ud.depthFrontBuffer.data();
+			std::uint16_t* frameMem = ud.depthFrontBuffer.data();
 			if (!frameMem)
 				continue;
 
-			DepthFrameData& frameData = framePtr->depthFrame.emplace();
-			frameData.width = currentDepthMode.width;
-			frameData.height = currentDepthMode.height;
+			// Depth
+			{
+				DepthFrameData& frameData = framePtr->depthFrame.emplace();
+				frameData.width = currentDepthMode.width;
+				frameData.height = currentDepthMode.height;
 
-			// Convert to R16
-			std::size_t memSize = frameData.width * frameData.height * 2;
-			frameData.memory.resize(memSize);
-			std::memcpy(frameData.memory.data(), frameMem, memSize);
+				// Copy it to buffer memory
+				std::size_t memSize = frameData.width * frameData.height * 2;
+				frameData.memory.resize(memSize);
+				freenect_convert_packed_to_16bit(reinterpret_cast<std::uint8_t*>(frameMem), reinterpret_cast<std::uint16_t*>(frameData.memory.data()), 11, frameData.width*frameData.height);
 
-			frameData.ptr.reset(reinterpret_cast<std::uint16_t*>(frameData.memory.data()));
-			frameData.pitch = static_cast<std::uint32_t>(frameData.width * 2);
+				frameData.ptr.reset(reinterpret_cast<std::uint16_t*>(frameData.memory.data()));
+				frameData.pitch = static_cast<std::uint32_t>(frameData.width * 2);
+			}
+
+			// Color-mapped depth
+			{
+				DepthFrameData& frameData = framePtr->colorMappedDepthFrame.emplace();
+				frameData.width = currentDepthMode.width;
+				frameData.height = currentDepthMode.height;
+
+				// Convert to R16
+				std::size_t memSize = frameData.width * frameData.height * 2;
+				frameData.memory.resize(memSize);
+				freenect_map_depth_to_rgb(m_device, reinterpret_cast<std::uint8_t*>(frameMem), reinterpret_cast<std::uint16_t*>(frameData.memory.data()));
+
+				frameData.ptr.reset(reinterpret_cast<std::uint16_t*>(frameData.memory.data()));
+				frameData.pitch = static_cast<std::uint32_t>(frameData.width * 2);
+			}
 		}
 
 		UpdateFrame(std::move(framePtr));

@@ -3,14 +3,8 @@ package("libfreenect")
     set_description("Drivers and libraries for the Xbox Kinect device on Windows, Linux, and OS X")
     set_license("GPL-2.0")
 
-    set_urls("https://github.com/OpenKinect/libfreenect/archive/refs/tags/$(version).tar.gz",
-             "https://github.com/OpenKinect/libfreenect.git")
-    add_versions("v0.6.2", "e135f5e60ae290bf1aa403556211f0a62856a9e34f12f12400ec593620a36bfa")
-
-    add_urls("https://github.com/OpenKinect/libfreenect.git")
-
-    add_versions("v0.2.1", "fd64c5d9b214df6f6a55b4419357e51083f15d93")
-    add_versions("v0.2.0", "v0.2.0")
+    set_urls("https://github.com/SirLynix/libfreenect.git")
+    add_versions("v0.1", "5e2cd8e18877fbe7ef4c863161e90873c06a9180")
 
     add_deps("cmake >=3.12.4")
     if is_plat("windows") then 
@@ -40,4 +34,5 @@ package("libfreenect")
 
     on_test(function (package)
         assert(package:has_cfuncs("freenect_init", {includes = "libfreenect/libfreenect.h"}))
+        assert(package:has_cfuncs("freenect_map_depth_to_rgb", {includes = "libfreenect/libfreenect_registration.h"}))
     end)
