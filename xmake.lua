@@ -116,6 +116,7 @@ add_requires("libfreenect", "libfreenect2", { configs = { debug = is_mode("debug
 add_requires("k4a", "libusb")
 
 add_requireconfs("libusb", "*.libusb", { configs = { pic = true, shared = is_plat("windows") }})
+add_requireconfs("libfreenect2", "libfreenect2.libjpeg-turbo", { configs = { shared = not is_plat("windows") }})
 
 if is_plat("windows") then
 	add_requires("kinect-sdk1", "kinect-sdk2", { optional = true })
