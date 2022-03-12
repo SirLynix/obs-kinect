@@ -13,7 +13,7 @@ This plugins allows you to access a Kinect v1 (for Xbox 360 or Kinect for Window
 
 # Requirement
 
-- Windows. For now this plugin is only compatible with Windows as it uses the official Kinect for Windows API (may change in the future).
+- ~~Windows~~, Linux support exist: see https://github.com/SirLynix/obs-kinect/issues/9
 - A Kinect, all known models are supported:
    * **Kinect for 360** - original Kinect (v1)
    * **Kinect for Windows** - same as Kinect for 360 but with support for camera controls and a "near mode" (v1+)
@@ -34,7 +34,7 @@ This plugins allows you to access a Kinect v1 (for Xbox 360 or Kinect for Window
 - ~~Use shaders to do faux green-screen processing. 1080p pixel processing is a really heavy CPU task and would benefit a lot to run on the GPU~~
 - ~~Add possibility to use body index masking (pixels identified by Kinect SDK to be you)~~
 - Optimize green-screen filtering effect (especially the color-to-depth mapping part, if possible)
-- Add support for Linux and macOS (using [libfreenect](https://github.com/OpenKinect/libfreenect) and [libfreenect2](https://github.com/OpenKinect/libfreenect2))
+- ~~Add support for Linux and macOS (using [libfreenect](https://github.com/OpenKinect/libfreenect) and [libfreenect2](https://github.com/OpenKinect/libfreenect2))~~
 - Add more fun effects (use issues to post your ideas)
 - Support audio?
 
