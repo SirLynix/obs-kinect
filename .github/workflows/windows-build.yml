@@ -115,6 +115,7 @@ jobs:
     - name: Configure xmake and install dependencies
       run: xmake config --arch=${{ matrix.arch }} --mode=${{ matrix.mode }} --yes --verbose
       env:
+        KINECTSDKAZUREBT_DIR: ${{ github.workspace }}/kinect-sdks/k4abt
         KINECTSDK10_DIR: ${{ github.workspace }}/kinect-sdks/sdk1
         KINECT_TOOLKIT_DIR: ${{ github.workspace }}/kinect-sdks/sdk1-toolkit
         KINECTSDK20_DIR: ${{ github.workspace }}/kinect-sdks/sdk2
@@ -123,6 +124,7 @@ jobs:
     - name: Build obs-kinect
       run: xmake --verbose
       env:
+        KINECTSDKAZUREBT_DIR: ${{ github.workspace }}/kinect-sdks/k4abt
         KINECTSDK10_DIR: ${{ github.workspace }}/kinect-sdks/sdk1
         KINECT_TOOLKIT_DIR: ${{ github.workspace }}/kinect-sdks/sdk1-toolkit
         KINECTSDK20_DIR: ${{ github.workspace }}/kinect-sdks/sdk2
@@ -131,6 +133,7 @@ jobs:
     - name: Install obs-kinect
       run: xmake package -vo package
       env:
+        KINECTSDKAZUREBT_DIR: ${{ github.workspace }}/kinect-sdks/k4abt
         KINECTSDK10_DIR: ${{ github.workspace }}/kinect-sdks/sdk1
         KINECT_TOOLKIT_DIR: ${{ github.workspace }}/kinect-sdks/sdk1-toolkit
         KINECTSDK20_DIR: ${{ github.workspace }}/kinect-sdks/sdk2

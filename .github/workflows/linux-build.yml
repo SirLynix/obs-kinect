@@ -26,6 +26,14 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Checkout Kinect SDKs
+      uses: actions/checkout@v2
+      continue-on-error: true
+      with:
+        repository: SirLynix/kinect-sdks
+        token: ${{ secrets.KINECT_SDKS_PAT }}
+        path: ${{ github.workspace }}/kinect-sdks
+
     # Install OBS studio & Kinect for Azure dependencies
     - name: Install apt dependencies
       run: | 
@@ -158,14 +166,20 @@ jobs:
     # Setup compilation mode and install project dependencies
     - name: Configure xmake and install dependencies
       run: xmake config --arch=${{ matrix.arch }} --mode=${{ matrix.mode }} --yes --verbose
+      env:
+        KINECTSDKAZUREBT_DIR: ${{ github.workspace }}/kinect-sdks/k4abt
 
     # Build the plugin
     - name: Build obs-kinect
       run: xmake --verbose
+      env:
+        KINECTSDKAZUREBT_DIR: ${{ github.workspace }}/kinect-sdks/k4abt
 
     # Install the result files
     - name: Install obs-kinect
       run: xmake package -vo package
+      env:
+        KINECTSDKAZUREBT_DIR: ${{ github.workspace }}/kinect-sdks/k4abt
 
     # Upload artifacts
     - uses: actions/upload-artifact@v2

@@ -114,6 +114,7 @@ rule_end()
 add_repositories("local-repo xmake-repo")
 add_requires("libfreenect", "libfreenect2", { configs = { debug = is_mode("debug") } })
 add_requires("k4a", "libusb")
+add_requires("k4abt-headers", { optional = true })
 
 add_requireconfs("libusb", "*.libusb", { configs = { pic = true, shared = is_plat("windows") }})
 add_requireconfs("libfreenect2", "libfreenect2.libjpeg-turbo", { configs = { shared = not is_plat("windows") }})
@@ -212,6 +213,10 @@ target("obs-kinect-azuresdk")
 	add_files("src/obs-kinect-azuresdk/**.cpp")
 
 	add_rules("kinect_dynlib", "copy_to_obs", "package_bin", "package_deps")
+
+	if has_package("k4abt-headers") then
+		add_packages("k4abt-headers")
+	end
 
 if is_plat("windows") then
 

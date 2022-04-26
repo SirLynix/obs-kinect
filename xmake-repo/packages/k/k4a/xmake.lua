@@ -1,6 +1,6 @@
 package("k4a")
     set_homepage("https://Azure.com/Kinect")
-    set_description(" A cross platform (Linux and Windows) user mode SDK to read data from your Azure Kinect device.")
+    set_description("A cross platform (Linux and Windows) user mode SDK to read data from your Azure Kinect device.")
     set_license("MIT")
 
     set_urls("https://github.com/microsoft/Azure-Kinect-Sensor-SDK.git")
