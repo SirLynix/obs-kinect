@@ -51,6 +51,7 @@ void UnloadBodyTrackingSdk();
 	cb(uint64_t, k4abt_frame_get_device_timestamp_usec, k4abt_frame_t body_frame_handle) \
 	cb(k4a_image_t, k4abt_frame_get_body_index_map, k4abt_frame_t body_frame_handle) \
 	cb(k4a_capture_t, k4abt_frame_get_capture, k4abt_frame_t body_frame_handle) \
+	cb(uint64_t, k4abt_frame_get_system_timestamp_nsec, k4abt_frame_t body_frame_handle) \
 
 #define OBS_KINECT_AZURE_SDK_BODY_TRACKING_FUNC(Ret, Name, ...) extern Ret (*Name)(__VA_ARGS__);
 OBS_KINECT_AZURE_SDK_BODY_TRACKING_FOREACH_FUNC(OBS_KINECT_AZURE_SDK_BODY_TRACKING_FUNC)
