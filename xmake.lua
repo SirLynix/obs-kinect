@@ -117,8 +117,7 @@ add_requires("k4a", "libusb")
 add_requires("k4abt-headers", { optional = true })
 
 add_requireconfs("libusb", "*.libusb", { configs = { pic = true, shared = is_plat("windows") }})
-add_requireconfs("libfreenect2", { configs = { shared = not is_plat("windows") }})
-add_requireconfs("libfreenect2.libjpeg-turbo", { configs = { shared = not is_plat("windows") }, system = false })
+add_requireconfs("libfreenect2", "libfreenect2.libjpeg-turbo", { configs = { shared = not is_plat("windows") }})
 
 if is_plat("windows") then
 	add_requires("kinect-sdk1", "kinect-sdk2", { optional = true })
