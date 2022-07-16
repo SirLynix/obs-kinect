@@ -44,12 +44,12 @@ Depending on your Kinect model (see requirement) you'll have to install a runtim
 
 You can install multiples runtimes if you want to support multiple Kinect versions.
 
+⚠️ Don't forget to install the Visual Studio 2019 redistributables ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe)).
+
 ### If you have a Kinect v1 (Xbox 360 or Kinect for Windows)
 - Download and install [**Kinect for Windows runtime v1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40277) or download and install [**Kinect for Windows SDK 1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40278).
 
 ⚠️ Some Kinects seem to work only with the SDK installed ("Not supported" error showing up in the logs), installing the SDK seems to fix this.
-
-⚠️ Don't forget to install the Visual Studio 2019 redistributables ([32bits](https://aka.ms/vs/16/release/vc_redist.x86.exe), [64bits](https://aka.ms/vs/16/release/vc_redist.x64.exe)).
 
 ### If you have a Kinect v2 (Xbox One or Kinect 2 for Windows)
 - Download and install [**Kinect for Windows runtime v2.2**](https://www.microsoft.com/en-us/download/details.aspx?id=100067)
@@ -129,8 +129,7 @@ Developer note: a way to fix that warning would be to load kinect runtime dynami
 
 ## Does it work on Linux/macOS?
 
-Not yet, I still have to try to use libfreenect(2) for that.  
-Unfortunately since some of the features this plugin provides (like body indexing and dedicated background removal) are based on Windows Kinect SDK features, theses will probably never be available to other systems.
+Kinda (see https://github.com/SirLynix/obs-kinect/issues/9).
 
 ## Does it work with Streamlabs OBS?
 
@@ -178,7 +177,7 @@ Kinect v1 dedicated background removal (Microsoft background removal) is also su
 
 ## Why isn't dedicated background removal available?
 
-If you're using a KinectV2 or KinectV3 this is normal, Microsoft didn't (afaik) release a background removal library for those.
+If you're using a KinectV2 or KinectV3 this is normal, Microsoft didn't (afaik) release a background removal library for those.  
 If you're using a KinectV1, you're maybe lacking the KinectBackgroundRemoval180_(32|64).dll in your plugin folder (next to obs-kinect.dll)?
 
 Please [create an issue](https://github.com/SirLynix/obs-kinect/issues) otherwise!
@@ -191,7 +190,7 @@ Kinect v2 and v3 do that kinda well but v1 may struggle at the beginning, try to
 
 ## I have to get really far away from the Kinect for the green screen to work!
 
-Kinect v1 depth range is about 80-400cm in front of it, but if you have a Kinect for Windows you can enable near mode to bring it to 40-200cm.
+Kinect v1 depth range is about 80-400cm in front of it, but if you have a Kinect for Windows (v1+) you can enable near mode to bring it to 40-200cm.
 
 Kinect v2 depth range is about 50-500cm in front of it.
 
@@ -211,16 +210,21 @@ Kinect v2 doesn't have this limitation.
 
 ## (KinectV1) It takes a lot of time to show something
 
-Kinect v1 takes indeed a lot of time to initialize itself and to change the running mode. As far as I know this is from the Kinect/Microsoft SDK and I can't do much against it.
+Kinect v1 takes indeed a lot of time to initialize itself and to change the running mode. As far as I know this is from the Kinect/Microsoft SDK and I can't do much against it.  
 As far as my tests went, it may take up to 10-15s before showing up something.
 
 Note: if you enabled the green-screen effect with a body filter, try to move away from the Kinect to let it detect your body and then come back.
+
+## (KinectV1) Why does the LED blink?
+
+It seems to be a difference between Kinect for 360 (v1) and Kinect for Windows (v1+) (see https://github.com/SirLynix/obs-kinect/issues/68).  
+Unfortunately I don't think there's much I can do about it.
 
 ## (KinectV3) What are depth modes?
 
 The Azure Kinect supports multiple depth modes (see [Azure Kinect Hardware specifications](https://docs.microsoft.com/en-us/azure/kinect-dk/hardware-specification#depth-camera-supported-operating-modes)). Theses will affect the depth field of view and range.
 
-NFOV unbinned is a good default, but you can try to play with them to see what works best for you (be warned that WFOV unbinned limit the framerate to 15Hz).
+NFOV unbinned is a good default, but you can try to play with them to see what works best for you (be warned that WFOV unbinned limits the framerate to 15Hz).
 
 Passive IR only works with infrared stream.
 
@@ -242,7 +246,7 @@ You can also try changing the depth mode (see "What are depth modes?")
 Azure Kinect depth sensor quality is really good but it has some troubles with black surfaces like headsets and hair for some people (like me), and cannot read depth for thoses pixels.  
 I'm trying to improve that on my side (along with transparency shadows). I don't know yet if Azure Kinect team can fix this or not, as it may be a software or hardware issue
 
-## (KinectV3) Is this plugin able to use multiple Azure Kinect at once (to fill depth holes)?
+## (KinectV3) Is this plugin able to use multiple Azure Kinect cameras at once (to fill depth holes)?
 
 At this point, this is an idea I would like to implement but I won't be able to test it myself. If you have two Azure Kinect and are willing to help please let me know!
 
@@ -280,7 +284,7 @@ You can also try to use the new body filter.
 
 Since version 0.3 you can allow some "depth-lag", which means the plugin is allowed to fetch a previous depth value (up to X frames in the past) if current depth isn't available.
 
-## Why do closes object disappears before reaching the min distance?
+## Why do close objects disappear before reaching the min distance?
 
 Kinect cannot read depth below 40cm (v1) / 50cm (v2) / 25|50cm (v3) in front of it and invalid depth are discarded.
 Try moving your Kinect further away from the object/person you want to film.
@@ -336,6 +340,6 @@ Nope, and I doubt it will as theses are the only depth camera I have, but it sho
 
 Thanks a lot to @microsoft for supporting obs-kinect developpment by sending me an Azure Kinect so I could add support for it!
 
-Thanks to @pucgenie, @saphir1997 and @MarcoWilli for the german translation.
-Thanks to @Liskowskyy for the polish translation.
-Thanks to @yeonggille for the Korean translation
+Thanks to @pucgenie, @saphir1997 and @MarcoWilli for the german translation.  
+Thanks to @Liskowskyy for the polish translation.  
+Thanks to @yeonggille for the Korean translation.  
