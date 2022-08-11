@@ -4,7 +4,7 @@ local ObsFolder = ObsFolder or {}
 
 rule("kinect_dynlib")
 	after_load(function (target)
-		target:add("rpathdirs", "@executable_path")
+		target:add("rpathdirs", ".")
 	end)
 
 	on_load("windows", function (target)
@@ -212,7 +212,12 @@ target("obs-kinect-azuresdk")
 	add_headerfiles("src/obs-kinect-azuresdk/**.hpp", "src/obs-kinect-azuresdk/**.inl")
 	add_files("src/obs-kinect-azuresdk/**.cpp")
 
-	add_rules("kinect_dynlib", "copy_to_obs", "package_bin", "package_deps")
+	add_rules("kinect_dynlib", "copy_to_obs", "package_deps")
+	if is_plat("windows") then
+		add_rules("package_bin")
+	else
+		add_rules("package_plugin")
+	end
 
 	if has_package("k4abt-headers") then
 		add_packages("k4abt-headers")
@@ -274,7 +279,12 @@ target("obs-kinect-freenect")
 	add_headerfiles("src/obs-kinect-freenect/**.hpp", "src/obs-kinect-freenect/**.inl")
 	add_files("src/obs-kinect-freenect/**.cpp")
 
-	add_rules("kinect_dynlib", "copy_to_obs", "package_bin", "package_deps")
+	add_rules("kinect_dynlib", "copy_to_obs", "package_deps")
+	if is_plat("windows") then
+		add_rules("package_bin")
+	else
+		add_rules("package_plugin")
+	end
 
 target("obs-kinect-freenect2")
 	set_kind("shared")
@@ -286,4 +296,9 @@ target("obs-kinect-freenect2")
 	add_headerfiles("src/obs-kinect-freenect2/**.hpp", "src/obs-kinect-freenect2/**.inl")
 	add_files("src/obs-kinect-freenect2/**.cpp")
 
-	add_rules("kinect_dynlib", "copy_to_obs", "package_bin", "package_deps")
+	add_rules("kinect_dynlib", "copy_to_obs", "package_deps")
+	if is_plat("windows") then
+		add_rules("package_bin")
+	else
+		add_rules("package_plugin")
+	end
