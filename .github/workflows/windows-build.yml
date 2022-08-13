@@ -67,8 +67,8 @@ jobs:
       uses: actions/cache@v3
       id: obs-cache
       with:
-        path: ${{ github.workspace }}/obs-studio/build64
-        key: Windows-OBS-${{ steps.cmake_target.outputs.value }}-${{ env.OBS_VERSION }}
+        path: ${{ github.workspace }}/obs-studio
+        key: Windows-OBS-Studio-${{ steps.cmake_target.outputs.value }}-${{ env.OBS_VERSION }}
 
     # Build obs-studio
     - name: Clone OBS

@@ -125,8 +125,8 @@ jobs:
       uses: actions/cache@v3
       id: obs-cache
       with:
-        path: ${{ github.workspace }}/obs-studio/build64
-        key: Linux-OBS-${{ env.OBS_VERSION }}
+        path: ${{ github.workspace }}/obs-studio
+        key: Linux-OBS-Studio-${{ env.OBS_VERSION }}
 
     # Build obs-studio
     - name: Clone OBS
