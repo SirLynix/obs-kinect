@@ -26,11 +26,15 @@ jobs:
       CMAKE_GENERATOR: 'Visual Studio 17 2022'
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
+    - name: Get current date as package key
+      id: pkg_key
+      run: echo "::set-output name=key::$(date +'%W')"
+
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
     - name: Checkout Kinect SDKs
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       continue-on-error: true
       with:
         repository: SirLynix/kinect-sdks
@@ -49,30 +53,7 @@ jobs:
       with:
         version: ${{ env.QT_VERSION }}
 
-    # Build obs-studio
-    - name: Clone OBS
-      uses: actions/checkout@v2
-      with:
-        repository: obsproject/obs-studio
-        path: ${{ github.workspace }}/obs-studio
-        submodules: 'recursive'
-        fetch-depth: 0 # for tags
-
-    # Checkout OBS to the wanted version
-    - name: Checkout OBS-Studio release (${{ env.OBS_VERSION }})
-      working-directory: ${{ github.workspace }}/obs-studio
-      run: |
-        git checkout ${{ env.OBS_VERSION }}
-        git submodule update
-
-    # Install OBS dependencies
-    - name: Install OBS dependencies
-      working-directory: ${{ github.workspace }}
-      run: |
-        curl https://obsproject.com/downloads/dependencies2019.zip --output dependencies2019.zip
-        mkdir obsdeps
-        tar -xv -C obsdeps -f dependencies2019.zip
-
+    # Select OBS runtime
     - name: Choose OBS Debug or Release build
       uses: haya14busa/action-cond@v1
       id: cmake_target
@@ -81,14 +62,54 @@ jobs:
         if_true: "Debug"
         if_false: "RelWithDebInfo"
 
+    # Cache OBS Studio
+    - name: Retrieve OBS Studio cache
+      uses: actions/cache@v3
+      id: obs-cache
+      with:
+        path: ${{ github.workspace }}/obs-studio/build64
+        key: Windows-OBS-${{ steps.cmake_target.outputs.value }}-${{ env.OBS_VERSION }}
+
+    # Build obs-studio
+    - name: Clone OBS
+      if: steps.obs-cache.outputs.cache-hit != 'true'
+      uses: actions/checkout@v3
+      with:
+        repository: obsproject/obs-studio
+        path: ${{ github.workspace }}/obs-studio
+        submodules: 'recursive'
+        fetch-depth: 0 # for tags
+
+    # Checkout OBS to the wanted version
+    - name: Checkout OBS-Studio release (${{ env.OBS_VERSION }})
+      if: steps.obs-cache.outputs.cache-hit != 'true'
+      working-directory: ${{ github.workspace }}/obs-studio
+      run: |
+        git checkout ${{ env.OBS_VERSION }}
+        git submodule update
+
+    # Install OBS dependencies
+    - name: Install OBS dependencies
+      if: steps.obs-cache.outputs.cache-hit != 'true'
+      working-directory: ${{ github.workspace }}
+      run: |
+        curl https://obsproject.com/downloads/dependencies2019.zip --output dependencies2019.zip
+        mkdir obsdeps
+        tar -xv -C obsdeps -f dependencies2019.zip
+
     # Configure and build obs
     - name: Build OBS-Studio
+      if: steps.obs-cache.outputs.cache-hit != 'true'
       working-directory: ${{ github.workspace }}/obs-studio
       run: |
         mkdir ./build64
         cd ./build64
         cmake -G "${{ env.CMAKE_GENERATOR }}" -A x64 -DDepsPath=${{ github.workspace }}\obsdeps\win64 -DQTDIR=${{ env.Qt5_DIR }} -DDISABLE_PLUGINS=YES -DENABLE_SCRIPTING=NO ..
         msbuild /m /p:Configuration=${{ steps.cmake_target.outputs.value }} ./libobs/libobs.vcxproj
+
+    # Force xmake to a specific folder (for cache)
+    - name: Set xmake env
+      run: echo "XMAKE_GLOBALDIR=${{ runner.workspace }}/xmake-global" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     # Install xmake
     - name: Setup xmake
@@ -105,15 +126,21 @@ jobs:
     - name: Update xmake repository
       run: xmake repo --update
 
+    # Fetch xmake dephash
+    - name: Retrieve dependencies hash
+      id: dep_hash
+      run: echo "::set-output name=hash::$(xmake l utils.ci.packageskey)"
+
     # Cache xmake dependencies
-    - uses: actions/cache@v2
+    - name: Retrieve cached xmake dependencies
+      uses: actions/cache@v3
       with:
-        path: ~/.xmake/packages
-        key: ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.mode }}-${{ hashFiles('xmake.lua', 'xmake-repo') }}-${{ hashFiles('~/.xmake/xmake.conf') }}-${{ hashFiles('~/.xmake/repositories/**') }}
+        path: ${{ env.XMAKE_GLOBALDIR }}\.xmake\packages
+        key: MSVC-${{ matrix.arch }}-${{ matrix.mode }}-${{ steps.dep_hash.outputs.hash }}-W${{ steps.pkg_key.outputs.key }}
 
     # Setup compilation mode and install project dependencies
     - name: Configure xmake and install dependencies
-      run: xmake config --arch=${{ matrix.arch }} --mode=${{ matrix.mode }} --yes --verbose
+      run: xmake config --arch=${{ matrix.arch }} --mode=${{ matrix.mode }} --ccache=n --yes --verbose
       env:
         KINECTSDKAZUREBT_DIR: ${{ github.workspace }}/kinect-sdks/k4abt
         KINECTSDK10_DIR: ${{ github.workspace }}/kinect-sdks/sdk1

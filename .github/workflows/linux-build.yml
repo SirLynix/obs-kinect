@@ -24,10 +24,15 @@ jobs:
       OBS_VERSION: '26.0.0'
 
     steps:
-    - uses: actions/checkout@v2
+    - name: Get current date as package key
+      id: pkg_key
+      run: echo "::set-output name=key::$(date +'%W')"
+
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
     - name: Checkout Kinect SDKs
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       continue-on-error: true
       with:
         repository: SirLynix/kinect-sdks
@@ -115,9 +120,18 @@ jobs:
           mesa-common-dev \
           uuid-dev
 
+    # Cache OBS Studio
+    - name: Retrieve OBS Studio cache
+      uses: actions/cache@v3
+      id: obs-cache
+      with:
+        path: ${{ github.workspace }}/obs-studio/build64
+        key: Linux-OBS-${{ env.OBS_VERSION }}
+
     # Build obs-studio
     - name: Clone OBS
-      uses: actions/checkout@v2
+      if: steps.obs-cache.outputs.cache-hit != 'true'
+      uses: actions/checkout@v3
       with:
         repository: obsproject/obs-studio
         path: ${{ github.workspace }}/obs-studio
@@ -126,6 +140,7 @@ jobs:
 
     # Checkout OBS to the wanted version
     - name: Checkout OBS-Studio release (${{ env.OBS_VERSION }})
+      if: steps.obs-cache.outputs.cache-hit != 'true'
       shell: bash
       working-directory: ${{ github.workspace }}/obs-studio
       run: |
@@ -134,6 +149,7 @@ jobs:
 
     # Configure and build obs
     - name: Build OBS-Studio
+      if: steps.obs-cache.outputs.cache-hit != 'true'
       working-directory: ${{ github.workspace }}/obs-studio
       shell: bash
       run: |
@@ -141,6 +157,10 @@ jobs:
         cd ./build64
         cmake -DDISABLE_PLUGINS=YES -DENABLE_SCRIPTING=NO -DUNIX_STRUCTURE=YES ..
         make -j4 libobs
+
+    # Force xmake to a specific folder (for cache)
+    - name: Set xmake env
+      run: echo "XMAKE_GLOBALDIR=${{ runner.workspace }}/xmake-global" >> $GITHUB_ENV
 
     # Install xmake
     - name: Setup xmake
@@ -157,15 +177,21 @@ jobs:
     - name: Update xmake repository
       run: xmake repo --update
 
+    # Fetch xmake dephash
+    - name: Retrieve dependencies hash
+      id: dep_hash
+      run: echo "::set-output name=hash::$(xmake l utils.ci.packageskey)"
+
     # Cache xmake dependencies
-    - uses: actions/cache@v2
+    - name: Retrieve cached xmake dependencies
+      uses: actions/cache@v3
       with:
-        path: ~/.xmake/packages
-        key: ${{ runner.os }}-${{ matrix.arch }}-${{ matrix.mode }}-${{ hashFiles('xmake.lua', 'xmake-repo') }}-${{ hashFiles('~/.xmake/xmake.conf') }}-${{ hashFiles('~/.xmake/repositories/**') }}
+        path: ${{ env.XMAKE_GLOBALDIR }}/.xmake/packages
+        key: Linux-${{ matrix.arch }}-${{ matrix.mode }}-${{ steps.dep_hash.outputs.hash }}-W${{ steps.pkg_key.outputs.key }}
 
     # Setup compilation mode and install project dependencies
     - name: Configure xmake and install dependencies
-      run: xmake config --arch=${{ matrix.arch }} --mode=${{ matrix.mode }} --yes --verbose
+      run: xmake config --arch=${{ matrix.arch }} --mode=${{ matrix.mode }} --ccache=n --yes --verbose
       env:
         KINECTSDKAZUREBT_DIR: ${{ github.workspace }}/kinect-sdks/k4abt
 
