@@ -42,7 +42,7 @@ jobs:
         path: ${{ github.workspace }}/kinect-sdks
 
     - name: Add msbuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
+      uses: microsoft/setup-msbuild@v1.1.3
 
     - name: Enable longpath in git for Windows
       run: git config --system core.longpaths true
