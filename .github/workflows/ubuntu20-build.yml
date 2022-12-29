@@ -1,4 +1,4 @@
-name: Linux-Build
+name: Ubuntu-20.04-Build
 
 on:
   pull_request:
@@ -13,7 +13,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-18.04]
+        os: [ubuntu-20.04]
         arch: [x64]
         mode: [debug, releasedbg]
 
