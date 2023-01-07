@@ -48,7 +48,7 @@ bool KinectPlugin::Open(const std::string& path)
 	{
 		libPtr = os_dlopen(("./" + path).c_str());
 		if (!libPtr)
-			libPtr = os_dlopen(("obs-plugins/" + path).c_str());
+			libPtr = os_dlopen(("/app/plugins/lib/obs-plugins/" + path).c_str());
 	}
 #endif
 
