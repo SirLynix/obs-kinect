@@ -45,7 +45,7 @@ bool KinectPlugin::Open(const std::string& path)
 #ifdef _WIN32
 	ObsLibPtr lib(os_dlopen(path.c_str()));
 #else
-	ObsLibPtr lib(os_dlopen(("./obs-plugins/" + path).c_str()));
+	ObsLibPtr lib(os_dlopen(("/app/plugins/lib/obs-plugins/" + path).c_str()));
 #endif
 
 	if (!lib)
