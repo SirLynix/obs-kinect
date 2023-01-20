@@ -118,8 +118,7 @@ jobs:
           libssl-dev \
           libudev-dev \
           mesa-common-dev \
-          uuid-dev \
-          liblz4-dev
+          uuid-dev
 
     # Cache OBS Studio
     - name: Retrieve OBS Studio cache
@@ -166,6 +165,8 @@ jobs:
     # Install xmake
     - name: Setup xmake
       uses: xmake-io/github-action-setup-xmake@v1
+      with:
+        xmake-version: branch@dev
 
     # Prepare environment
     - name: Configure build
