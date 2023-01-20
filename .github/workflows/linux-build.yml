@@ -118,7 +118,8 @@ jobs:
           libssl-dev \
           libudev-dev \
           mesa-common-dev \
-          uuid-dev
+          uuid-dev \
+          liblz4-dev
 
     # Cache OBS Studio
     - name: Retrieve OBS Studio cache
