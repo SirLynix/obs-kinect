@@ -4,7 +4,7 @@ package("libfreenect")
     set_license("GPL-2.0")
 
     set_urls("https://github.com/SirLynix/libfreenect.git")
-    add_versions("v0.1", "5e2cd8e18877fbe7ef4c863161e90873c06a9180")
+    add_versions("v0.6.4", "5058631f5c87f0f671c3a68daed0f9eec642e9b4")
 
     add_deps("cmake >=3.12.4")
     if is_plat("windows") then 
