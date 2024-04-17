@@ -80,28 +80,28 @@ Once you've installed the corresponding Kinect Runtime, download the [latest rel
 
 # How to build (for people wanting to contribute)
 
-Clone and build OBS-studio first.
+1. **Clone and build OBS-studio first.**
 
-**If you want to have support for the Kinect v1 (Xbox 360 or Kinect for Windows)**
-- Download and install [**Kinect for Windows SDK 1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40278)
-- (Optional) Download and install [**Kinect for Windows Developer Toolkit v1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40276), this is required for dedicated background support.
+  **If you want to have support for the Kinect v1 (Xbox 360 or Kinect for Windows)**
+  - Download and install [**Kinect for Windows SDK 1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40278)
+  - (Optional) Download and install [**Kinect for Windows Developer Toolkit v1.8**](https://www.microsoft.com/en-us/download/details.aspx?id=40276), this is required for dedicated background support.
 
-**If you want to have support for the Kinect v2 (Xbox One or Kinect 2 for Windows)**
-- Download and install [**Kinect for Windows SDK v2.0**](https://www.microsoft.com/en-us/download/details.aspx?id=44561)
+  **If you want to have support for the Kinect v2 (Xbox One or Kinect 2 for Windows)**
+  - Download and install [**Kinect for Windows SDK v2.0**](https://www.microsoft.com/en-us/download/details.aspx?id=44561)
 
-**If you want to have support for the Kinect v3 (Azure Kinect)**
-- Download and install [**Azure Kinect Sensor SDK**](https://docs.microsoft.com/en-us/azure/kinect-dk/sensor-sdk-download)
-- (Optional) Download and install [**Azure Kinect Body Tracking SDK**](https://docs.microsoft.com/en-us/azure/kinect-dk/body-sdk-download), this is required for body filter support.
+  **If you want to have support for the Kinect v3 (Azure Kinect)**
+  - Download and install [**Azure Kinect Sensor SDK**](https://docs.microsoft.com/en-us/azure/kinect-dk/sensor-sdk-download)
+  - (Optional) Download and install [**Azure Kinect Body Tracking SDK**](https://docs.microsoft.com/en-us/azure/kinect-dk/body-sdk-download), this is required for body filter support.
 
-You can/must install all SDK if you want to support all Kinect versions (recommended to redistribute).
+  You can/must install all SDK if you want to support all Kinect versions (recommended to redistribute).
 
-Copy the config.lua.default to config.lua and changes the values accordingly.
+2. **Copy the config.lua.default to config.lua and changes the values accordingly.**
 
-This project relies on [xmake](https://xmake.io) to build, [download the last version](https://xmake.io/#/getting_started?id=installation) and use it the main folder (use `xmake` in a shell), xmake may ask you to install some packages required for this project, type `y`.
+3. This project relies on [xmake](https://xmake.io) to build, **[download the last version](https://xmake.io/#/getting_started?id=installation) and use it the main folder** (use `xmake` in a shell), xmake may ask you to install some packages required for this project, type `y`.
 
-Once the plugin is built, you can type `xmake install -o obs-kinect-install` to have xmake copy all the plugin files in the `obs-kinect-install` directory.
+4. Once the plugin is built, you can type `xmake install -o obs-kinect-install` to have xmake copy all the plugin files in the `obs-kinect-install` directory.
 
-If you wish to generate a workspace/solution, you can use [xmake to generate projects file](https://xmake.io/#/plugin/builtin_plugins?id=generate-ide-project-files) (use `xmake project -k vsxmake` for example to build a Visual Studio Project).
+  If you wish to generate a workspace/solution, you can use [xmake to generate projects file](https://xmake.io/#/plugin/builtin_plugins?id=generate-ide-project-files) (use `xmake project -k vsxmake` for example to build a Visual Studio Project).
 
 # Commonly asked questions
 
