@@ -114,6 +114,8 @@ jobs:
     # Install xmake
     - name: Setup xmake
       uses: xmake-io/github-action-setup-xmake@v1
+      with:
+        xmake-version: branch@dev # avoids a bug in xmake 2.9.1
 
     # Prepare environment
     - name: Configure build
