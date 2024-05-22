@@ -9,7 +9,7 @@ package("k4a")
     add_deps("cmake")
 
     if is_plat("linux", "macosx") then
-        add_deps("libx11", "libxrandr")
+        add_deps("libx11", "libxrandr", "libxrender", "libxinerama", "libxfixes", "libxcursor", "libxi", "libxext")
     end
 
     on_fetch("windows", function (package)
