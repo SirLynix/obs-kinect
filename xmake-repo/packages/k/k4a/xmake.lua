@@ -8,6 +8,10 @@ package("k4a")
 
     add_deps("cmake")
 
+    if is_plat("linux", "macosx") then
+        add_deps("libx11", "libxrandr", "libxrender", "libxinerama", "libxfixes", "libxcursor", "libxi", "libxext")
+    end
+
     on_fetch("windows", function (package)
         -- KINECTSDKAZURE_DIR is not an official Microsoft env
         local defaultInstallPath = os.getenv("KINECTSDKAZURE_DIR") or path.join(os.getenv("ProgramFiles"), "Azure Kinect SDK v1.4.1", "sdk")
