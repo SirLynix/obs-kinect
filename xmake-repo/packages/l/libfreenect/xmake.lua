@@ -13,6 +13,8 @@ package("libfreenect")
         add_deps("libusb >=1.0.18")
     end
 
+    set_policy("package.cmake_generator.ninja", false)
+
     on_install("windows", "linux", "macosx", function (package)
         io.replace("CMakeLists.txt", "find_package(libusb-1.0 REQUIRED)", "", {plain = true})
 
