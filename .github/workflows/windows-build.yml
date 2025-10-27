@@ -166,7 +166,7 @@ jobs:
         KINECTSDK20_DIR: ${{ github.workspace }}/kinect-sdks/sdk2
 
     # Upload artifacts
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v5
       with:
         name: ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.mode }}
         path: package
