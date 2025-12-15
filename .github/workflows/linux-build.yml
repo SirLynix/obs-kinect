@@ -208,7 +208,7 @@ jobs:
         KINECTSDKAZUREBT_DIR: ${{ github.workspace }}/kinect-sdks/k4abt
 
     # Upload artifacts
-    - uses: actions/upload-artifact@v5
+    - uses: actions/upload-artifact@v6
       with:
         name: ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.mode }}
         path: package
