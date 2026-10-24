@@ -16,8 +16,8 @@
 ******************************************************************************/
 
 #include "KinectSdk10Device.hpp"
+#include <obs-kinect-core/ThreadName.hpp>
 #include <comdef.h>
-#include <util/threading.h>
 #include <array>
 #include <sstream>
 

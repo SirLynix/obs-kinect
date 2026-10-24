@@ -17,7 +17,7 @@
 
 #include "FreenectPlugin.hpp"
 #include "FreenectDevice.hpp"
-#include <util/threading.h>
+#include <obs-kinect-core/ThreadName.hpp>
 #include <libusb.h>
 #include <stdexcept>
 

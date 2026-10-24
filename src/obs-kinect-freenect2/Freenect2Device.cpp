@@ -16,10 +16,10 @@
 ******************************************************************************/
 
 #include "Freenect2Device.hpp"
+#include <obs-kinect-core/ThreadName.hpp>
 #include <libfreenect2/frame_listener_impl.h>
 #include <libfreenect2/libfreenect2.hpp>
 #include <libfreenect2/registration.h>
-#include <util/threading.h>
 #include <array>
 #include <sstream>
 

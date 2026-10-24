@@ -16,8 +16,8 @@
 ******************************************************************************/
 
 #include "FreenectDevice.hpp"
+#include <obs-kinect-core/ThreadName.hpp>
 #include <libfreenect/libfreenect_registration.h>
-#include <util/threading.h>
 #include <cstring>
 #include <mutex>
 #include <sstream>

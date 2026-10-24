@@ -42,16 +42,15 @@ bool KinectPlugin::IsOpen() const
 
 bool KinectPlugin::Open(const std::string& path)
 {
-	void* libPtr = os_dlopen(path.c_str());
-#ifndef _WIN32
-	if (!libPtr)
-	{
-		libPtr = os_dlopen(("./" + path).c_str());
-		if (!libPtr)
-			libPtr = os_dlopen(("/app/plugins/lib/obs-plugins/" + path).c_str());
-	}
-#endif
+	char pluginPath[4096];
 
+	if (os_get_program_data_path(pluginPath, sizeof(pluginPath), ("obs-studio/plugins/obs-kinect/" + path).c_str()) <= 0)
+	{
+		warnlog("failed to find plugin path for %s", path.c_str());
+		return false;
+	}
+
+	void* libPtr = os_dlopen(pluginPath);
 	ObsLibPtr lib(libPtr);
 	if (!lib)
 		return false;

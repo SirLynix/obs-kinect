@@ -17,7 +17,7 @@
 
 #include "AzureKinectDevice.hpp"
 #include "AzureKinectPlugin.hpp"
-#include <util/threading.h>
+#include <obs-kinect-core/ThreadName.hpp>
 #include <array>
 #include <optional>
 #include <sstream>

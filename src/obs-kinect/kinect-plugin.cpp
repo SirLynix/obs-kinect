@@ -273,14 +273,14 @@ static obs_properties_t* kinect_source_properties(void *unused)
 
 	update_device_list(p);
 
-	obs_properties_add_button(props, "device_refresh", obs_module_text("ObsKinect.RefreshDevices"), [](obs_properties_t* props, obs_property_t* /*property*/, void* /*data*/)
+	obs_properties_add_button2(props, "device_refresh", obs_module_text("ObsKinect.RefreshDevices"), [](obs_properties_t* props, obs_property_t* /*property*/, void* /*data*/)
 	{
 		s_deviceRegistry->Refresh();
 
 		obs_property_t* deviceList = obs_properties_get(props, "device");
 		update_device_list(deviceList);
 		return true;
-	});
+	}, nullptr);
 
 	s_deviceRegistry->ForEachDevice([&](const std::string& /*pluginName*/, const std::string& uniqueName, const KinectDevice& device)
 	{

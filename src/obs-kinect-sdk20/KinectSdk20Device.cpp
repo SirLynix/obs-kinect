@@ -16,7 +16,7 @@
 ******************************************************************************/
 
 #include "KinectSdk20Device.hpp"
-#include <util/threading.h>
+#include <obs-kinect-core/ThreadName.hpp>
 #include <tlhelp32.h>
 #include <array>
 #include <sstream>

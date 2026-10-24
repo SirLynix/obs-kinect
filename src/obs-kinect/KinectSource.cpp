@@ -121,12 +121,12 @@ void KinectSource::UpdateVisibilityMaskFile(const std::string_view& filePath)
 		if (!filePath.empty())
 		{
 			if (!m_visibilityMaskImage)
-				m_visibilityMaskImage.reset(new gs_image_file_t);
+				m_visibilityMaskImage.reset(new gs_image_file_ex_t);
 
-			gs_image_file_init(m_visibilityMaskImage.get(), filePath.data());
+			gs_image_file_ex_init(m_visibilityMaskImage.get(), filePath.data(), GS_IMAGE_ALPHA_STRAIGHT);
 
 			ObsGraphics gfx;
-			gs_image_file_init_texture(m_visibilityMaskImage.get());
+			gs_image_file_ex_init_texture(m_visibilityMaskImage.get());
 		}
 		else
 			m_visibilityMaskImage.reset();
@@ -225,19 +225,16 @@ void KinectSource::Update(float /*seconds*/)
 		if (m_lastTextureTick == 0)
 			m_lastTextureTick = now;
 
-		if (m_visibilityMaskImage && m_visibilityMaskImage->texture && gs_image_file_tick(m_visibilityMaskImage.get(), now - m_lastTextureTick))
-		{
-			ObsGraphics gfx;
-			gs_image_file_update_texture(m_visibilityMaskImage.get());
-		}
+		ObsGraphics obsGfx;
+
+		if (m_visibilityMaskImage && m_visibilityMaskImage->texture && gs_image_file_ex_tick(m_visibilityMaskImage.get(), now - m_lastTextureTick))
+			gs_image_file_ex_update_texture(m_visibilityMaskImage.get());
 
 		// Process frame
 		m_height = 0;
 		m_width = 0;
 
 		m_lastFrameIndex = frameData->frameIndex;
-
-		ObsGraphics obsGfx;
 
 		bool isDepthColorMapped = frameData->colorMappedDepthFrame.has_value();
 		bool softwareDepthMapping = (!m_greenScreenSettings.gpuDepthMapping || m_greenScreenSettings.maxDirtyDepth > 0);

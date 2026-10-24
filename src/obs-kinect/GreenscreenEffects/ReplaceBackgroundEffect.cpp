@@ -29,13 +29,13 @@ gs_texture_t* ReplaceBackgroundEffect::Apply(const Config& config, gs_texture_t*
 	if (m_texturePath != config.replacementTexturePath)
 	{
 		if (!m_imageFile)
-			m_imageFile.reset(new gs_image_file_t);
+			m_imageFile.reset(new gs_image_file_ex_t);
 
 		m_texturePath = config.replacementTexturePath;
-		gs_image_file_init(m_imageFile.get(), m_texturePath.data());
+		gs_image_file_ex_init(m_imageFile.get(), m_texturePath.data(), GS_IMAGE_ALPHA_STRAIGHT);
 
 		ObsGraphics gfx;
-		gs_image_file_init_texture(m_imageFile.get());
+		gs_image_file_ex_init_texture(m_imageFile.get());
 	}
 
 	if (!m_imageFile || !m_imageFile->texture)
@@ -46,10 +46,10 @@ gs_texture_t* ReplaceBackgroundEffect::Apply(const Config& config, gs_texture_t*
 	if (m_lastTextureTick == 0)
 		m_lastTextureTick = now;
 
-	if (gs_image_file_tick(m_imageFile.get(), now - m_lastTextureTick))
+	if (gs_image_file_ex_tick(m_imageFile.get(), now - m_lastTextureTick))
 	{
 		ObsGraphics gfx;
-		gs_image_file_update_texture(m_imageFile.get());
+		gs_image_file_ex_update_texture(m_imageFile.get());
 	}
 
 	m_lastTextureTick = now;

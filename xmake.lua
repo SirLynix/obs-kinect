@@ -119,11 +119,12 @@ set_warnings("allextra")
 
 add_sysincludedirs(LibObs.Include)
 
-local baseObsDir = path.translate(is_arch("x86") and LibObs.Lib32 or LibObs.Lib64)
+local baseObsDir = path.translate(is_arch("x86") and LibObs.Build32 or LibObs.Build64)
 if is_plat("windows") then
 	for _, suffix in pairs(is_mode("debug") and {"Debug"} or {"Release", "RelWithDebInfo"}) do
-		local p = path.join(baseObsDir, suffix)
-		if (os.isdir(p)) then
+		local p = path.join(baseObsDir, "libobs", suffix)
+		if os.isdir(p) then
+			add_sysincludedirs(path.join(baseObsDir, "config"))
 			add_linkdirs(p)
 			break
 		end

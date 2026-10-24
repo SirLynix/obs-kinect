@@ -91,16 +91,16 @@ using ObsLibPtr = std::unique_ptr<void, ObsLibDeleter>;
 
 struct ObsImageFileDeleter
 {
-	void operator()(gs_image_file_t* imageFile) const
+	void operator()(gs_image_file_ex_t* imageFile) const
 	{
 		ObsGraphics gfx;
-		gs_image_file_free(imageFile);
+		gs_image_file_ex_free(imageFile);
 
 		delete imageFile;
 	}
 };
 
-using ObsImageFilePtr = std::unique_ptr<gs_image_file_t, ObsImageFileDeleter>;
+using ObsImageFilePtr = std::unique_ptr<gs_image_file_ex_t, ObsImageFileDeleter>;
 
 struct ObsTextureDeleter
 {
