@@ -86,7 +86,8 @@ jobs:
       if: steps.obs-cache.outputs.cache-hit != 'true'
       working-directory: ${{ github.workspace }}/obs-studio
       run: |
-        cmake --build --preset "${{ env.CMAKE_PRESET }}"
+        mkdir ./build_x64
+        cmake --build --preset "${{ env.CMAKE_PRESET }}" -t libobs
 
     # Force xmake to a specific folder (for cache)
     - name: Set xmake env
@@ -99,7 +100,7 @@ jobs:
     # Prepare environment
     - name: Configure build
       run:
-        echo "LibObs = {   Include = [[${{ github.workspace }}\obs-studio\libobs]],   Build64 = [[${{ github.workspace }}\obs-studio\build-x64]] }  ObsPlugins={}" > config.lua
+        echo "LibObs = {   Include = [[${{ github.workspace }}\obs-studio\libobs]],   Build64 = [[${{ github.workspace }}\obs-studio\build_x64]] }  ObsPlugins={}" > config.lua
 
     # Update xmake repository (in order to have the file that will be cached)
     - name: Update xmake repository
