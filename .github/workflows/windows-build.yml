@@ -22,7 +22,7 @@ jobs:
 
     env:
       OBS_VERSION: '33.0.0'
-      CMAKE_PRESET: 'windows-ci-x64'
+      CMAKE_PRESET: 'windows-x64'
 
     steps:
     - name: Get current date as package key
