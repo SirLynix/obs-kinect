@@ -86,8 +86,9 @@ jobs:
       if: steps.obs-cache.outputs.cache-hit != 'true'
       working-directory: ${{ github.workspace }}/obs-studio
       run: |
-        mkdir ./build_x64
-        cmake --build --preset "${{ env.CMAKE_PRESET }}" -t libobs
+        cmake --preset "${{ env.CMAKE_PRESET }}" -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_CORE_MODULES=OFF
+        cd ./build_x64
+        cmake --build -t libobs
 
     # Force xmake to a specific folder (for cache)
     - name: Set xmake env
