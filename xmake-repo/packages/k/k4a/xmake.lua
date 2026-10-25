@@ -3,10 +3,13 @@ package("k4a")
     set_description("A cross platform (Linux and Windows) user mode SDK to read data from your Azure Kinect device.")
     set_license("MIT")
 
-    set_urls("https://github.com/microsoft/Azure-Kinect-Sensor-SDK.git")
-    add_versions("v1.4.1", "73106554449c64aff6b068078f0eada50c4474e99945b5ceb6ea4aab9a68457f")
+    set_policy("platform.longpaths", true)
 
-    add_deps("cmake")
+    set_urls("https://github.com/microsoft/Azure-Kinect-Sensor-SDK.git")
+    add_versions("v1.4.2", "cd2b3e9894b26fbeebfe34a5cab5b26efab0939a")
+    add_versions("v1.4.1", "3cfe362dacc4ad9b2206af3f28d62e1eb7be99c2")
+
+    add_deps("cmake", "libjpeg-turbo", "libusb")
 
     if is_plat("linux", "macosx") then
         add_deps("libx11", "libxrandr", "libxrender", "libxinerama", "libxfixes", "libxcursor", "libxi", "libxext")
@@ -35,15 +38,31 @@ package("k4a")
     end)
 
     on_install("windows", "linux", "macosx", function (package)
+        io.replace("CMakeLists.txt", "cmake_minimum_required(VERSION 3.9.0)", "cmake_minimum_required(VERSION 3.22)", {plain = true})
         -- There's no option to disable examples, tests or tool building
         io.replace("CMakeLists.txt", "add_subdirectory(examples)", "", {plain = true})
         io.replace("CMakeLists.txt", "add_subdirectory(tests)", "", {plain = true})
         io.replace("CMakeLists.txt", "add_subdirectory(tools)", "", {plain = true})
 
+        io.replace("extern/CMakeLists.txt", "add_subdirectory(glfw)", "", {plain = true})
+        io.replace("extern/CMakeLists.txt", "add_subdirectory(googletest)", "", {plain = true})
+        io.replace("extern/CMakeLists.txt", "add_subdirectory(imgui)", "", {plain = true})
+        io.replace("extern/CMakeLists.txt", "add_subdirectory(libusb)", "", {plain = true})
+
+        io.replace("src/usbcommand/CMakeLists.txt", "LibUSB::LibUSB", "", {plain = true})
+
+        io.replace("src/color/mfcamerareader.h", "CMFCameraReader::", "", {plain = true})
+
+        io.replace("extern/spdlog/src/include/spdlog/fmt/bundled/format.h", "#if defined _SECURE_SCL && _SECURE_SCL", "#if defined _SECURE_SCL && _SECURE_SCL && (!defined(_MSC_VER) || _MSC_VER < 1915)", {plain = true})
+
         local configs = {}
         table.insert(configs, "-DCMAKE_BUILD_TYPE=" .. (package:debug() and "Debug" or "Release"))
         table.insert(configs, "-DBUILD_SHARED_LIBS=" .. (package:config("shared") and "ON" or "OFF"))
-        import("package.tools.cmake").install(package, configs)
+        table.insert(configs, "-DK4A_VALIDATE_CLANG_FORMAT=OFF")
+
+        local opt = {}
+        opt.packagedeps = {"libusb"}
+        import("package.tools.cmake").install(package, configs, opt)
     end)
 
     on_test(function (package)
