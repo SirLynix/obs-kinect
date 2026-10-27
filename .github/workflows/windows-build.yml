@@ -148,5 +148,5 @@ jobs:
     # Upload artifacts
     - uses: actions/upload-artifact@v7
       with:
-        name: ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.mode }}
+        name: obs-kinect-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.mode }}
         path: package
