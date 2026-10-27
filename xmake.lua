@@ -54,40 +54,17 @@ rule("copy_to_obs")
 	end)
 rule_end()
 
-local function packageGen(outputFolder)
-	return function (target)
+rule("package_binaries")
+	after_package(function (target)
 		import("core.base.option")
 
-		local archDir
-		if target:is_arch("x86_64", "x64") then
-			archDir = "64bit"
-		else
-			archDir = "32bit"
-		end
-
-   		local outputdir = path.join(option.get("outputdir") or config.buildir(), outputFolder, archDir)
+		local outputdir = path.join(option.get("outputdir") or config.buildir(), "obs-studio", "plugins", "obs-kinect")
 		for _, filepath in ipairs({ target:targetfile(), target:symbolfile() }) do
 			if os.isfile(filepath) then
 				os.vcp(filepath, path.join(outputdir, path.filename(filepath)))
 			end
 		end
-	end
-end
-
-rule("package_bin")
-	after_package(packageGen("bin"))
-rule_end()
-
-rule("package_plugin")
-	after_package(packageGen("obs-plugins"))
-rule_end()
-
-rule("package_backend")
-	if is_plat("windows") then
-		after_package(packageGen("bin"))
-	else
-		after_package(packageGen("obs-plugins"))
-	end
+	end)
 rule_end()
 
 add_repositories("local-repo xmake-repo")
@@ -159,7 +136,7 @@ target("obs-kinectcore")
 
 	add_includedirs("src")
 
-	add_rules("copy_to_obs", "package_plugin")
+	add_rules("copy_to_obs", "package_binaries")
 
 target("obs-kinect")
 	set_kind("shared")
@@ -172,13 +149,13 @@ target("obs-kinect")
 
 	add_includedirs("src")
 
-	add_rules("kinect_dynlib", "copy_to_obs", "package_plugin")
+	add_rules("kinect_dynlib", "copy_to_obs", "package_binaries")
 
 	on_package(function (target)
 		import("core.base.option")
    		local outputdir = option.get("outputdir") or config.buildir()
 
-		os.vcp("data", path.join(outputdir, "data"))
+		os.vcp("data", path.join(outputdir, "obs-studio", "plugins", "obs-kinect", "data"))
 	end)
 
 target("obs-kinect-azuresdk")
@@ -192,7 +169,7 @@ target("obs-kinect-azuresdk")
 	add_headerfiles("src/obs-kinect-azuresdk/**.hpp", "src/obs-kinect-azuresdk/**.inl")
 	add_files("src/obs-kinect-azuresdk/**.cpp")
 
-	add_rules("kinect_dynlib", "copy_to_obs", "package_backend")
+	add_rules("kinect_dynlib", "copy_to_obs", "package_binaries")
 
 	if has_package("k4abt-headers") then
 		add_packages("k4abt-headers")
@@ -216,7 +193,7 @@ if is_plat("windows") then
 			add_headerfiles("src/obs-kinect-sdk10/**.hpp", "src/obs-kinect-sdk10/**.inl")
 			add_files("src/obs-kinect-sdk10/**.cpp")
 
-			add_rules("kinect_dynlib", "copy_to_obs", "package_backend")
+			add_rules("kinect_dynlib", "copy_to_obs", "package_binaries")
 	end
 
 	if has_package("kinect-sdk2") then
@@ -232,7 +209,7 @@ if is_plat("windows") then
 			add_headerfiles("src/obs-kinect-sdk20/**.hpp", "src/obs-kinect-sdk20/**.inl")
 			add_files("src/obs-kinect-sdk20/**.cpp")
 
-			add_rules("kinect_dynlib", "copy_to_obs", "package_backend")
+			add_rules("kinect_dynlib", "copy_to_obs", "package_binaries")
 
 			if not is_arch("x86") and os.isdir("thirdparty/NuiSensorLib") then
 				add_sysincludedirs("thirdparty/NuiSensorLib/include")
@@ -254,7 +231,7 @@ target("obs-kinect-freenect")
 	add_headerfiles("src/obs-kinect-freenect/**.hpp", "src/obs-kinect-freenect/**.inl")
 	add_files("src/obs-kinect-freenect/**.cpp")
 
-	add_rules("kinect_dynlib", "copy_to_obs", "package_backend")
+	add_rules("kinect_dynlib", "copy_to_obs", "package_binaries")
 
 target("obs-kinect-freenect2")
 	set_kind("shared")
@@ -266,4 +243,4 @@ target("obs-kinect-freenect2")
 	add_headerfiles("src/obs-kinect-freenect2/**.hpp", "src/obs-kinect-freenect2/**.inl")
 	add_files("src/obs-kinect-freenect2/**.cpp")
 
-	add_rules("kinect_dynlib", "copy_to_obs", "package_backend")
+	add_rules("kinect_dynlib", "copy_to_obs", "package_binaries")
