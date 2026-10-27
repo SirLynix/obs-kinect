@@ -27,7 +27,7 @@ jobs:
     steps:
     - name: Get current date as package key
       id: pkg_key
-      run: echo "::set-output name=key::$(date +'%W')"
+      run: echo "key=$(date +'%W')" >> $GITHUB_OUTPUT
 
     - name: Checkout repository
       uses: actions/checkout@v7
@@ -89,6 +89,11 @@ jobs:
         cmake --preset "${{ env.CMAKE_PRESET }}" -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_CORE_MODULES=OFF
         cmake --build --preset "${{ env.CMAKE_PRESET }}" -t libobs --config "${{ steps.cmake_target.outputs.value }}"
 
+    # Prepare environment
+    - name: Configure build
+      run:
+        echo "LibObs = {   Include = [[${{ github.workspace }}\obs-studio\libobs]],   Build64 = [[${{ github.workspace }}\obs-studio\build_x64]] }  ObsPlugins={}" > config.lua
+
     # Force xmake to a specific folder (for cache)
     - name: Set xmake env
       run: echo "XMAKE_GLOBALDIR=${{ runner.workspace }}/xmake-global" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -97,11 +102,6 @@ jobs:
     - name: Setup xmake
       uses: xmake-io/github-action-setup-xmake@v1
 
-    # Prepare environment
-    - name: Configure build
-      run:
-        echo "LibObs = {   Include = [[${{ github.workspace }}\obs-studio\libobs]],   Build64 = [[${{ github.workspace }}\obs-studio\build_x64]] }  ObsPlugins={}" > config.lua
-
     # Update xmake repository (in order to have the file that will be cached)
     - name: Update xmake repository
       run: xmake repo --update
@@ -109,7 +109,7 @@ jobs:
     # Fetch xmake dephash
     - name: Retrieve dependencies hash
       id: dep_hash
-      run: echo "::set-output name=hash::$(xmake l utils.ci.packageskey)"
+      run: echo "hash=$(xmake l utils.ci.packageskey)" >> $GITHUB_OUTPUT
 
     # Cache xmake dependencies
     - name: Retrieve cached xmake dependencies
