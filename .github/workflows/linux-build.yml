@@ -22,6 +22,7 @@ jobs:
 
     env:
       OBS_VERSION: '33.0.0'
+      CMAKE_PRESET: 'ubuntu'
 
     steps:
     - name: Get current date as package key
