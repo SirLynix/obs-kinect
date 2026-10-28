@@ -54,6 +54,7 @@ package("k4a")
         io.replace("src/color/mfcamerareader.h", "CMFCameraReader::", "", {plain = true})
 
         io.replace("extern/spdlog/src/include/spdlog/fmt/bundled/format.h", "#if defined _SECURE_SCL && _SECURE_SCL", "#if defined _SECURE_SCL && _SECURE_SCL && (!defined(_MSC_VER) || _MSC_VER < 1915)", {plain = true})
+        io.replace("extern/azure_c_shared/src/src/hmac.c", "int hmacResult(HMACContext *ctx, uint8_t *digest)", "int hmacResult(HMACContext *ctx, uint8_t digest[USHAMaxHashSize])")
 
         local configs = {}
         table.insert(configs, "-DCMAKE_BUILD_TYPE=" .. (package:debug() and "Debug" or "Release"))
