@@ -59,7 +59,7 @@ package("libfreenect2")
             table.insert(configs, "-DTurboJPEG_LIBRARIES=" .. table.concat(libjpegturbo.libfiles, ";"))
         end
 
-        io.insert("cmake_modules/GenerateResources.cmake", 6, [[
+        io.insert("cmake_modules/GenerateResources.cmake", 3, [[
 message(STATUS "CMAKE_CROSSCOMPILING=${CMAKE_CROSSCOMPILING}")
 message(STATUS "CMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}")
 message(STATUS "CMAKE_HOST_SYSTEM_NAME=${CMAKE_HOST_SYSTEM_NAME}")
