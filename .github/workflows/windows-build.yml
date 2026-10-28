@@ -27,7 +27,7 @@ jobs:
     steps:
     - name: Get current date as package key
       id: pkg_key
-      run: echo "key=$(date +'%W')" >> $GITHUB_OUTPUT
+      run: echo "key=$(date +'%W')" >> $env:GITHUB_OUTPUT
 
     - name: Checkout repository
       uses: actions/checkout@v7
@@ -49,7 +49,7 @@ jobs:
     # Select OBS runtime
     - name: Choose OBS Debug or Release build
       id: cmake_target
-      run: echo "value=${{ matrix.mode == 'debug' && 'Debug' || 'RelWithDebInfo' }}" >> $GITHUB_OUTPUT
+      run: echo "value=${{ matrix.mode == 'debug' && 'Debug' || 'RelWithDebInfo' }}" >> $env:GITHUB_OUTPUT
 
     # Cache OBS Studio
     - name: Retrieve OBS Studio cache
@@ -105,7 +105,7 @@ jobs:
     # Fetch xmake dephash
     - name: Retrieve dependencies hash
       id: dep_hash
-      run: echo "hash=$(xmake l utils.ci.packageskey)" >> $GITHUB_OUTPUT
+      run: echo "hash=$(xmake l utils.ci.packageskey)" >> $env:GITHUB_OUTPUT
 
     # Cache xmake dependencies
     - name: Retrieve cached xmake dependencies
