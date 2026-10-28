@@ -48,12 +48,8 @@ jobs:
 
     # Select OBS runtime
     - name: Choose OBS Debug or Release build
-      uses: haya14busa/action-cond@v1
       id: cmake_target
-      with:
-        cond: ${{ matrix.mode == 'debug' }}
-        if_true: "Debug"
-        if_false: "RelWithDebInfo"
+      run: echo "value=${{ matrix.mode == 'debug' && 'Debug' || 'RelWithDebInfo' }}" >> $GITHUB_OUTPUT
 
     # Cache OBS Studio
     - name: Retrieve OBS Studio cache
