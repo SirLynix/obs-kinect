@@ -85,7 +85,7 @@ jobs:
       run: |
         mkdir ./build64
         cd ./build64
-        cmake -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_CORE_MODULES=OFF -DUNIX_STRUCTURE=YES ..
+        cmake -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_CORE_MODULES=OFF -DENABLE_PULSEAUDIO=OFF ..
         make -j4 libobs
 
     # Prepare environment
