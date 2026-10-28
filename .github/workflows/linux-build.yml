@@ -13,7 +13,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-24.04]
+        os: [ubuntu-26.04]
         arch: [x64]
         mode: [debug, releasedbg]
 
@@ -82,7 +82,7 @@ jobs:
       shell: bash
       run: |
         cmake --preset "${{ env.CMAKE_PRESET }}" -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_CORE_MODULES=OFF
-        cmake --build --preset "${{ env.CMAKE_PRESET }}" -t libobs --config "RelWithDebInfo" -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_CORE_MODULES=OFF
+        cmake --build build_ubuntu -t libobs --config "RelWithDebInfo"
 
     # Prepare environment
     - name: Configure build
