@@ -83,7 +83,7 @@ jobs:
       working-directory: ${{ github.workspace }}/obs-studio
       run: |
         cmake --preset "${{ env.CMAKE_PRESET }}" -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_CORE_MODULES=OFF
-        cmake --build --preset "${{ env.CMAKE_PRESET }}" -t libobs --config "${{ steps.cmake_target.outputs.value }}"
+        cmake --build --preset "${{ env.CMAKE_PRESET }}" -t libobs --config "${{ steps.cmake_target.outputs.value }}" -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_CORE_MODULES=OFF
 
     # Prepare environment
     - name: Configure build
