@@ -111,7 +111,8 @@ if is_plat("windows") then
 		end
 	end
 else
-	add_linkdirs(baseObsDir)
+	add_sysincludedirs(path.join(baseObsDir, "config"))
+	add_linkdirs(path.join(baseObsDir, "libobs"))
 end
 
 add_links("obs")
