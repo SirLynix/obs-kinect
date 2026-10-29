@@ -13,20 +13,21 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-20.04]
-        arch: [x64]
+        os: [ubuntu-26.04]
+        arch: [x86_64]
         mode: [debug, releasedbg]
 
     runs-on: ${{ matrix.os }}
     if: "!contains(github.event.head_commit.message, 'ci skip')"
 
     env:
-      OBS_VERSION: '26.0.0'
+      OBS_VERSION: '33.0.0'
+      CMAKE_PRESET: 'ubuntu'
 
     steps:
     - name: Get current date as package key
       id: pkg_key
-      run: echo "::set-output name=key::$(date +'%W')"
+      run: echo "key=$(date +'%W')" >> $GITHUB_OUTPUT
 
     - name: Checkout repository
       uses: actions/checkout@v7
@@ -44,81 +45,9 @@ jobs:
       run: | 
           sudo apt-get -qq update
           sudo apt-get install -y \
-          build-essential \
-          checkinstall \
-          cmake \
-          git \
-          libmbedtls-dev \
-          libasound2-dev \
-          libavcodec-dev \
-          libavdevice-dev \
-          libavfilter-dev \
-          libavformat-dev \
-          libavutil-dev \
-          libcurl4-openssl-dev \
-          libfdk-aac-dev \
-          libfontconfig-dev \
-          libfreetype6-dev \
-          libgl1-mesa-dev \
-          libjack-jackd2-dev \
-          libjansson-dev \
-          libluajit-5.1-dev \
-          libpulse-dev \
-          libqt5x11extras5-dev \
-          libspeexdsp-dev \
-          libswresample-dev \
-          libswscale-dev \
-          libudev-dev \
-          libv4l-dev \
-          libvlc-dev \
-          libx11-dev \
-          libx264-dev \
-          libxcb-shm0-dev \
-          libxcb-xinerama0-dev \
-          libxcomposite-dev \
-          libxinerama-dev \
-          pkg-config \
-          python3-dev \
-          qtbase5-dev \
-          libqt5svg5-dev \
-          swig \
-          libxcb-randr0-dev \
-          libxcb-xfixes0-dev \
-          libx11-xcb-dev \
-          libxcb1-dev \
-          libxss-dev \
-          gcc-aarch64-linux-gnu \
-          g++-aarch64-linux-gnu \
-          file \
-          dpkg-dev \
-          qemu \
-          binfmt-support \
-          qemu-user-static \
-          pkg-config \
-          ninja-build \
-          doxygen \
-          clang \
-          python3 \
-          gcc \
-          g++ \
-          git \
-          git-lfs \
-          nasm \
-          cmake \
-          powershell \
-          libgl1-mesa-dev \
-          libsoundio-dev \
-          libjpeg-dev \
-          libvulkan-dev \
-          libx11-dev \
-          libxcursor-dev \
-          libxinerama-dev \
-          libxrandr-dev \
-          libusb-1.0-0-dev \
-          libssl-dev \
-          libudev-dev \
-          mesa-common-dev \
-          uuid-dev
+          cmake extra-cmake-modules ninja-build pkg-config clang clang-format build-essential curl ccache git zsh \
+          libavcodec-dev libavdevice-dev libavfilter-dev libavformat-dev libavutil-dev libswresample-dev libswscale-dev libx264-dev libcurl4-openssl-dev libmbedtls-dev libgl1-mesa-dev libjansson-dev libluajit-5.1-dev python3-dev libx11-dev libxcb-randr0-dev libxcb-shm0-dev libxcb-xinerama0-dev libxcb-composite0-dev libxcomposite-dev libxinerama-dev libxcb1-dev libx11-xcb-dev libxcb-xfixes0-dev swig libcmocka-dev libxss-dev libglvnd-dev libgles2-mesa-dev libwayland-dev librist-dev libsrt-openssl-dev libpci-dev libpipewire-0.3-dev libqrcodegencpp-dev uthash-dev libsimde-dev \
+          libdrm-dev uuid-dev
 
     # Cache OBS Studio
     - name: Retrieve OBS Studio cache
@@ -155,8 +84,13 @@ jobs:
       run: |
         mkdir ./build64
         cd ./build64
-        cmake -DDISABLE_PLUGINS=YES -DENABLE_SCRIPTING=NO -DUNIX_STRUCTURE=YES ..
+        cmake -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_CORE_MODULES=OFF -DENABLE_PULSEAUDIO=OFF -DENABLE_WAYLAND=OFF ..
         make -j4 libobs
+
+    # Prepare environment
+    - name: Configure build
+      run:
+        printf "LibObs = {\n  Include = [[${{ github.workspace }}/obs-studio/libobs]],\n  Build64 = [[${{ github.workspace }}/obs-studio/build64]]\n}\n\nObsPlugins={}" > config.lua
 
     # Force xmake to a specific folder (for cache)
     - name: Set xmake env
@@ -165,13 +99,6 @@ jobs:
     # Install xmake
     - name: Setup xmake
       uses: xmake-io/github-action-setup-xmake@v1
-      with:
-        xmake-version: branch@dev
-
-    # Prepare environment
-    - name: Configure build
-      run:
-        printf "LibObs = {\n  Include = [[${{ github.workspace }}/obs-studio/libobs]],\n  Lib64 = [[${{ github.workspace }}/obs-studio/build64/libobs]]\n}\n\nObsPlugins={}" > config.lua
 
     # Update xmake repository (in order to have the file that will be cached)
     - name: Update xmake repository
@@ -180,7 +107,7 @@ jobs:
     # Fetch xmake dephash
     - name: Retrieve dependencies hash
       id: dep_hash
-      run: echo "::set-output name=hash::$(xmake l utils.ci.packageskey)"
+      run: echo "hash=$(xmake l utils.ci.packageskey)" >> $GITHUB_OUTPUT
 
     # Cache xmake dependencies
     - name: Retrieve cached xmake dependencies
@@ -210,5 +137,17 @@ jobs:
     # Upload artifacts
     - uses: actions/upload-artifact@v7
       with:
-        name: ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.mode }}
+        name: obs-kinect-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.mode }}
         path: package
+
+    # Install the result files
+    - name: Package obs-kinect
+      run: xmake pack --verbose -y -f targz -o packaged
+      env:
+        KINECTSDKAZUREBT_DIR: ${{ github.workspace }}/kinect-sdks/k4abt
+
+    # Upload artifacts
+    - uses: actions/upload-artifact@v7
+      with:
+        name: obs-kinect-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.mode }}
+        path: packaged

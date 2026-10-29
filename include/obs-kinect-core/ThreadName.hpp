@@ -27,4 +27,4 @@ extern "C"
 	EXPORT void os_set_thread_name(const char* name);
 }
 
-#endif OBS_KINECT_PLUGIN_THREADNAME
+#endif // OBS_KINECT_PLUGIN_THREADNAME

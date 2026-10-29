@@ -22,6 +22,7 @@
 
 #include <obs-kinect/Shaders/TextureLerpShader.hpp>
 #include <obs-kinect-core/Helper.hpp>
+#include <cstdint>
 #include <string>
 
 class ReplaceBackgroundEffect

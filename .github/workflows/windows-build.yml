@@ -21,14 +21,13 @@ jobs:
     if: "!contains(github.event.head_commit.message, 'ci skip')"
 
     env:
-      QT_VERSION: '5.15.2'
-      OBS_VERSION: '26.0.0'
-      CMAKE_GENERATOR: 'Visual Studio 17 2022'
+      OBS_VERSION: '33.0.0'
+      CMAKE_PRESET: 'windows-x64'
 
     steps:
     - name: Get current date as package key
       id: pkg_key
-      run: echo "::set-output name=key::$(date +'%W')"
+      run: echo "key=$(date +'%W')" >> $env:GITHUB_OUTPUT
 
     - name: Checkout repository
       uses: actions/checkout@v7
@@ -47,20 +46,10 @@ jobs:
     - name: Enable longpath in git for Windows
       run: git config --system core.longpaths true
 
-    # Install Qt
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v4
-      with:
-        version: ${{ env.QT_VERSION }}
-
     # Select OBS runtime
     - name: Choose OBS Debug or Release build
-      uses: haya14busa/action-cond@v1
       id: cmake_target
-      with:
-        cond: ${{ matrix.mode == 'debug' }}
-        if_true: "Debug"
-        if_false: "RelWithDebInfo"
+      run: echo "value=${{ matrix.mode == 'debug' && 'Debug' || 'RelWithDebInfo' }}" >> $env:GITHUB_OUTPUT
 
     # Cache OBS Studio
     - name: Retrieve OBS Studio cache
@@ -88,24 +77,18 @@ jobs:
         git checkout ${{ env.OBS_VERSION }}
         git submodule update
 
-    # Install OBS dependencies
-    - name: Install OBS dependencies
-      if: steps.obs-cache.outputs.cache-hit != 'true'
-      working-directory: ${{ github.workspace }}
-      run: |
-        curl https://obsproject.com/downloads/dependencies2019.zip --output dependencies2019.zip
-        mkdir obsdeps
-        tar -xv -C obsdeps -f dependencies2019.zip
-
     # Configure and build obs
     - name: Build OBS-Studio
       if: steps.obs-cache.outputs.cache-hit != 'true'
       working-directory: ${{ github.workspace }}/obs-studio
       run: |
-        mkdir ./build64
-        cd ./build64
-        cmake -G "${{ env.CMAKE_GENERATOR }}" -A x64 -DDepsPath=${{ github.workspace }}\obsdeps\win64 -DQTDIR=${{ env.Qt5_DIR }} -DDISABLE_PLUGINS=YES -DENABLE_SCRIPTING=NO ..
-        msbuild /m /p:Configuration=${{ steps.cmake_target.outputs.value }} ./libobs/libobs.vcxproj
+        cmake --preset "${{ env.CMAKE_PRESET }}" -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_CORE_MODULES=OFF
+        cmake --build build_x64 -t libobs --config "${{ steps.cmake_target.outputs.value }}"
+
+    # Prepare environment
+    - name: Configure build
+      run:
+        echo "LibObs = {   Include = [[${{ github.workspace }}\obs-studio\libobs]],   Build64 = [[${{ github.workspace }}\obs-studio\build_x64]] }  ObsPlugins={}" > config.lua
 
     # Force xmake to a specific folder (for cache)
     - name: Set xmake env
@@ -114,13 +97,6 @@ jobs:
     # Install xmake
     - name: Setup xmake
       uses: xmake-io/github-action-setup-xmake@v1
-      with:
-        xmake-version: branch@dev # avoids a bug in xmake 2.9.1
-
-    # Prepare environment
-    - name: Configure build
-      run:
-        echo "LibObs = {   Include = [[${{ github.workspace }}\obs-studio\libobs]],   Lib64 = [[${{ github.workspace }}\obs-studio\build64\libobs]] }  ObsPlugins={}" > config.lua
 
     # Update xmake repository (in order to have the file that will be cached)
     - name: Update xmake repository
@@ -129,7 +105,7 @@ jobs:
     # Fetch xmake dephash
     - name: Retrieve dependencies hash
       id: dep_hash
-      run: echo "::set-output name=hash::$(xmake l utils.ci.packageskey)"
+      run: echo "hash=$(xmake l utils.ci.packageskey)" >> $env:GITHUB_OUTPUT
 
     # Cache xmake dependencies
     - name: Retrieve cached xmake dependencies
@@ -157,8 +133,8 @@ jobs:
         KINECTSDK20_DIR: ${{ github.workspace }}/kinect-sdks/sdk2
 
     # Install the result files
-    - name: Install obs-kinect
-      run: xmake package -vo package
+    - name: Package obs-kinect
+      run: xmake pack --verbose -y -f nsis,zip -o packaged
       env:
         KINECTSDKAZUREBT_DIR: ${{ github.workspace }}/kinect-sdks/k4abt
         KINECTSDK10_DIR: ${{ github.workspace }}/kinect-sdks/sdk1
@@ -168,5 +144,5 @@ jobs:
     # Upload artifacts
     - uses: actions/upload-artifact@v7
       with:
-        name: ${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.mode }}
-        path: package
+        name: obs-kinect-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.mode }}
+        path: packaged

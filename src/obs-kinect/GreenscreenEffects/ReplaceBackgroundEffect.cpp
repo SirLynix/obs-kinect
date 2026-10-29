@@ -16,6 +16,7 @@
 ******************************************************************************/
 
 #include <obs-kinect/GreenscreenEffects/ReplaceBackgroundEffect.hpp>
+#include <cstdint>
 #include <string>
 #include <stdexcept>
 

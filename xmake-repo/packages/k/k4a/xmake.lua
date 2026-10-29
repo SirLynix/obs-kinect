@@ -3,13 +3,18 @@ package("k4a")
     set_description("A cross platform (Linux and Windows) user mode SDK to read data from your Azure Kinect device.")
     set_license("MIT")
 
-    set_urls("https://github.com/microsoft/Azure-Kinect-Sensor-SDK.git")
-    add_versions("v1.4.1", "73106554449c64aff6b068078f0eada50c4474e99945b5ceb6ea4aab9a68457f")
+    set_policy("platform.longpaths", true)
 
-    add_deps("cmake")
+    set_urls("https://github.com/microsoft/Azure-Kinect-Sensor-SDK.git")
+    add_versions("v1.4.2", "cd2b3e9894b26fbeebfe34a5cab5b26efab0939a")
+    add_versions("v1.4.1", "3cfe362dacc4ad9b2206af3f28d62e1eb7be99c2")
+
+    add_resources("v1.4.2", "azure_c_shared", "https://github.com/Azure/azure-c-shared-utility.git", "9e4322c9d88095ed276bf7e4b31b87b82b1c4d86")
+
+    add_deps("cmake", "libjpeg-turbo", "libusb")
 
     if is_plat("linux", "macosx") then
-        add_deps("libx11", "libxrandr", "libxrender", "libxinerama", "libxfixes", "libxcursor", "libxi", "libxext")
+        add_deps("openssl3", "libx11", "libxrandr", "libxrender", "libxinerama", "libxfixes", "libxcursor", "libxi", "libxext", "libuuid")
     end
 
     on_fetch("windows", function (package)
@@ -35,15 +40,62 @@ package("k4a")
     end)
 
     on_install("windows", "linux", "macosx", function (package)
-        -- There's no option to disable examples, tests or tool building
-        io.replace("CMakeLists.txt", "add_subdirectory(examples)", "", {plain = true})
-        io.replace("CMakeLists.txt", "add_subdirectory(tests)", "", {plain = true})
-        io.replace("CMakeLists.txt", "add_subdirectory(tools)", "", {plain = true})
+        print("azure_c_shared", package:resourcedir("azure_c_shared"))
+        try
+        {
+            function ()
+                os.rmdir("extern/azure_c_shared/src")
+                print(os.files("extern/azure_c_shared/**"))
+                os.vmv(package:resourcedir("azure_c_shared"), "extern/azure_c_shared/src")
 
-        local configs = {}
-        table.insert(configs, "-DCMAKE_BUILD_TYPE=" .. (package:debug() and "Debug" or "Release"))
-        table.insert(configs, "-DBUILD_SHARED_LIBS=" .. (package:config("shared") and "ON" or "OFF"))
-        import("package.tools.cmake").install(package, configs)
+                io.replace("CMakeLists.txt", "cmake_minimum_required(VERSION 3.9.0)", "cmake_minimum_required(VERSION 3.22)", {plain = true})
+                -- There's no option to disable examples, tests or tool building
+                io.replace("CMakeLists.txt", "add_subdirectory(examples)", "", {plain = true})
+                io.replace("CMakeLists.txt", "add_subdirectory(tests)", "", {plain = true})
+                io.replace("CMakeLists.txt", "add_subdirectory(tools)", "", {plain = true})
+
+                io.replace("extern/CMakeLists.txt", "add_subdirectory(glfw)", "", {plain = true})
+                io.replace("extern/CMakeLists.txt", "add_subdirectory(googletest)", "", {plain = true})
+                io.replace("extern/CMakeLists.txt", "add_subdirectory(imgui)", "", {plain = true})
+                io.replace("extern/CMakeLists.txt", "add_subdirectory(libusb)", "", {plain = true})
+
+                io.replace("src/usbcommand/CMakeLists.txt", "LibUSB::LibUSB", "", {plain = true})
+
+                io.replace("src/color/mfcamerareader.h", "CMFCameraReader::", "", {plain = true})
+
+                io.replace("extern/spdlog/src/include/spdlog/fmt/bundled/format.h", "#if defined _SECURE_SCL && _SECURE_SCL", "#if defined _SECURE_SCL && _SECURE_SCL && (!defined(_MSC_VER) || _MSC_VER < 1915)", {plain = true})
+                io.replace("extern/azure_c_shared/src/src/hmac.c", "int hmacResult(HMACContext *ctx, uint8_t *digest)", "int hmacResult(HMACContext *ctx, uint8_t digest[USHAMaxHashSize])", {plain = true})
+                io.replace("extern/azure_c_shared/src/configs/azure_iot_build_rules.cmake", "-Werror", "", {plain = true})
+
+                io.insert("extern/libebml/src/src/EbmlSInteger.cpp", 36, "#include <limits>")
+
+                io.replace("cmake/k4aCompilerFlags.cmake", "-Werror", "", {plain = true})
+                io.replace("cmake/k4aCompilerFlags.cmake", "/WX", "", {plain = true})
+
+                local configs = {}
+                table.insert(configs, "-DCMAKE_BUILD_TYPE=" .. (package:debug() and "Debug" or "Release"))
+                table.insert(configs, "-DBUILD_SHARED_LIBS=" .. (package:config("shared") and "ON" or "OFF"))
+                table.insert(configs, "-DK4A_VALIDATE_CLANG_FORMAT=OFF")
+                table.insert(configs, "-DK4A_TURNED_ON_GIT_SUBMODULES_RECURSE=ON") -- prevent k4a from trying to check modules
+
+                local opt = {}
+                opt.packagedeps = {"libusb", "libuuid"}
+                import("package.tools.cmake").install(package, configs, opt)
+            end,
+            catch
+            {
+                function (errors)
+                    os.raise(errors)
+                end
+            },
+            finally
+            {
+                function (ok, warnings)
+                    -- force removal otherwise cleanup may fail later
+                    os.rm("extern")
+                end
+            }
+        }
     end)
 
     on_test(function (package)
