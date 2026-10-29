@@ -45,7 +45,7 @@ struct Source
 	SourceFlags requiredSources;
 };
 
-static std::array<Source, 3> s_sources = {
+static constexpr std::array<Source, 3> s_sources = {
 	{
 		{ "ObsKinect.Source_Color", KinectSource::SourceType::Color, Source_Color },
 		{ "ObsKinect.Source_Depth", KinectSource::SourceType::Depth, Source_Depth },
@@ -61,7 +61,7 @@ struct GreenScreenType
 	SourceFlags supportedSources;
 };
 
-static std::array<GreenScreenType, 5> s_greenscreenTypes = {
+static constexpr std::array<GreenScreenType, 5> s_greenscreenTypes = {
 	{
 		{ "ObsKinect.GreenScreenType_Body", KinectSource::GreenScreenFilterType::Body, Source_Body, Source_Color | Source_Depth | Source_Infrared },
 		{ "ObsKinect.GreenScreenType_Depth", KinectSource::GreenScreenFilterType::Depth, Source_Depth, Source_Color | Source_Depth | Source_Infrared },
@@ -259,10 +259,8 @@ static void kinect_source_destroy(void *data)
 	delete kinectSource;
 }
 
-static obs_properties_t* kinect_source_properties(void *unused)
+static obs_properties_t* kinect_source_properties(void* /*data*/, void* /*type_data*/)
 {
-	UNUSED_PARAMETER(unused);
-
 	obs_properties_t* props = obs_properties_create();
 	obs_property_t* p;
 
@@ -429,7 +427,7 @@ static obs_properties_t* kinect_source_properties(void *unused)
 	return props;
 }
 
-static void kinect_source_defaults(obs_data_t* settings)
+static void kinect_source_defaults(void* /*type_data*/, obs_data_t* settings)
 {
 	obs_data_set_default_string(settings, "device", NoDevice);
 
@@ -499,8 +497,8 @@ void RegisterKinectSource()
 	info.create = kinect_source_create;
 	info.destroy = kinect_source_destroy;
 	info.update = kinect_source_update;
-	info.get_defaults = kinect_source_defaults;
-	info.get_properties = kinect_source_properties;
+	info.get_defaults2 = kinect_source_defaults;
+	info.get_properties2 = kinect_source_properties;
 	info.get_width = [](void* data) { return static_cast<KinectSource*>(data)->GetWidth(); };
 	info.get_height = [](void* data) { return static_cast<KinectSource*>(data)->GetHeight(); };
 	info.video_render = kinect_video_render;
@@ -514,9 +512,9 @@ void RegisterKinectSource()
 
 OBSKINECT_EXPORT bool obs_module_load()
 {
-	if (obs_get_version() < MAKE_SEMANTIC_VERSION(25, 0, 0))
+	if (obs_get_version() < MAKE_SEMANTIC_VERSION(33, 0, 0))
 	{
-		errorlog("this plugins requires a least OBS 25 to work, please upgrade or create a GitHub issue if upgrading is not an option");
+		errorlog("this plugins requires a least OBS 33 to work, please upgrade or create a GitHub issue if upgrading is not an option");
 		return false;
 	}
 
