@@ -1,3 +1,5 @@
+includes("@builtin/xpack")
+
 includes(path.join(os.scriptdir(), "config.lua"))
 
 local ObsFolder = ObsFolder or {}
@@ -81,7 +83,7 @@ if is_plat("windows") then
 end
 
 set_project("obs-kinect")
-set_version("1.0")
+set_version("1.0.0")
 
 add_rules("mode.debug", "mode.releasedbg")
 add_rules("plugin.vsxmake.autoupdate")
@@ -95,6 +97,8 @@ set_targetdir("./bin/$(os)_$(arch)_$(mode)")
 set_warnings("allextra")
 
 add_sysincludedirs(LibObs.Include)
+
+set_policy("install.strip_packagelibs", false)
 
 local baseObsDir = path.translate(is_arch("x86") and LibObs.Build32 or LibObs.Build64)
 if is_plat("windows") then
@@ -244,3 +248,58 @@ target("obs-kinect-freenect2")
 	add_files("src/obs-kinect-freenect2/**.cpp")
 
 	add_rules("kinect_dynlib", "copy_to_obs", "package_binaries")
+
+xpack("obs-kinect")
+	set_formats("nsis", "zip", "targz")
+	set_homepage("https://github.com/SirLynix/obs-kinect")
+	set_title("obs-kinect plugin")
+	set_description("A plugin for OBS-Studio allowing you to use your Kinect as a camera source.")
+	set_author("SirLynix")
+	set_maintainer("SirLynix")
+	set_iconfile("obs-kinect.ico")
+	if set_displayicon then
+		set_displayicon("obs-kinect.ico")
+	else
+		set_nsis_displayicon("obs-kinect.ico")
+	end
+
+	set_license("GPL")
+	set_licensefile("LICENSE")
+
+	add_targets("obs-kinect", "obs-kinect-azuresdk", "obs-kinect-sdk10", "obs-kinect-sdk20", "obs-kinect-freenect", "obs-kinect-freenect2")
+
+	add_sourcefiles("(data/**)")
+
+	on_load(function (package)
+		if package:format() == "nsis" then
+			package:set("specfile", "installer.nsi")
+		end
+	end)
+
+	on_installcmd(function (package, batchcmds)
+		import("utils.binary.deplibs", {alias = "get_depend_libraries"})
+		import("private.utils.target", {alias = "target_utils"})
+
+		local installdir = package:installdir()
+
+		local binfiles = {}
+		for _, target in ipairs(package:targets()) do
+			table.insert(binfiles, target:targetfile())
+			if os.isfile(target:symbolfile()) then
+				table.insert(binfiles, target:symbolfile())
+			end
+
+			target_utils.get_target_libfiles(target, binfiles, target:targetfile(), {})
+		end
+		binfiles = table.unique(binfiles)
+
+		batchcmds:mkdir(installdir)
+		for _, file in ipairs(binfiles) do
+			batchcmds:cp(file, path.join(installdir, path.filename(file)))
+		end
+		batchcmds:cp("data", installdir)
+	end)
+
+    on_uninstallcmd(function (package, batchcmds)
+        batchcmds:rmdir(package:installdir())
+    end)

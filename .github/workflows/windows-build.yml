@@ -133,8 +133,8 @@ jobs:
         KINECTSDK20_DIR: ${{ github.workspace }}/kinect-sdks/sdk2
 
     # Install the result files
-    - name: Install obs-kinect
-      run: xmake package -vo package
+    - name: Package obs-kinect
+      run: xmake pack --verbose -y -f nsis,zip packaged
       env:
         KINECTSDKAZUREBT_DIR: ${{ github.workspace }}/kinect-sdks/k4abt
         KINECTSDK10_DIR: ${{ github.workspace }}/kinect-sdks/sdk1
@@ -145,4 +145,4 @@ jobs:
     - uses: actions/upload-artifact@v7
       with:
         name: obs-kinect-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.mode }}
-        path: package
+        path: packaged

@@ -66,10 +66,6 @@ package("k4a")
 
         local opt = {}
         opt.packagedeps = {"libusb"}
-        if package:has_tool("cc", "clang", "clang_cl", "gcc", "gxx") then
-            opt.cflags = {"-Wno-error"}
-            opt.cxxflags = opt.cflags
-        end
         import("package.tools.cmake").install(package, configs, opt)
     end)
 
