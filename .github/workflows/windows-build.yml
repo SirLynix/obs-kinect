@@ -134,7 +134,7 @@ jobs:
 
     # Install the result files
     - name: Package obs-kinect
-      run: xmake pack --verbose -y -f nsis,zip packaged
+      run: xmake pack --verbose -y -f nsis,zip -o packaged
       env:
         KINECTSDKAZUREBT_DIR: ${{ github.workspace }}/kinect-sdks/k4abt
         KINECTSDK10_DIR: ${{ github.workspace }}/kinect-sdks/sdk1
