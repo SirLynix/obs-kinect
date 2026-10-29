@@ -267,7 +267,17 @@ xpack("obs-kinect")
 	set_license("GPL")
 	set_licensefile("LICENSE")
 
-	add_targets("obs-kinect", "obs-kinect-azuresdk", "obs-kinect-sdk10", "obs-kinect-sdk20", "obs-kinect-freenect", "obs-kinect-freenect2")
+	add_targets("obs-kinect", "obs-kinect-azuresdk", "obs-kinect-freenect", "obs-kinect-freenect2")
+
+	if is_plat("windows") then
+		if has_package("kinect-sdk1") then
+			add_targets("obs-kinect-sdk10")
+		end
+		
+		if has_package("kinect-sdk2") then
+			add_targets("obs-kinect-sdk20")
+		end
+	end
 
 	add_sourcefiles("(data/**)")
 
