@@ -17,6 +17,7 @@
 
 #include <obs-kinect/Shaders/GaussianBlurShader.hpp>
 #include <obs-kinect-core/Helper.hpp>
+#include <cstdint>
 #include <string>
 #include <stdexcept>
 
