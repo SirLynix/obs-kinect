@@ -4,7 +4,7 @@ includes(path.join(os.scriptdir(), "config.lua"))
 
 local ObsFolder = ObsFolder or {}
 
-rule("kinect_dynlib")
+rule("kinect_dynlib", function ()
 	after_load(function (target)
 		target:add("rpathdirs", ".")
 		target:add("rpathdirs", "@executable_path")
@@ -21,9 +21,9 @@ rule("kinect_dynlib")
 	on_load("macosx", function (target)
 		target:set("filename", target:name() .. ".dylib")
 	end)
-rule_end()
+end)
 
-rule("copy_to_obs")
+rule("copy_to_obs", function ()
 	after_build(function(target)
 		local folderKey = (is_mode("debug") and "Debug" or "Release") .. (is_arch("x86") and "32" or "64")
 		local obsDir = ObsFolder[folderKey]
@@ -54,9 +54,9 @@ rule("copy_to_obs")
 			end
 		end
 	end)
-rule_end()
+end)
 
-rule("package_binaries")
+rule("package_binaries", function ()
 	after_package(function (target)
 		import("core.base.option")
 
@@ -67,7 +67,7 @@ rule("package_binaries")
 			end
 		end
 	end)
-rule_end()
+end)
 
 add_repositories("local-repo xmake-repo")
 add_requires("libfreenect", "libfreenect2", { configs = { debug = is_mode("debug") } })
@@ -126,10 +126,7 @@ elseif is_plat("linux") then
 	add_syslinks("pthread")
 end
 
--- Override default package function
-on_package(function() end)
-
-target("obs-kinectcore")
+target("obs-kinectcore", function ()
 	set_kind("shared")
 	set_group("Core")
 
@@ -142,8 +139,9 @@ target("obs-kinectcore")
 	add_includedirs("src")
 
 	add_rules("copy_to_obs", "package_binaries")
+end)
 
-target("obs-kinect")
+target("obs-kinect", function ()
 	set_kind("shared")
 	set_group("Core")
 
@@ -162,8 +160,9 @@ target("obs-kinect")
 
 		os.vcp("data", path.join(outputdir, "obs-studio", "plugins", "obs-kinect", "data"))
 	end)
+end)
 
-target("obs-kinect-azuresdk")
+target("obs-kinect-azuresdk", function()
 	set_kind("shared")
 	set_group("Azure")
 
@@ -179,11 +178,12 @@ target("obs-kinect-azuresdk")
 	if has_package("k4abt-headers") then
 		add_packages("k4abt-headers")
 	end
+end)
 
 if is_plat("windows") then
 
 	if has_package("kinect-sdk1") then
-		target("obs-kinect-sdk10")
+		target("obs-kinect-sdk10", function ()
 			set_kind("shared")
 			set_group("KinectV1")
 
@@ -199,10 +199,11 @@ if is_plat("windows") then
 			add_files("src/obs-kinect-sdk10/**.cpp")
 
 			add_rules("kinect_dynlib", "copy_to_obs", "package_binaries")
+		end)
 	end
 
 	if has_package("kinect-sdk2") then
-		target("obs-kinect-sdk20")
+		target("obs-kinect-sdk20", function ()
 			set_kind("shared")
 			set_group("KinectV2")
 
@@ -222,11 +223,12 @@ if is_plat("windows") then
 				add_links("NuiSensorLib")
 				add_syslinks("SetupAPI")
 			end
+		end)
 	end
 
 end
 
-target("obs-kinect-freenect")
+target("obs-kinect-freenect", function ()
 	set_kind("shared")
 	set_group("KinectV1")
 
@@ -237,8 +239,9 @@ target("obs-kinect-freenect")
 	add_files("src/obs-kinect-freenect/**.cpp")
 
 	add_rules("kinect_dynlib", "copy_to_obs", "package_binaries")
+end)
 
-target("obs-kinect-freenect2")
+target("obs-kinect-freenect2", function ()
 	set_kind("shared")
 	set_group("KinectV2")
 
@@ -249,8 +252,33 @@ target("obs-kinect-freenect2")
 	add_files("src/obs-kinect-freenect2/**.cpp")
 
 	add_rules("kinect_dynlib", "copy_to_obs", "package_binaries")
+end)
 
-xpack("obs-kinect")
+local function installfiles(package, target_utils)
+	local binfiles = {}
+	for _, target in ipairs(package:targets()) do
+		table.insert(binfiles, target:targetfile())
+		if os.isfile(target:symbolfile()) then
+			table.insert(binfiles, target:symbolfile())
+		end
+
+		target_utils.get_target_libfiles(target, binfiles, target:targetfile(), {})
+	end
+	binfiles = table.unique(binfiles)
+
+	local installfiles = {}
+	for _, file in ipairs(binfiles) do
+		table.insert(installfiles, {source = file, dest = path.filename(file)})
+	end
+
+	for _,filepath in pairs((package:sourcefiles())) do
+		table.insert(installfiles, {source = filepath, dest = filepath})
+	end
+
+	return installfiles
+end
+
+xpack("obs-kinect", function ()
 	set_formats("nsis", "zip", "targz")
 	set_homepage("https://github.com/SirLynix/obs-kinect")
 	set_title("obs-kinect plugin")
@@ -288,29 +316,26 @@ xpack("obs-kinect")
 	end)
 
 	on_installcmd(function (package, batchcmds)
-		import("utils.binary.deplibs", {alias = "get_depend_libraries"})
 		import("private.utils.target", {alias = "target_utils"})
+		local installfiles = installfiles(package, target_utils)
 
 		local installdir = package:installdir()
 
-		local binfiles = {}
-		for _, target in ipairs(package:targets()) do
-			table.insert(binfiles, target:targetfile())
-			if os.isfile(target:symbolfile()) then
-				table.insert(binfiles, target:symbolfile())
-			end
-
-			target_utils.get_target_libfiles(target, binfiles, target:targetfile(), {})
-		end
-		binfiles = table.unique(binfiles)
-
 		batchcmds:mkdir(installdir)
-		for _, file in ipairs(binfiles) do
-			batchcmds:cp(file, path.join(installdir, path.filename(file)))
+		batchcmds:mkdir(path.join(installdir, "data"))
+		for _, file in ipairs(installfiles) do
+			batchcmds:cp(file.source, path.join(installdir, file.dest))
 		end
-		batchcmds:cp("data", installdir)
 	end)
 
     on_uninstallcmd(function (package, batchcmds)
-        batchcmds:rmdir(package:installdir())
+		import("private.utils.target", {alias = "target_utils"})
+		local installfiles = installfiles(package, target_utils)
+
+		local installdir = package:installdir()
+
+		for _, file in ipairs(installfiles) do
+			batchcmds:rm(path.join(installdir, file.dest), {emptydirs = true})
+		end
     end)
+end)
