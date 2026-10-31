@@ -320,6 +320,9 @@ xpack("obs-kinect", function ()
 		local installfiles = installfiles(package, target_utils)
 
 		local installdir = package:installdir()
+		if package:format() ~= "nsis" then -- nsis already has obs-kinect folder in installer.nsi
+			installdir = path.join(installdir, "obs-kinect")
+		end
 
 		batchcmds:mkdir(installdir)
 		batchcmds:mkdir(path.join(installdir, "data"))
